@@ -1,0 +1,39 @@
+.auth-container {
+  position: relative;
+  width: 380px;
+  height: 500px;
+  overflow: hidden;
+}
+
+.form-box {
+  position: absolute;
+  width: 100%;
+  top: 0;
+  left: 0;
+  transition: transform 0.6s ease;
+  will-change: transform;
+}
+
+.form-box.login {
+  transform: translateX(0%);
+  z-index: 2;
+}
+
+.form-box.signup {
+  transform: translateX(100%);
+  z-index: 1;
+}
+
+.auth-container.active .form-box.login {
+  transform: translateX(-100%);
+}
+
+.auth-container.active .form-box.signup {
+  transform: translateX(0%);
+  z-index: 2;
+}
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}

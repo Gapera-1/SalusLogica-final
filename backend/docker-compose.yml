@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # Redis for Celery broker and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # PostgreSQL database (optional - replace SQLite)
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: saluslogica
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Django web application
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - db
+    environment:
+      - DEBUG=1
+      - DATABASE_URL=postgresql://postgres:password@db:5432/saluslogica
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+  # Celery worker
+  celery:
+    build: .
+    command: celery -A saluslogica worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - db
+    environment:
+      - DEBUG=1
+      - DATABASE_URL=postgresql://postgres:password@db:5432/saluslogica
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+  # Celery beat scheduler
+  celery-beat:
+    build: .
+    command: celery -A saluslogica beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - db
+    environment:
+      - DEBUG=1
+      - DATABASE_URL=postgresql://postgres:password@db:5432/saluslogica
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+  # Flower for Celery monitoring
+  flower:
+    build: .
+    command: celery -A saluslogica flower
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+volumes:
+  redis_data:
+  postgres_data:
+  static_volume:
+  media_volume:

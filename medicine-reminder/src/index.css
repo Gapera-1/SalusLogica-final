@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply min-h-screen bg-gradient-to-br from-blue-100 via-white to-purple-100 flex items-center justify-center font-sans;
+  /* Modern, soft background and centering */
+}
