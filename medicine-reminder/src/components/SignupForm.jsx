@@ -1,4 +1,5 @@
 import React from "react";
+import { useLanguage } from "../i18n";
 
 function SignupForm({
   username,
@@ -12,13 +13,14 @@ function SignupForm({
   handleSignup,
   setIsSignup,
 }) {
+  const { t } = useLanguage();
   return (
     <form onSubmit={handleSignup} className="flex flex-col gap-3 p-6 bg-white bg-opacity-90  rounded-lg shadow-lg">
-      <h2 className="text-xl font-bold mb-2 text-center">Sign Up</h2>
+      <h2 className="text-xl font-bold mb-2 text-center">{t('signup.title')}</h2>
 
       <input
         type="text"
-        placeholder="Username"
+        placeholder={t('signup.username')}
         className="border px-3 py-2 rounded"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
@@ -26,7 +28,7 @@ function SignupForm({
 
       <input
         type="password"
-        placeholder="Password"
+        placeholder={t('signup.password')}
         className="border px-3 py-2 rounded"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
@@ -34,7 +36,7 @@ function SignupForm({
 
       <input
         type="password"
-        placeholder="Confirm Password"
+        placeholder={t('signup.confirmPassword')}
         className="border px-3 py-2 rounded"
         value={confirmPassword}
         onChange={(e) => setConfirmPassword(e.target.value)}
@@ -47,17 +49,17 @@ function SignupForm({
         type="submit"
         className="bg-green-500 text-white py-2 rounded hover:bg-green-600 transition"
       >
-        Sign Up
+        {t('signup.signupButton')}
       </button>
 
       <p className="text-sm text-center mt-2">
-        Already have an account?{" "}
+        {t('signup.alreadyHave')}{" "}
         <button
           type="button"
           className="text-blue-600 hover:underline"
           onClick={() => setIsSignup(false)}
         >
-          Log In
+          {t('signup.login')}
         </button>
       </p>
     </form>

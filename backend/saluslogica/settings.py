@@ -38,6 +38,7 @@ LOCAL_APPS = [
     'apps.analytics',
     'apps.interactions',
     'apps.alarms',
+    'saluslogica',  # Add the pharmacy admin app
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -59,6 +60,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
+    "http://localhost:3001",  # Additional React port
+    "http://127.0.0.1:3001",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

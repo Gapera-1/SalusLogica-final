@@ -20,6 +20,7 @@ class Medicine(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='medicines')
     name = models.CharField(max_length=200)
+    scientific_name = models.CharField(max_length=200, blank=True, null=True, help_text="Scientific/Generic name - never translate")
     dosage = models.CharField(max_length=100)  # e.g., "100mg", "2 tablets"
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
     times = models.JSONField(default=list)  # List of times in HH:MM format

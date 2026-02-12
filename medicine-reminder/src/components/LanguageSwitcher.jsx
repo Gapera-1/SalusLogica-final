@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { useTranslation } from '../services/i18n';
+import { useLanguage } from '../i18n';
 
 const LanguageSwitcher = ({ variant = 'dropdown' }) => {
-    const { currentLanguage, changeLanguage, languageOptions, loading } = useTranslation();
+    const { language, setLanguage, languages, loadingLanguage } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
 
-    const handleLanguageChange = async (languageCode) => {
+    const handleLanguageChange = (languageCode) => {
         try {
-            await changeLanguage(languageCode);
+            setLanguage(languageCode);
             setIsOpen(false);
         } catch (error) {
             console.error('Failed to change language:', error);
@@ -23,7 +23,7 @@ const LanguageSwitcher = ({ variant = 'dropdown' }) => {
         return flags[code] || '🌍';
     };
 
-    if (loading) {
+    if (loadingLanguage) {
         return (
             <div className="animate-pulse">
                 <div className="h-8 w-24 bg-gray-200 rounded"></div>
@@ -39,9 +39,9 @@ const LanguageSwitcher = ({ variant = 'dropdown' }) => {
                     onClick={() => setIsOpen(!isOpen)}
                     className="flex items-center space-x-2 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                    <span className="text-lg">{getFlag(currentLanguage)}</span>
+                    <span className="text-lg">{getFlag(language)}</span>
                     <span className="font-medium">
-                        {languageOptions.find(lang => lang.value === currentLanguage)?.name || 'Language'}
+                        {languages.find(lang => lang === language) || 'Language'}
                     </span>
                     <svg
                         className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -55,17 +55,17 @@ const LanguageSwitcher = ({ variant = 'dropdown' }) => {
 
                 {isOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                        {languageOptions.map((option) => (
+                        {languages.map((option) => (
                             <button
-                                key={option.value}
-                                onClick={() => handleLanguageChange(option.value)}
+                                key={option}
+                                onClick={() => handleLanguageChange(option)}
                                 className={`w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-3 transition-colors ${
-                                    option.value === currentLanguage ? 'bg-blue-50 text-blue-600' : ''
+                                    option === language ? 'bg-blue-50 text-blue-600' : ''
                                 }`}
                             >
-                                <span className="text-lg">{option.flag}</span>
-                                <span className="font-medium">{option.name}</span>
-                                {option.value === currentLanguage && (
+                                <span className="text-lg">{getFlag(option)}</span>
+                                <span className="font-medium">{option}</span>
+                                {option === language && (
                                     <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                     </svg>
@@ -82,18 +82,18 @@ const LanguageSwitcher = ({ variant = 'dropdown' }) => {
     if (variant === 'buttons') {
         return (
             <div className="flex space-x-2">
-                {languageOptions.map((option) => (
+                {languages.map((option) => (
                     <button
-                        key={option.value}
-                        onClick={() => handleLanguageChange(option.value)}
+                        key={option}
+                        onClick={() => handleLanguageChange(option)}
                         className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            option.value === currentLanguage
+                            option === language
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
                     >
-                        <span className="mr-2">{option.flag}</span>
-                        {option.name}
+                        <span className="mr-2">{getFlag(option)}</span>
+                        {option}
                     </button>
                 ))}
             </div>
@@ -104,18 +104,18 @@ const LanguageSwitcher = ({ variant = 'dropdown' }) => {
     if (variant === 'compact') {
         return (
             <div className="flex space-x-1">
-                {languageOptions.map((option) => (
+                {languages.map((option) => (
                     <button
-                        key={option.value}
-                        onClick={() => handleLanguageChange(option.value)}
+                        key={option}
+                        onClick={() => handleLanguageChange(option)}
                         className={`p-2 rounded-lg text-lg transition-colors ${
-                            option.value === currentLanguage
+                            option === language
                                 ? 'bg-blue-100 text-blue-600'
                                 : 'hover:bg-gray-100'
                         }`}
-                        title={option.name}
+                        title={option}
                     >
-                        {option.flag}
+                        {getFlag(option)}
                     </button>
                 ))}
             </div>

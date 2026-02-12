@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BaseLayout from "../components/BaseLayout";
+import { useLanguage } from "../i18n";
 import { medicineAPI } from "../services/api";
 
 const AddMedicine = ({ setIsAuthenticated, setUser }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     name: "",
     dosage: "",
@@ -23,13 +25,13 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
   const [errors, setErrors] = useState({});
 
   const frequencies = [
-    "Once daily",
-    "Twice daily", 
-    "Three times daily",
-    "Four times daily",
-    "As needed",
-    "Weekly",
-    "Monthly"
+    t("addMedicine.onceDaily"),
+    t("addMedicine.twiceDaily"),
+    t("addMedicine.threeTimesDaily"),
+    t("addMedicine.fourTimesDaily"),
+    t("addMedicine.asNeeded"),
+    t("addMedicine.weekly"),
+    t("addMedicine.monthly")
   ];
 
   // Helper function to get suggested times based on frequency
@@ -101,19 +103,19 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
     const newErrors = {};
     
     if (!formData.name.trim()) {
-      newErrors.name = "Medicine name is required";
+      newErrors.name = t("addMedicine.medicineNameRequired");
     }
     if (!formData.dosage.trim()) {
-      newErrors.dosage = "Dosage is required";
+      newErrors.dosage = t("addMedicine.dosageRequired");
     }
     if (!formData.frequency) {
-      newErrors.frequency = "Frequency is required";
+      newErrors.frequency = t("addMedicine.frequencyRequired");
     }
     if (!formData.times || formData.times.length === 0) {
-      newErrors.times = "At least one time is required";
+      newErrors.times = t("addMedicine.timesRequired");
     }
     if (!formData.stock || formData.stock < 0) {
-      newErrors.stock = "Valid stock quantity is required";
+      newErrors.stock = t("addMedicine.stockRequired");
     }
     
     setErrors(newErrors);
@@ -147,11 +149,11 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
       };
       
       await medicineAPI.create(medicineData);
-      alert("Medicine added successfully!");
+      alert(t("addMedicine.success"));
       navigate("/medicine-list");
     } catch (error) {
       console.error("Error adding medicine:", error);
-      alert("Failed to add medicine. Please try again.");
+      alert(t("addMedicine.error"));
     } finally {
       setLoading(false);
     }
@@ -166,8 +168,8 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h2 className="text-gray-900 text-2xl font-bold mb-2">Add New Medicine</h2>
-          <p className="text-gray-600 text-sm">Enter the details for your medicine reminder</p>
+          <h2 className="text-gray-900 text-2xl font-bold mb-2">{t("addMedicine.title")}</h2>
+          <p className="text-gray-600 text-sm">{t("addMedicine.subtitle")}</p>
         </div>
 
         {/* Form */}
@@ -176,7 +178,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
             {/* Medicine Name */}
             <div className="space-y-2">
               <label className="text-gray-700 text-sm font-medium flex items-center gap-1">
-                Medicine Name <span className="text-red-500">*</span>
+                {t("addMedicine.medicineName")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -186,7 +188,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                 className={`w-full px-4 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 ${
                   errors.name ? "border-red-500 focus:ring-red-500 focus:ring-opacity-20" : "border-gray-300"
                 }`}
-                placeholder="e.g., Aspirin, Vitamin D"
+                placeholder={t("addMedicine.medicinePlaceholder")}
               />
               {errors.name && <span className="text-red-400 text-xs">{errors.name}</span>}
             </div>
@@ -194,7 +196,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
             {/* Dosage */}
             <div className="space-y-2">
               <label className="text-gray-700 text-sm font-medium flex items-center gap-1">
-                Dosage <span className="text-red-500">*</span>
+                {t("addMedicine.dosage")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -212,7 +214,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
             {/* Frequency */}
             <div className="space-y-2">
               <label className="text-gray-700 text-sm font-medium flex items-center gap-1">
-                Frequency <span className="text-red-500">*</span>
+                {t("addMedicine.frequency")} <span className="text-red-500">*</span>
               </label>
               <select
                 name="frequency"
@@ -222,7 +224,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                   errors.frequency ? "border-red-500 focus:ring-red-500 focus:ring-opacity-20" : "border-gray-300"
                 }`}
               >
-                <option value="" className="text-gray-900">Select frequency</option>
+                <option value="" className="text-gray-900">{t("addMedicine.frequency")}</option>
                 {frequencies.map(freq => (
                   <option key={freq} value={freq} className="text-gray-900">{freq}</option>
                 ))}
@@ -232,7 +234,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
 
             {/* Times of Day */}
             <div className="space-y-2">
-              <label className="text-gray-700 text-sm font-medium">Times of Day</label>
+              <label className="text-gray-700 text-sm font-medium">{t("addMedicine.times")}</label>
               <div className="space-y-2">
                 {formData.times.map((time, index) => (
                   <div key={index} className="flex items-center gap-2">
@@ -264,11 +266,11 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Add Time
+                  {t("addMedicine.addTimeSlot")}
                 </button>
               </div>
               <p className="text-xs text-gray-500">
-                Select exact times when you need to take this medicine
+                {t("addMedicine.selectExactTimes") || "Select exact times when you need to take this medicine"}
               </p>
               {errors.times && <span className="text-red-400 text-xs">{errors.times}</span>}
             </div>
@@ -276,7 +278,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
             {/* Stock */}
             <div className="space-y-2">
               <label className="text-gray-700 text-sm font-medium flex items-center gap-1">
-                Duration (days) <span className="text-red-500">*</span>
+                {t("addMedicine.stock")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -294,7 +296,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
 
             {/* Prescribed For */}
             <div className="space-y-2">
-              <label className="text-gray-700 text-sm font-medium">Prescribed For</label>
+              <label className="text-gray-700 text-sm font-medium">{t("addMedicine.prescribedFor")}</label>
               <input
                 type="text"
                 name="prescribedFor"
@@ -307,7 +309,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
 
             {/* Doctor */}
             <div className="space-y-2">
-              <label className="text-gray-700 text-sm font-medium">Prescribing Doctor</label>
+              <label className="text-gray-700 text-sm font-medium">{t("addMedicine.doctor")}</label>
               <input
                 type="text"
                 name="doctor"
@@ -320,7 +322,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
 
             {/* Start Date */}
             <div className="space-y-2">
-              <label className="text-gray-700 text-sm font-medium">Start Date</label>
+              <label className="text-gray-700 text-sm font-medium">{t("addMedicine.startDate")}</label>
               <input
                 type="date"
                 name="startDate"
@@ -333,7 +335,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
 
           {/* Instructions */}
           <div className="space-y-2">
-            <label className="text-gray-700 text-sm font-medium">Instructions</label>
+            <label className="text-gray-700 text-sm font-medium">{t("addMedicine.instructions")}</label>
             <textarea
               name="instructions"
               value={formData.instructions}
@@ -363,7 +365,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                   </svg>
                 )}
               </span>
-              Enable reminders for this medicine
+              {t("addMedicine.enableReminders") || "Enable reminders for this medicine"}
             </label>
           </div>
 
@@ -374,7 +376,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
               onClick={handleCancel}
               className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
             >
-              Cancel
+              {t("addMedicine.cancel")}
             </button>
             <button
               type="submit"
@@ -387,14 +389,14 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Adding...
+                  {t("addMedicine.submitting")}
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Add Medicine
+                  {t("addMedicine.submit")}
                 </>
               )}
             </button>

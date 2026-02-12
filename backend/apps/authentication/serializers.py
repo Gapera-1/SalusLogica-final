@@ -24,22 +24,32 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 
 class UserLoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    username = serializers.CharField()  # Can be username or email
     password = serializers.CharField()
     
     def validate(self, attrs):
-        username = attrs.get('username')
+        username_or_email = attrs.get('username')
         password = attrs.get('password')
         
-        if username and password:
-            user = authenticate(username=username, password=password)
+        if username_or_email and password:
+            # Try to authenticate with username first
+            user = authenticate(username=username_or_email, password=password)
+            
+            # If username fails, try with email
+            if not user:
+                try:
+                    user_obj = User.objects.get(email=username_or_email)
+                    user = authenticate(username=user_obj.username, password=password)
+                except User.DoesNotExist:
+                    user = None
+            
             if not user:
                 raise serializers.ValidationError('Invalid credentials')
             if not user.is_active:
                 raise serializers.ValidationError('User account is disabled')
             attrs['user'] = user
         else:
-            raise serializers.ValidationError('Must include username and password')
+            raise serializers.ValidationError('Must include username/email and password')
         
         return attrs
 
@@ -53,6 +63,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    age_category_display = serializers.CharField(source='get_age_category_display', read_only=True)
     
     class Meta:
         model = UserProfile

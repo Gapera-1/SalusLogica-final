@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import Logo from "../components/Logo";
+import { useLanguage } from "../i18n";
 import { authAPI } from "../services/api";
 
 const Home = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,12 +51,11 @@ const Home = ({ setIsAuthenticated }) => {
             <div className="pt-20 pb-16 text-center">
               <Logo className="h-16 w-auto mb-4" />
               <h1 className="text-4xl font-extrabold text-white sm:text-5xl lg:text-6xl">
-                Never Miss Your
-                <span className="block text-yellow-300">Medicine Again</span>
+                {t("home.neverMissYour")}
+                <span className="block text-yellow-300">{t("home.medicineAgain")}</span>
               </h1>
               <p className="mt-6 text-xl text-blue-100 max-w-3xl mx-auto">
-                SalusLogica is your intelligent medicine reminder system that helps you stay on track with your medications, 
-                manage your health, and improve adherence to your treatment plans.
+                {t("home.fullDescription")}
               </p>
               <div className="mt-10 flex justify-center space-x-4">
                 {user ? (
@@ -62,7 +63,7 @@ const Home = ({ setIsAuthenticated }) => {
                     onClick={() => navigate("/dashboard")}
                     className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition duration-200"
                   >
-                    Go to Dashboard
+                    {t("home.goToDashboard")}
                   </button>
                 ) : (
                   <>
@@ -70,13 +71,13 @@ const Home = ({ setIsAuthenticated }) => {
                       onClick={() => navigate("/signup")}
                       className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition duration-200 mr-4"
                     >
-                      Get Started
+                      {t("home.getStarted")}
                     </button>
                     <button
                       onClick={() => navigate("/login")}
                       className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition duration-200"
                     >
-                      Sign In
+                      {t("home.signIn")}
                     </button>
                   </>
                 )}
@@ -91,10 +92,10 @@ const Home = ({ setIsAuthenticated }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Everything You Need to Manage Your Health
+              {t("home.features.title")}
             </h2>
             <p className="mt-4 text-lg text-gray-600">
-              Comprehensive features designed to make medication management simple and effective
+              {t("home.features.subtitle")}
             </p>
           </div>
 
@@ -104,9 +105,9 @@ const Home = ({ setIsAuthenticated }) => {
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-6">
                 <i className="fas fa-pills text-blue-600 text-2xl"></i>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Medicine Management</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">{t("home.features.medicineManagement.title")}</h3>
               <p className="text-gray-600">
-                Add, edit, and organize all your medications in one place with detailed dosage instructions and schedules.
+                {t("home.features.medicineManagement.description")}
               </p>
             </div>
 
@@ -115,9 +116,9 @@ const Home = ({ setIsAuthenticated }) => {
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
                 <i className="fas fa-bell text-green-600 text-2xl"></i>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Smart Reminders</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">{t("home.features.smartReminders.title")}</h3>
               <p className="text-gray-600">
-                Get timely notifications for your medications through SMS, email, or push notifications.
+                {t("home.features.smartReminders.description")}
               </p>
             </div>
 
@@ -126,9 +127,9 @@ const Home = ({ setIsAuthenticated }) => {
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-purple-100 mb-6">
                 <i className="fas fa-chart-line text-purple-600 text-2xl"></i>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Dose Tracking</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">{t("home.features.doseTracking.title")}</h3>
               <p className="text-gray-600">
-                Track your medication adherence with detailed history and compliance statistics.
+                {t("home.features.doseTracking.description")}
               </p>
             </div>
 
@@ -137,9 +138,9 @@ const Home = ({ setIsAuthenticated }) => {
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-6">
                 <i className="fas fa-user-md text-yellow-600 text-2xl"></i>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Patient Profiles</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">{t("home.features.patientProfiles.title")}</h3>
               <p className="text-gray-600">
-                Create comprehensive patient profiles with medical history, allergies, and personalized care plans.
+                {t("home.features.patientProfiles.description")}
               </p>
             </div>
 
@@ -148,9 +149,9 @@ const Home = ({ setIsAuthenticated }) => {
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-6">
                 <i className="fas fa-hospital text-red-600 text-2xl"></i>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Pharmacy Management</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">{t("home.features.pharmacyManagement.title")}</h3>
               <p className="text-gray-600">
-                Pharmacy administrators can manage multiple patients and monitor their medication adherence.
+                {t("home.features.pharmacyManagement.description")}
               </p>
             </div>
 
@@ -159,9 +160,9 @@ const Home = ({ setIsAuthenticated }) => {
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-6">
                 <i className="fas fa-mobile-alt text-indigo-600 text-2xl"></i>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Mobile Compatible</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">{t("home.features.mobileCompatible.title")}</h3>
               <p className="text-gray-600">
-                Access your medication schedule and receive reminders on any device with our responsive design.
+                {t("home.features.mobileCompatible.description")}
               </p>
             </div>
           </div>
@@ -173,10 +174,10 @@ const Home = ({ setIsAuthenticated }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h2 className="text-3xl font-extrabold text-white">
-              Ready to Take Control of Your Health?
+              {t("home.cta.title")}
             </h2>
             <p className="mt-4 text-xl text-blue-100">
-              Join thousands of users who trust SalusLogica for their medication management.
+              {t("home.cta.subtitle")}
             </p>
             <div className="mt-8">
               {user ? (
@@ -184,7 +185,7 @@ const Home = ({ setIsAuthenticated }) => {
                   onClick={() => navigate("/medicine-list")}
                   className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition duration-200"
                 >
-                  Manage Your Medicines
+                  {t("home.cta.manageYourMedicines")}
                 </button>
               ) : (
                 <>
@@ -192,13 +193,13 @@ const Home = ({ setIsAuthenticated }) => {
                     onClick={() => navigate("/signup")}
                     className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition duration-200 mr-4"
                   >
-                    Get Started
+                    {t("home.getStarted")}
                   </button>
                   <button
                     onClick={() => navigate("/login")}
                     className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition duration-200"
                   >
-                    Sign In
+                    {t("home.signIn")}
                   </button>
                 </>
               )}

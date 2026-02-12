@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import Logo from "./Logo";
 import useAlarmManager from "../hooks/useAlarmManager"; // ✅ FIXED IMPORT
 import { useLanguage } from "../i18n";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 const Navigation = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
@@ -12,7 +13,25 @@ const Navigation = ({ setIsAuthenticated }) => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  // Get user from localStorage
+  const getUser = () => {
+    try {
+      const userStr = localStorage.getItem("user");
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (error) {
+      console.error("Error parsing user from localStorage:", error);
+      return null;
+    }
+  };
+
+  const user = getUser();
+  const isPharmacyAdmin = user?.user_type === "pharmacy_admin";
+  const isPatient = user && user?.user_type !== "pharmacy_admin";
+
   console.log("Navigation component - Current location:", location.pathname);
+  console.log("Navigation component - User:", user);
+  console.log("Navigation component - Is Pharmacy Admin:", isPharmacyAdmin);
+  console.log("Navigation component - Is Patient:", isPatient);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -53,96 +72,139 @@ const Navigation = ({ setIsAuthenticated }) => {
           {/* Logo */}
           <div className="flex items-center">
             <Logo className="h-10 w-auto" />
-            <span className="text-xl font-bold text-blue-600 ml-2">
-              SalusLogica
-            </span>
           </div>
 
           {/* Navigation Links */}
           <div className="hidden sm:flex sm:space-x-8 items-center">
 
-            <Link
-              to="/dashboard"
-              className={`text-sm font-medium ${
-                isActive("/dashboard")
-                  ? "text-blue-600"
-                  : "text-gray-900 hover:text-blue-600"
-              }`}
-            >
-              {t('navigation.dashboard')}
-            </Link>
+            {/* Language Switcher - Always visible */}
+            <LanguageSwitcher variant="compact" />
 
-            <Link
-              to="/medicine-list"
-              className={`text-sm font-medium ${
-                isActive("/medicine-list")
-                  ? "text-blue-600"
-                  : "text-gray-900 hover:text-blue-600"
-              }`}
-            >
-              {t('navigation.medicines')}
-            </Link>
+            {/* Patient Navigation Links */}
+            {isPatient && (
+              <>
+                <Link
+                  to="/dashboard"
+                  className={`text-sm font-medium ${
+                    isActive("/dashboard")
+                      ? "text-blue-600"
+                      : "text-gray-900 hover:text-blue-600"
+                  }`}
+                >
+                  {t('navigation.dashboard')}
+                </Link>
 
-            <Link
-              to="/analytics"
-              className={`text-sm font-medium ${
-                isActive("/analytics")
-                  ? "text-blue-600"
-                  : "text-gray-900 hover:text-blue-600"
-              }`}
-            >
-              {t('navigation.analytics')}
-            </Link>
+                <Link
+                  to="/medicine-list"
+                  className={`text-sm font-medium ${
+                    isActive("/medicine-list")
+                      ? "text-blue-600"
+                      : "text-gray-900 hover:text-blue-600"
+                  }`}
+                >
+                  {t('navigation.medicines')}
+                </Link>
 
-            <Link
-              to="/interaction-checker"
-              className={`text-sm font-medium ${
-                isActive("/interaction-checker")
-                  ? "text-blue-600"
-                  : "text-gray-900 hover:text-blue-600"
-              }`}
-            >
-              {t('navigation.interactionChecker')}
-            </Link>
+                <Link
+                  to="/analytics"
+                  className={`text-sm font-medium ${
+                    isActive("/analytics")
+                      ? "text-blue-600"
+                      : "text-gray-900 hover:text-blue-600"
+                  }`}
+                >
+                  {t('navigation.analytics')}
+                </Link>
 
-            <Link
-              to="/dose-history"
-              className={`text-sm font-medium ${
-                isActive("/dose-history")
-                  ? "text-blue-600"
-                  : "text-gray-900 hover:text-blue-600"
-              }`}
-            >
-              {t('navigation.doseHistory')}
-            </Link>
+                <Link
+                  to="/interaction-checker"
+                  className={`text-sm font-medium ${
+                    isActive("/interaction-checker")
+                      ? "text-blue-600"
+                      : "text-gray-900 hover:text-blue-600"
+                  }`}
+                >
+                  {t('navigation.interactionChecker')}
+                </Link>
 
-            <Link
-              to="/safety-check"
-              className={`text-sm font-medium ${
-                isActive("/safety-check")
-                  ? "text-blue-600"
-                  : "text-gray-900 hover:text-blue-600"
-              }`}
-            >
-              🛡️ {t('navigation.safetyCheck')}
-            </Link>
+                <Link
+                  to="/dose-history"
+                  className={`text-sm font-medium ${
+                    isActive("/dose-history")
+                      ? "text-blue-600"
+                      : "text-gray-900 hover:text-blue-600"
+                  }`}
+                >
+                  {t('navigation.doseHistory')}
+                </Link>
 
-            <Link
-              to="/food-advice"
-              className={`text-sm font-medium ${
-                isActive("/food-advice")
-                  ? "text-blue-600"
-                  : "text-gray-900 hover:text-blue-600"
-              }`}
-            >
-              🍽 {t('navigation.foodAdvice')}
-            </Link>
+                <Link
+                  to="/safety-check"
+                  className={`text-sm font-medium ${
+                    isActive("/safety-check")
+                      ? "text-blue-600"
+                      : "text-gray-900 hover:text-blue-600"
+                  }`}
+                >
+                  🛡️ {t('navigation.safetyCheck')}
+                </Link>
+
+                <Link
+                  to="/food-advice"
+                  className={`text-sm font-medium ${
+                    isActive("/food-advice")
+                      ? "text-blue-600"
+                      : "text-gray-900 hover:text-blue-600"
+                  }`}
+                >
+                  🍽 {t('navigation.foodAdvice')}
+                </Link>
+              </>
+            )}
+
+            {/* Pharmacy Admin Navigation Links */}
+            {isPharmacyAdmin && (
+              <>
+                <Link
+                  to="/pharmacy-admin/dashboard"
+                  className={`text-sm font-medium ${
+                    isActive("/pharmacy-admin/dashboard")
+                      ? "text-green-600"
+                      : "text-gray-900 hover:text-green-600"
+                  }`}
+                >
+                  🏪 Pharmacy Dashboard
+                </Link>
+
+                <Link
+                  to="/pharmacy-admin/patients"
+                  className={`text-sm font-medium ${
+                    isActive("/pharmacy-admin/patients")
+                      ? "text-green-600"
+                      : "text-gray-900 hover:text-green-600"
+                  }`}
+                >
+                  👥 Patients
+                </Link>
+
+                <Link
+                  to="/pharmacy-admin/adverse-reactions"
+                  className={`text-sm font-medium ${
+                    isActive("/pharmacy-admin/adverse-reactions")
+                      ? "text-green-600"
+                      : "text-gray-900 hover:text-green-600"
+                  }`}
+                >
+                  ⚠️ Adverse Reactions
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Right Section */}
           <div className="flex items-center space-x-4">
 
-            {/* Alarm Indicator */}
+            {/* Alarm Indicator - Always visible */}
             {activeAlarms.length > 0 && (
               <Link
                 to="/notifications"
@@ -155,7 +217,7 @@ const Navigation = ({ setIsAuthenticated }) => {
               </Link>
             )}
 
-            {/* Profile Dropdown */}
+            {/* Profile Dropdown - Always visible */}
             <div ref={dropdownRef} className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}

@@ -78,7 +78,7 @@ const Dashboard = ({ setIsAuthenticated, user }) => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">
-            {t('dashboard.welcomeBack', { name: user?.username || "User" })}
+            {t('dashboard.welcomeBack', { patient: user?.username || "User" })}
           </h1>
           <p className="mt-1 text-sm text-gray-600">
             {t('dashboard.role')}: <span className="font-medium capitalize">{user?.role || "patient"}</span>

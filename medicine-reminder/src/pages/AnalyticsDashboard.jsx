@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import BaseLayout from "../components/BaseLayout";
+import useLanguage from "../i18n/useLanguage";
 
 const AnalyticsDashboard = ({ setIsAuthenticated, setUser, user }) => {
+  const { t } = useLanguage();
   const [userRole, setUserRole] = useState("PATIENT");
   const [adherenceData, setAdherenceData] = useState({
     average_adherence: 92.5,
@@ -50,7 +52,7 @@ const AnalyticsDashboard = ({ setIsAuthenticated, setUser, user }) => {
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
         <div className="flex flex-col items-center justify-center min-h-96">
           <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-600">Loading analytics...</p>
+          <p className="mt-4 text-gray-600">{t('analytics.loadingAnalytics')}</p>
         </div>
       </BaseLayout>
     );
@@ -60,9 +62,9 @@ const AnalyticsDashboard = ({ setIsAuthenticated, setUser, user }) => {
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
       <div className="px-4 py-6 sm:px-0">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t('analytics.title')}</h1>
           <p className="mt-2 text-gray-600">
-            Comprehensive insights and performance metrics for {userRole === "PATIENT" ? "your health" : userRole === "PHARMACY_ADMIN" ? "your pharmacy" : "the entire system"}
+            {userRole === "PATIENT" ? t('analytics.patientSubtitle') : userRole === "PHARMACY_ADMIN" ? t('analytics.pharmacyAdminSubtitle') : t('analytics.adminSubtitle')}
           </p>
         </div>
 
@@ -113,9 +115,9 @@ const AnalyticsDashboard = ({ setIsAuthenticated, setUser, user }) => {
               }}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white/80 text-sm">Active Medications</p>
+                    <p className="text-white/80 text-sm">{t('analytics.activeMedications')}</p>
                     <p className="text-3xl font-bold">{adherenceData.active_medications}</p>
-                    <p className="text-white/60 text-xs mt-1">Currently tracking</p>
+                    <p className="text-white/60 text-xs mt-1">{t('analytics.currentlyTracking')}</p>
                   </div>
                   <div className="text-white/20">
                     <i className="fas fa-pills text-4xl"></i>
@@ -126,7 +128,7 @@ const AnalyticsDashboard = ({ setIsAuthenticated, setUser, user }) => {
 
             {/* Adherence Chart */}
             <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">30-Day Adherence Trend</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">{t('analytics.adherenceTrend')}</h2>
               <div className="chart-container" style={{
                 position: "relative",
                 height: "300px",
@@ -144,25 +146,25 @@ const AnalyticsDashboard = ({ setIsAuthenticated, setUser, user }) => {
 
             {/* Medicine Performance */}
             <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Medicine Performance</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">{t('analytics.medicinePerformance')}</h2>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Medicine
+                        {t('analytics.medicine')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Adherence
+                        {t('analytics.adherence')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Doses Taken
+                        {t('analytics.dosesTaken')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Total Doses
+                        {t('analytics.totalDoses')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
+                        {t('analytics.status')}
                       </th>
                     </tr>
                   </thead>
@@ -355,10 +357,10 @@ const AnalyticsDashboard = ({ setIsAuthenticated, setUser, user }) => {
 
             {/* Patient Performance Overview */}
             <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Patient Performance Overview</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">{t('analytics.patientPerformance')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Top Performing Patients</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">{t('analytics.topPerformingPatients')}</h3>
                   <div className="space-y-3">
                     {["John Doe", "Jane Smith", "Robert Johnson"].map((name, index) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
@@ -378,7 +380,7 @@ const AnalyticsDashboard = ({ setIsAuthenticated, setUser, user }) => {
                 </div>
                 
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Patients Needing Attention</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">{t('analytics.patientsNeedingAttention')}</h3>
                   <div className="space-y-3">
                     {["Alice Brown", "Charlie Wilson", "Diana Prince"].map((name, index) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
@@ -392,7 +394,7 @@ const AnalyticsDashboard = ({ setIsAuthenticated, setUser, user }) => {
                           </div>
                         </div>
                         <button className="px-3 py-1 bg-red-600 text-white text-xs rounded-full hover:bg-red-700">
-                          Contact
+                          {t('analytics.contact')}
                         </button>
                       </div>
                     ))}

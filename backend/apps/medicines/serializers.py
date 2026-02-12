@@ -11,7 +11,7 @@ class MedicineSerializer(serializers.ModelSerializer):
     class Meta:
         model = Medicine
         fields = [
-            'id', 'name', 'dosage', 'frequency', 'times', 'posology',
+            'id', 'name', 'scientific_name', 'dosage', 'frequency', 'times', 'posology',
             'duration', 'dose_mg', 'weight_kg', 'dose_per_kg',
             'food_to_avoid', 'food_advised', 'start_date', 'end_date',
             'taken_times', 'last_notified', 'is_active', 'completed',

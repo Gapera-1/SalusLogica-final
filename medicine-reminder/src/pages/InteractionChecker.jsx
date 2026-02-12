@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import BaseLayout from "../components/BaseLayout";
+import { useLanguage } from "../i18n";
 
 const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
+  const { t } = useLanguage();
   const [medicines, setMedicines] = useState([
     { id: 1, name: "Aspirin", dosage: "100mg", category: "NSAID" },
     { id: 2, name: "Metformin", dosage: "500mg", category: "Antidiabetic" },
@@ -42,7 +44,7 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
 
   const checkInteractions = async () => {
     if (selectedMedicines.length < 2) {
-      alert("Please select at least 2 medications to check for interactions");
+      alert(t("interactionChecker.selectAtLeast2"));
       return;
     }
 
@@ -160,7 +162,7 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
         <div className="flex flex-col items-center justify-center min-h-96">
           <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-600">Loading medication database...</p>
+          <p className="mt-4 text-gray-600">{t("interactionChecker.loading")}</p>
         </div>
       </BaseLayout>
     );
@@ -170,9 +172,9 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
       <div className="px-4 py-6 sm:px-0">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Medication Interaction Checker</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t("interactionChecker.title")}</h1>
           <p className="mt-2 text-gray-600">
-            Check for drug interactions, allergy alerts, and contraindications to ensure medication safety
+            {t("interactionChecker.checkSafety") || "Check for drug interactions, allergy alerts, and contraindications to ensure medication safety"}
           </p>
         </div>
 
@@ -181,12 +183,12 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
           <div className="lg:col-span-2">
             {/* Medicine Selection */}
             <div className="bg-white shadow rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Select Medications</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">{t("interactionChecker.selectAtLeast2") || "Select Medications"}</h2>
               
               <form className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Choose medications to check for interactions
+                    {t("interactionChecker.chooseToCheck") || "Choose medications to check for interactions"}
                   </label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {medicines.map((medicine) => (

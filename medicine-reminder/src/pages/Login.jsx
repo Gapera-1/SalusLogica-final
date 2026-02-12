@@ -9,6 +9,7 @@ const Login = ({ setIsAuthenticated, setUser }) => {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
+    loginType: "username", // "username" or "email"
     remember_me: false
   });
   const [errors, setErrors] = useState({});
@@ -53,7 +54,7 @@ const Login = ({ setIsAuthenticated, setUser }) => {
     try {
       // Use real backend API
       const response = await authAPI.login({
-        username: formData.username,
+        username: formData.username,  // This can be username or email depending on selection
         password: formData.password
       });
       
@@ -63,7 +64,13 @@ const Login = ({ setIsAuthenticated, setUser }) => {
       
       setIsAuthenticated(true);
       setUser(response.user);
-      navigate("/dashboard");
+      
+      // Redirect based on user type
+      if (response.user.user_type === 'pharmacy_admin') {
+        navigate("/pharmacy-admin/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
       console.error("Login error:", error);
       setErrors({ non_field: error.message || t('login.invalidCredentials') });
@@ -114,9 +121,40 @@ const Login = ({ setIsAuthenticated, setUser }) => {
             )}
 
             <div className="space-y-4">
+              {/* Login Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Login with:
+                </label>
+                <div className="flex space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="loginType"
+                      value="username"
+                      checked={formData.loginType === "username"}
+                      onChange={handleInputChange}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Username</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="loginType"
+                      value="email"
+                      checked={formData.loginType === "email"}
+                      onChange={handleInputChange}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Email</span>
+                  </label>
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                  {t('login.usernameOrEmail')}
+                  {formData.loginType === "email" ? t('login.email') : t('login.username')}
                 </label>
                 <input
                   type="text"
@@ -127,8 +165,14 @@ const Login = ({ setIsAuthenticated, setUser }) => {
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
                     errors.username ? "border-red-300" : "border-gray-300"
                   }`}
-                  placeholder={t('login.enterUsername')}
+                  placeholder={formData.loginType === "email" ? "Enter your email address" : "Enter your username"}
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  {formData.loginType === "email" 
+                    ? "Enter your email address" 
+                    : "Enter your username (e.g., 'viva' for pharmacy admin)"
+                  }
+                </p>
                 {errors.username && (
                   <p className="mt-1 text-sm text-red-600">{errors.username}</p>
                 )}

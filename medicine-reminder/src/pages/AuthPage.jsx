@@ -4,6 +4,7 @@ import "../styles/auth.css";
 
 import LoginForm from "../components/LoginForm";
 import SignupForm from "../components/SignupForm";
+import { useLanguage } from "../i18n";
 
 function AuthPage({ setIsAuthenticated }) {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ function AuthPage({ setIsAuthenticated }) {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const { t } = useLanguage();
 
   // ✅ LOGIN
   const handleLogin = (e) => {
@@ -24,7 +26,7 @@ function AuthPage({ setIsAuthenticated }) {
     const savedUser = JSON.parse(localStorage.getItem("user"));
 
     if (!savedUser) {
-      setError("No account found. Please sign up first.");
+      setError(t('login.noAccount'));
       return;
     }
 
@@ -33,7 +35,7 @@ function AuthPage({ setIsAuthenticated }) {
       setIsAuthenticated(true);
       navigate("/app"); // ✅ Smooth navigation
     } else {
-      setError("Invalid username or password");
+      setError(t('login.invalidCredentials'));
       setSuccess("");
     }
   };
@@ -43,13 +45,13 @@ function AuthPage({ setIsAuthenticated }) {
     e.preventDefault();
 
     if (!username || !password || !confirmPassword) {
-      setError("All fields are required");
+      setError(t('auth.allFieldsRequired'));
       setSuccess("");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t('signup.passwordsMustMatch'));
       setSuccess("");
       return;
     }
@@ -59,7 +61,7 @@ function AuthPage({ setIsAuthenticated }) {
       JSON.stringify({ username, password })
     );
 
-    setSuccess("Signup successful! You can now log in.");
+    setSuccess(t('auth.signupSuccess'));
     setError("");
 
     setTimeout(() => {

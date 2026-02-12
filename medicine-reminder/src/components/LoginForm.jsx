@@ -1,4 +1,5 @@
 import React from "react";
+import { useLanguage } from "../i18n";
 
 function LoginForm({
   username,
@@ -9,13 +10,14 @@ function LoginForm({
   handleLogin,
   setIsSignup,
 }) {
+  const { t } = useLanguage();
   return (
     <form onSubmit={handleLogin} className="flex flex-col gap-3 p-6 bg-white bg-opacity-90  rounded-lg shadow-lg">
-      <h2 className="text-xl font-bold mb-2 text-center">Login</h2>
+      <h2 className="text-xl font-bold mb-2 text-center">{t('login.title')}</h2>
 
       <input
         type="text"
-        placeholder="Username"
+        placeholder={t('login.enterUsername')}
         className="border px-3 py-2 rounded"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
@@ -23,7 +25,7 @@ function LoginForm({
 
       <input
         type="password"
-        placeholder="Password"
+        placeholder={t('login.enterPassword')}
         className="border px-3 py-2 rounded"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
@@ -35,17 +37,17 @@ function LoginForm({
         type="submit"
         className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition"
       >
-        Log In
+        {t('login.signinButton')}
       </button>
 
       <p className="text-sm text-center mt-2">
-        Don't have an account?{" "}
+        {t('login.noAccount')}{" "}
         <button
           type="button"
           className="text-green-600 hover:underline"
           onClick={() => setIsSignup(true)}
         >
-          Sign Up
+          {t('login.signup')}
         </button>
       </p>
     </form>

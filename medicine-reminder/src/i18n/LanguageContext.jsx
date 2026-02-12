@@ -46,7 +46,7 @@ export const LanguageProvider = ({ children }) => {
     }
   };
 
-  const t = (key) => {
+  const t = (key, params = {}) => {
     const keys = key.split('.');
     let value = translations[language];
 
@@ -67,13 +67,29 @@ export const LanguageProvider = ({ children }) => {
       }
     }
 
+    // Replace %(variable)s placeholders with provided params
+    // STRICT ENFORCEMENT: Scientific names NEVER wrapped in translation tags
+    if (typeof value === 'string' && Object.keys(params).length > 0) {
+      Object.keys(params).forEach(param => {
+        const placeholder = `%(${param})s`;
+        value = value.replace(new RegExp(placeholder, 'g'), params[param]);
+      });
+    }
+
     return value;
+  };
+
+  // Medicine translation helper - ensures scientific names are NEVER translated
+  const tMedicine = (key, medicineName, scientificName = '') => {
+    const drugName = scientificName || medicineName;
+    return t(key, { drug: drugName });
   };
 
   const value = {
     language,
     setLanguage: changeLanguage,
     t,
+    tMedicine,
     languages: ['en', 'fr', 'rw'],
     loadingLanguage,
     translationData: translations[language]

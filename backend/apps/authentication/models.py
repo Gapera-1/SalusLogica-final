@@ -35,6 +35,19 @@ class User(AbstractUser):
 
 
 class UserProfile(models.Model):
+    AGE_CATEGORIES = (
+        ('young_child', 'Young Child (0-5 years)'),
+        ('older_child', 'Older Child (6-11 years)'),
+        ('adult', 'Adult (12-65 years)'),
+        ('elderly', 'Elderly (65+ years)'),
+    )
+    
+    GENDER_CHOICES = (
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    )
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     notification_preferences = models.JSONField(default=dict)
@@ -46,6 +59,24 @@ class UserProfile(models.Model):
     # Enhanced fields from monolith
     weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     height_cm = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    age_category = models.CharField(
+        max_length=20,
+        choices=AGE_CATEGORIES,
+        null=True,
+        blank=True,
+        help_text="Patient age category for clinical considerations"
+    )
+    gender = models.CharField(
+        max_length=10,
+        choices=GENDER_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Patient gender"
+    )
+    is_pregnant = models.BooleanField(
+        default=False,
+        help_text="Is the patient pregnant (only applicable for female patients)"
+    )
     
     def __str__(self):
         return f"{self.user.username}'s Profile"

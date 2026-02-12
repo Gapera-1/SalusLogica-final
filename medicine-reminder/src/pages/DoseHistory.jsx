@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import BaseLayout from "../components/BaseLayout";
+import { useLanguage } from "../i18n";
 
 const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [doseHistory, setDoseHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
@@ -175,7 +177,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
         <div className="flex flex-col items-center justify-center min-h-96">
           <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-600">Loading dose history...</p>
+          <p className="mt-4 text-gray-600">{t("doseHistory.loadingHistory")}</p>
         </div>
       </BaseLayout>
     );
@@ -188,15 +190,15 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
           <div className="mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Dose History</h1>
-                <p className="mt-1 text-sm text-gray-500">Track your medication adherence</p>
+                <h1 className="text-2xl font-bold text-gray-900">{t("doseHistory.title")}</h1>
+                <p className="mt-1 text-sm text-gray-500">{t("doseHistory.subtitle")}</p>
               </div>
               <button
                 onClick={() => navigate("/medicine-list")}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
               >
                 <i className="fas fa-arrow-left mr-2"></i>
-                Back to Medicines
+                {t("doseHistory.backToMedicines")}
               </button>
             </div>
           </div>
@@ -212,7 +214,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
                   <div className="ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 truncate">
-                        Total Doses
+                        {t("doseHistory.totalDoses")}
                       </dt>
                       <dd className="text-lg font-medium text-gray-900">
                         {statistics.total_doses}
@@ -232,7 +234,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
                   <div className="ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 truncate">
-                        Taken
+                        {t("doseHistory.takenDoses")}
                       </dt>
                       <dd className="text-lg font-medium text-gray-900">
                         {statistics.taken_doses}
@@ -252,7 +254,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
                   <div className="ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 truncate">
-                        Pending
+                        {t("doseHistory.pendingDoses")}
                       </dt>
                       <dd className="text-lg font-medium text-gray-900">
                         {statistics.pending_doses}
@@ -272,7 +274,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
                   <div className="ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 truncate">
-                        Missed
+                        {t("doseHistory.missedDoses")}
                       </dt>
                       <dd className="text-lg font-medium text-gray-900">
                         {statistics.missed_doses}
@@ -287,12 +289,12 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
           {/* Filter Section */}
           <div className="bg-white shadow rounded-lg mb-6">
             <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Filter Doses</h3>
+              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">{t("doseHistory.filters")}</h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div>
                     <label htmlFor="medicine" className="block text-sm font-medium text-gray-700">
-                      Medicine
+                      {t("doseHistory.filterByMedicine")}
                     </label>
                     <select
                       id="medicine"
@@ -300,7 +302,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
                       onChange={(e) => handleFilterChange("medicine", e.target.value)}
                       className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     >
-                      <option value="">All Medicines</option>
+                      <option value="">{t("doseHistory.allMedicines")}</option>
                       {medicines.map(med => (
                         <option key={med.id} value={med.id}>
                           {med.name}
@@ -311,7 +313,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
 
                   <div>
                     <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-                      Status
+                      {t("doseHistory.filterByStatus")}
                     </label>
                     <select
                       id="status"
@@ -319,16 +321,16 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
                       onChange={(e) => handleFilterChange("status", e.target.value)}
                       className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     >
-                      <option value="">All Statuses</option>
-                      <option value="TAKEN">Taken</option>
-                      <option value="MISSED">Missed</option>
-                      <option value="PENDING">Pending</option>
+                      <option value="">{t("doseHistory.allStatuses")}</option>
+                      <option value="TAKEN">{t("doseHistory.taken")}</option>
+                      <option value="MISSED">{t("doseHistory.missed")}</option>
+                      <option value="PENDING">{t("doseHistory.pending")}</option>
                     </select>
                   </div>
 
                   <div>
                     <label htmlFor="dateRange" className="block text-sm font-medium text-gray-700">
-                      Date Range
+                      {t("doseHistory.filterByDateRange")}
                     </label>
                     <select
                       id="dateRange"
@@ -336,10 +338,10 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
                       onChange={(e) => handleFilterChange("dateRange", e.target.value)}
                       className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     >
-                      <option value="7days">Last 7 Days</option>
-                      <option value="30days">Last 30 Days</option>
-                      <option value="90days">Last 90 Days</option>
-                      <option value="1year">Last Year</option>
+                      <option value="7days">{t("doseHistory.days7")}</option>
+                      <option value="30days">{t("doseHistory.days30")}</option>
+                      <option value="90days">{t("doseHistory.days90")}</option>
+                      <option value="1year">{t("doseHistory.allTime")}</option>
                     </select>
                   </div>
 

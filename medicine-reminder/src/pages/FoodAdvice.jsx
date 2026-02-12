@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BaseLayout from '../components/BaseLayout';
+import { useLanguage } from '../i18n';
 import { medicineAPI } from '../services/api';
 
 const FoodAdvice = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [medicines, setMedicines] = useState([]);
   const [foodAdvice, setFoodAdvice] = useState({});
   const [loading, setLoading] = useState(false);
@@ -145,16 +147,16 @@ const FoodAdvice = () => {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            🍽 Food Advice for Medications
+            🍽 {t("foodAdvice.title")}
           </h1>
           <p className="text-gray-600 mb-6">
-            Personalized food recommendations based on your medication regimen
+            {t("foodAdvice.foodRecommendations", { drug: "medications" })}
           </p>
         </div>
 
         {/* Medicine Selection */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Medication</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">{t("foodAdvice.selectMedicine")}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {medicines.map(medicine => (
               <div key={medicine.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
@@ -171,7 +173,7 @@ const FoodAdvice = () => {
                   }))}
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300"
                 >
-                  View Food Advice
+                  {t("foodAdvice.selectMedicine")}
                 </button>
               </div>
             ))}
@@ -192,7 +194,7 @@ const FoodAdvice = () => {
                     <span className="text-2xl mr-3">💊</span>
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900">
-                        {medicine.name} - Food Recommendations
+                        {medicine.name} - {t("foodAdvice.foodInteractions")}
                       </h2>
                       <p className="text-gray-600">{medicine.dosage} • {medicine.frequency}</p>
                     </div>
@@ -202,7 +204,7 @@ const FoodAdvice = () => {
                   {advice.foods_to_avoid.length > 0 && (
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold text-red-600 mb-3">
-                        🚫 Foods to Avoid
+                        🚫 {t("foodAdvice.foodsToAvoid") || "Foods to Avoid"}
                       </h3>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {advice.foods_to_avoid.map((food, index) => (

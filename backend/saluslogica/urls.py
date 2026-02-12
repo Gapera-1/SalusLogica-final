@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from apps.api.views import health_check, api_root
+from . import pharmacy_urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -17,6 +18,7 @@ urlpatterns = [
     path('api/analytics/', include('apps.analytics.urls')),
     path('api/interactions/', include('apps.interactions.urls')),
     path('api/alarms/', include('apps.alarms.urls')),
+    path('api/pharmacy-admin/', include(pharmacy_urls)),
 ]
 
 if settings.DEBUG:

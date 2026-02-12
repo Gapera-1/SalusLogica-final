@@ -217,6 +217,54 @@ export const useTranslation = () => {
     formatDate,
     formatTime,
     formatNumber,
+// Medicine-specific translation helper with strict drug name handling
+// CONSTRAINT: Scientific names are NEVER translated, passed as variables only
+export const translateMedicine = (translationKey, medicineName, scientificName = '') => {
+  const currentLang = getCurrentLanguage();
+  const translations = translationCache[currentLang] || {};
+  
+  let translation = translations[translationKey] || translationKey;
+  
+  // Build the drug identifier - prefer scientific name if available
+  const drugIdentifier = scientificName || medicineName;
+  
+  // Replace %(drug)s placeholder with actual drug name
+  // Scientific names NEVER wrapped in translation - passed as variable
+  translation = translation.replace(/%(drug)s/g, drugIdentifier);
+  translation = translation.replace(/%(patient)s/g, localStorage.getItem('username') || 'Patient');
+  translation = translation.replace(/%(date)s/g, new Date().toLocaleDateString(getCurrentLanguage()));
+  
+  return translation;
+};
+
+// Validate proper placeholder usage in translations
+export const validateTranslationFormat = (key, translationString) => {
+  // Check if translation uses proper %(variable)s format for dynamic content
+  const hasProperPlaceholders = /\%\([a-z]+\)s/.test(translationString);
+  const hasInvalidFormat = /\{[a-z]+\}/.test(translationString); // Old format
+  
+  if (hasInvalidFormat && !hasProperPlaceholders) {
+    console.warn(`Translation key "${key}" uses old {variable} format instead of %(variable)s`);
+    return false;
+  }
+  return true;
+};
+
+// Ensure Kinyarwanda MOH terminology standards
+export const getMOHTerminology = (term) => {
+  const mohTerms = {
+    'medicine': 'Umuti',
+    'drug': 'Umuti',
+    'health_provider': 'Umutanga-serivisi z\'ubuzima',
+    'doctor': 'Umutanga-serivisi z\'ubuzima',
+    'patient': 'Umurwaye',
+    'medication': 'Umuti',
+    'dosage': 'Ubwigize',
+    'dose': 'Doze'
+  };
+  return mohTerms[term.toLowerCase()] || term;
+};
+
     languages: LANGUAGES,
     languageOptions: getLanguageOptions(),
   };
@@ -237,4 +285,7 @@ export default {
   getLanguageOptions,
   initializeI18n,
   useTranslation,
+  translateMedicine,
+  validateTranslationFormat,
+  getMOHTerminology,
 };
