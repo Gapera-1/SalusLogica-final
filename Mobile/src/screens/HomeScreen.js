@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: '#0d9488',
     marginBottom: 10,
   },
   welcome: {
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   getStartedButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0d9488',
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 8,
@@ -210,13 +210,13 @@ const styles = StyleSheet.create({
   loginButton: {
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#2563eb',
+    borderColor: '#0d9488',
   },
   signupButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0d9488',
   },
   loginButtonText: {
-    color: '#2563eb',
+    color: '#0d9488',
     fontSize: 16,
     fontWeight: '600',
   },

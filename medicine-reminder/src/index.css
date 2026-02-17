@@ -2,7 +2,276 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply min-h-screen bg-gradient-to-br from-blue-100 via-white to-purple-100 flex items-center justify-center font-sans;
-  /* Modern, soft background and centering */
+/* ============ GOOGLE FONTS ============ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ============ HEALTHCARE THEME VARIABLES ============ */
+:root {
+  /* Primary — calming teal */
+  --color-primary: #0d9488;
+  --color-primary-light: #ccfbf1;
+  --color-primary-dark: #0f766e;
+  --color-primary-50: #f0fdfa;
+  --color-primary-100: #ccfbf1;
+  --color-primary-600: #0f766e;
+  --color-primary-700: #115e59;
+
+  /* Accent — warm coral */
+  --color-accent: #f97316;
+  --color-accent-light: #ffedd5;
+
+  /* Backgrounds */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafb;
+  --bg-page: #f1f5f9;
+  --bg-gradient-from: #f0fdfa;
+  --bg-gradient-via: #f8fafb;
+  --bg-gradient-to: #f1f5f9;
+
+  /* Text */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #94a3b8;
+  --text-inverse: #ffffff;
+
+  /* Borders */
+  --border-color: #e2e8f0;
+  --border-focus: #0d9488;
+
+  /* Cards */
+  --card-bg: #ffffff;
+  --card-shadow: rgba(0, 0, 0, 0.05);
+  --card-border: #e2e8f0;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-focus-ring: rgba(13, 148, 136, 0.2);
+
+  /* Buttons */
+  --btn-primary-bg: #0d9488;
+  --btn-primary-hover: #0f766e;
+  --btn-secondary-bg: #f1f5f9;
+  --btn-secondary-hover: #e2e8f0;
+
+  /* Semantic */
+  --success-color: #059669;
+  --success-bg: #d1fae5;
+  --error-color: #dc2626;
+  --error-bg: #fee2e2;
+  --warning-color: #d97706;
+  --warning-bg: #fef3c7;
+  --info-color: #0284c7;
+  --info-bg: #e0f2fe;
+
+  /* Nav */
+  --nav-bg: #ffffff;
+  --nav-active: #0d9488;
+  --nav-text: #334155;
 }
+
+[data-theme="dark"],
+.dark {
+  --color-primary: #2dd4bf;
+  --color-primary-light: #134e4a;
+  --color-primary-dark: #5eead4;
+  --color-primary-50: #042f2e;
+  --color-primary-100: #134e4a;
+  --color-primary-600: #2dd4bf;
+  --color-primary-700: #99f6e4;
+
+  --color-accent: #fb923c;
+  --color-accent-light: #7c2d12;
+
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-page: #0f172a;
+  --bg-gradient-from: #042f2e;
+  --bg-gradient-via: #0f172a;
+  --bg-gradient-to: #1e293b;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #64748b;
+  --text-inverse: #0f172a;
+
+  --border-color: #334155;
+  --border-focus: #2dd4bf;
+
+  --card-bg: #1e293b;
+  --card-shadow: rgba(0, 0, 0, 0.3);
+  --card-border: #334155;
+
+  --input-bg: #1e293b;
+  --input-border: #475569;
+  --input-focus-ring: rgba(45, 212, 191, 0.25);
+
+  --btn-primary-bg: #2dd4bf;
+  --btn-primary-hover: #14b8a6;
+  --btn-secondary-bg: #334155;
+  --btn-secondary-hover: #475569;
+
+  --success-color: #34d399;
+  --success-bg: #064e3b;
+  --error-color: #f87171;
+  --error-bg: #7f1d1d;
+  --warning-color: #fbbf24;
+  --warning-bg: #78350f;
+  --info-color: #38bdf8;
+  --info-bg: #0c4a6e;
+
+  --nav-bg: #1e293b;
+  --nav-active: #2dd4bf;
+  --nav-text: #e2e8f0;
+}
+
+/* ============ BASE STYLES ============ */
+*, *::before, *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ============ THEME-AWARE OVERRIDES ============ */
+.bg-white { background-color: var(--card-bg) !important; }
+.bg-gray-50 { background-color: var(--bg-secondary) !important; }
+.bg-gray-100 { background-color: var(--btn-secondary-bg) !important; }
+
+.text-gray-900 { color: var(--text-primary) !important; }
+.text-gray-700 { color: var(--text-primary) !important; }
+.text-gray-600 { color: var(--text-secondary) !important; }
+.text-gray-500 { color: var(--text-tertiary) !important; }
+
+.border-gray-300 { border-color: var(--input-border) !important; }
+.border-gray-200 { border-color: var(--border-color) !important; }
+
+.shadow-lg { box-shadow: 0 10px 15px -3px var(--card-shadow), 0 4px 6px -4px var(--card-shadow) !important; }
+.shadow-md { box-shadow: 0 4px 6px -1px var(--card-shadow), 0 2px 4px -2px var(--card-shadow) !important; }
+
+/* ============ HEALTHCARE COMPONENT CLASSES ============ */
+@layer components {
+  /* Cards */
+  .hc-card {
+    @apply bg-white rounded-2xl border border-gray-200 p-6;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .hc-card:hover {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.04);
+  }
+
+  /* Buttons */
+  .hc-btn {
+    @apply inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  .hc-btn-primary {
+    @apply hc-btn px-6 py-3 text-white;
+    background: var(--btn-primary-bg);
+  }
+  .hc-btn-primary:hover {
+    background: var(--btn-primary-hover);
+    transform: translateY(-1px);
+  }
+  .hc-btn-primary:focus {
+    @apply ring-teal-400;
+  }
+  .hc-btn-secondary {
+    @apply hc-btn px-6 py-3 border-2;
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    background: transparent;
+  }
+  .hc-btn-secondary:hover {
+    background: var(--color-primary-50);
+  }
+  .hc-btn-danger {
+    @apply hc-btn px-6 py-3 text-white bg-red-600 hover:bg-red-700;
+    @apply focus:ring-red-400;
+  }
+
+  /* Inputs */
+  .hc-input {
+    @apply w-full px-4 py-3 rounded-xl border text-sm;
+    background: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .hc-input:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
+    outline: none;
+  }
+  .hc-input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  /* Labels */
+  .hc-label {
+    @apply block text-sm font-medium mb-1.5;
+    color: var(--text-secondary);
+  }
+
+  /* Badges */
+  .hc-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .hc-badge-safe   { @apply hc-badge bg-emerald-100 text-emerald-800; }
+  .hc-badge-danger  { @apply hc-badge bg-red-100 text-red-800; }
+  .hc-badge-caution { @apply hc-badge bg-amber-100 text-amber-800; }
+  .hc-badge-info    { @apply hc-badge bg-sky-100 text-sky-800; }
+
+  /* Section headers */
+  .hc-section-title {
+    @apply text-xl font-bold tracking-tight;
+    color: var(--text-primary);
+  }
+  .hc-section-subtitle {
+    @apply text-sm mt-1;
+    color: var(--text-secondary);
+  }
+
+  /* Page container */
+  .hc-page {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+
+  /* Status indicators */
+  .hc-pulse {
+    @apply relative;
+  }
+  .hc-pulse::before {
+    content: '';
+    @apply absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full;
+    background: var(--color-accent);
+    animation: pulse-ring 1.5s ease infinite;
+  }
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(249, 115, 22, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+  }
+}
+
+/* ============ SCROLLBAR ============ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }

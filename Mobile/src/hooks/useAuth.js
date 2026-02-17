@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authAPI } from './apiService';
+import { authAPI } from '../services/api';
 
 // Authentication hook for managing user authentication state
 export const useAuth = () => {

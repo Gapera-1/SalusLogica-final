@@ -86,7 +86,7 @@ const LanguageSettings = () => {
                                 disabled={isUpdating}
                                 className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
                                     option.value === currentLanguage
-                                        ? 'border-blue-500 bg-blue-50'
+                                        ? 'border-teal-500 bg-teal-50'
                                         : 'border-gray-200 hover:border-gray-300'
                                 }`}
                             >
@@ -102,7 +102,7 @@ const LanguageSettings = () => {
                                     </div>
                                 </div>
                                 {option.value === currentLanguage && (
-                                    <div className="flex items-center space-x-2 text-blue-600">
+                                    <div className="flex items-center space-x-2 text-teal-600">
                                         <span className="text-sm font-medium">Active</span>
                                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -129,18 +129,18 @@ const LanguageSettings = () => {
                 {isUpdating && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                         <div className="bg-white rounded-lg p-6 flex flex-col items-center space-y-4">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
                             <p className="text-gray-600">Updating language preference...</p>
                         </div>
                     </div>
                 )}
 
                 {/* Additional Information */}
-                <div className="bg-blue-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-blue-900 mb-3">
+                <div className="bg-teal-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-teal-900 mb-3">
                         💡 Language Information
                     </h3>
-                    <div className="space-y-2 text-blue-800">
+                    <div className="space-y-2 text-teal-800">
                         <p>
                             <strong>English:</strong> Default language, full support
                         </p>
@@ -151,8 +151,8 @@ const LanguageSettings = () => {
                             <strong>Kinyarwanda:</strong> Complete Kinyarwanda translation
                         </p>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-blue-200">
-                        <p className="text-sm text-blue-700">
+                    <div className="mt-4 pt-4 border-t border-teal-200">
+                        <p className="text-sm text-teal-700">
                             Your language preference is saved and will be used across all your devices.
                         </p>
                     </div>

@@ -37,7 +37,7 @@ const LanguageSwitcher = ({ variant = 'dropdown' }) => {
             <div className="relative">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="flex items-center space-x-2 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex items-center space-x-2 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
                     <span className="text-lg">{getFlag(language)}</span>
                     <span className="font-medium">
@@ -60,7 +60,7 @@ const LanguageSwitcher = ({ variant = 'dropdown' }) => {
                                 key={option}
                                 onClick={() => handleLanguageChange(option)}
                                 className={`w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-3 transition-colors ${
-                                    option === language ? 'bg-blue-50 text-blue-600' : ''
+                                    option === language ? 'bg-teal-50 text-teal-600' : ''
                                 }`}
                             >
                                 <span className="text-lg">{getFlag(option)}</span>
@@ -88,7 +88,7 @@ const LanguageSwitcher = ({ variant = 'dropdown' }) => {
                         onClick={() => handleLanguageChange(option)}
                         className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                             option === language
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-teal-600 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
                     >
@@ -110,7 +110,7 @@ const LanguageSwitcher = ({ variant = 'dropdown' }) => {
                         onClick={() => handleLanguageChange(option)}
                         className={`p-2 rounded-lg text-lg transition-colors ${
                             option === language
-                                ? 'bg-blue-100 text-blue-600'
+                                ? 'bg-teal-100 text-teal-600'
                                 : 'hover:bg-gray-100'
                         }`}
                         title={option}

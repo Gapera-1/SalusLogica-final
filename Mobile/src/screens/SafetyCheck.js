@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Picker } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Card, Button, Checkbox } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
-import { medicineAPI } from '../services/apiService';
+import { medicineAPI, safetyAPI } from '../services/api';
 
 const SafetyCheck = () => {
   const { t } = useLanguage();
@@ -48,12 +48,12 @@ const SafetyCheck = () => {
 
     setLoading(true);
     try {
-      const response = await medicineAPI.checkSafety({
-        population: formData.selectedPopulation,
-        medicines: formData.selectedMedicines,
-      });
+      const response = await safetyAPI.safetyCheck(
+        formData.selectedMedicines[0],
+        formData.selectedPopulation,
+      );
       
-      setResults(response.data);
+      setResults(response.data || response);
     } catch (error) {
       console.error('Safety check failed:', error);
       Alert.alert(t('common.error'), t('common.failed'));
@@ -280,8 +280,8 @@ const styles = StyleSheet.create({
     minWidth: 100,
   },
   selectedPopulation: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: '#0d9488',
+    borderColor: '#0d9488',
   },
   populationText: {
     fontSize: 14,
@@ -303,8 +303,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   selectedMedicine: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: '#0d9488',
+    borderColor: '#0d9488',
   },
   medicineText: {
     fontSize: 14,

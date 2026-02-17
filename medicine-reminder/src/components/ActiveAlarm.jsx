@@ -15,17 +15,17 @@ const ActiveAlarm = ({ alarm, onTake, onSnooze, onDismiss }) => {
 
   return (
     <div className={`fixed top-4 right-4 max-w-md w-full bg-white rounded-lg shadow-lg border-l-4 ${
-      isOverdue ? 'border-red-500 bg-red-50' : 'border-blue-500 bg-blue-50'
+      isOverdue ? 'border-red-500 bg-red-50' : 'border-teal-500 bg-teal-50'
     } p-4 z-50 animate-pulse`}>
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center">
           <div className={`w-3 h-3 rounded-full mr-2 ${
-            isOverdue ? 'bg-red-500' : 'bg-blue-500'
+            isOverdue ? 'bg-red-500' : 'bg-teal-500'
           } animate-ping`}></div>
           <div>
             <h3 className={`font-semibold text-sm ${
-              isOverdue ? 'text-red-800' : 'text-blue-800'
+              isOverdue ? 'text-red-800' : 'text-teal-800'
             }`}>
               {isOverdue ? 'Missed Medicine' : 'Medicine Reminder'}
             </h3>
@@ -50,8 +50,8 @@ const ActiveAlarm = ({ alarm, onTake, onSnooze, onDismiss }) => {
         {alarm.medicines.map((medicine, index) => (
           <div key={medicine.id} className="flex items-center justify-between bg-white bg-opacity-60 rounded-lg p-2">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                <span className="text-blue-600 text-xs">💊</span>
+              <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center mr-3">
+                <span className="text-teal-600 text-xs">💊</span>
               </div>
               <div>
                 <p className="font-medium text-sm text-gray-900">{medicine.name}</p>

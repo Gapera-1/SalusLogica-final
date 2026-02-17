@@ -25,7 +25,7 @@ function MedicineList() {
                   ) : (
                     <button
                       onClick={() => markTaken(med.id, time)}
-                      className="bg-blue-600 text-white px-2 py-1 rounded"
+                      className="bg-teal-600 text-white px-2 py-1 rounded"
                     >
                       Mark as Taken
                     </button>

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Card, Button, Checkbox } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
-import { medicineAPI } from '../services/apiService';
+import { medicineAPI, interactionAPI } from '../services/api';
 
 const InteractionChecker = () => {
   const { t } = useLanguage();
@@ -12,17 +12,21 @@ const InteractionChecker = () => {
   const [selectedMedicines, setSelectedMedicines] = useState([]);
   const [results, setResults] = useState(null);
 
-  const availableMedicines = [
-    'Aspirin',
-    'Vitamin D',
-    'Lisinopril',
-    'Metformin',
-    'Ibuprofen',
-    'Amoxicillin',
-    'Warfarin',
-    'Lipitor',
-    'Metoprolol',
-  ];
+  const [availableMedicines, setAvailableMedicines] = useState([]);
+
+  useEffect(() => {
+    loadMedicines();
+  }, []);
+
+  const loadMedicines = async () => {
+    try {
+      const medicines = await medicineAPI.getAll();
+      const names = (medicines || []).map(m => m.name || m.medicine_name);
+      setAvailableMedicines(names);
+    } catch (error) {
+      console.error('Failed to load medicines:', error);
+    }
+  };
 
   const handleMedicineToggle = (medicine) => {
     setSelectedMedicines(prev => {
@@ -42,8 +46,8 @@ const InteractionChecker = () => {
 
     setLoading(true);
     try {
-      const response = await medicineAPI.checkInteractions(selectedMedicines);
-      setResults(response.data);
+      const response = await interactionAPI.check(selectedMedicines);
+      setResults(response.data || response);
     } catch (error) {
       console.error('Interaction check failed:', error);
       Alert.alert(t('common.error'), t('common.failed'));
@@ -275,8 +279,8 @@ const styles = StyleSheet.create({
     minWidth: 100,
   },
   selectedMedicine: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: '#0d9488',
+    borderColor: '#0d9488',
   },
   medicineText: {
     fontSize: 14,

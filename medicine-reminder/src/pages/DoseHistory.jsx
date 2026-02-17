@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import BaseLayout from "../components/BaseLayout";
+import { SkeletonTable } from "../components/SkeletonLoaders";
 import { useLanguage } from "../i18n";
 
 const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
@@ -175,10 +176,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
   if (loading) {
     return (
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-        <div className="flex flex-col items-center justify-center min-h-96">
-          <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-600">{t("doseHistory.loadingHistory")}</p>
-        </div>
+        <SkeletonTable rows={10} />
       </BaseLayout>
     );
   }
@@ -209,7 +207,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <i className="fas fa-pills text-blue-600 text-2xl"></i>
+                    <i className="fas fa-pills text-teal-600 text-2xl"></i>
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
@@ -300,7 +298,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
                       id="medicine"
                       value={filters.medicine}
                       onChange={(e) => handleFilterChange("medicine", e.target.value)}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                     >
                       <option value="">{t("doseHistory.allMedicines")}</option>
                       {medicines.map(med => (
@@ -319,7 +317,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
                       id="status"
                       value={filters.status}
                       onChange={(e) => handleFilterChange("status", e.target.value)}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                     >
                       <option value="">{t("doseHistory.allStatuses")}</option>
                       <option value="TAKEN">{t("doseHistory.taken")}</option>
@@ -336,7 +334,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
                       id="dateRange"
                       value={filters.dateRange}
                       onChange={(e) => handleFilterChange("dateRange", e.target.value)}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                     >
                       <option value="7days">{t("doseHistory.days7")}</option>
                       <option value="30days">{t("doseHistory.days30")}</option>
@@ -428,11 +426,11 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
           </div>
 
           {/* Adherence Summary */}
-          <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+          <div className="mt-8 bg-gradient-to-r from-teal-50 to-teal-50 border border-teal-200 rounded-lg p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Adherence Summary</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">
+                <div className="text-3xl font-bold text-teal-600">
                   {statistics.total_doses > 0 ? 
                     Math.round((statistics.taken_doses / statistics.total_doses) * 100) : 0}%
                 </div>

@@ -4,3 +4,7 @@ from django.apps import AppConfig
 class MedicinesConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'apps.medicines'
+    
+    def ready(self):
+        """Register signal handlers when app is ready"""
+        import apps.medicines.signals  # noqa

@@ -9,6 +9,8 @@ import {
 
 import { authAPI } from "./services/api";
 import { LanguageProvider } from "./i18n";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 /* ================= PAGES ================= */
 import Login from "./pages/Login";
@@ -24,6 +26,10 @@ import DoseHistory from "./pages/DoseHistory";
 import EditMedicine from "./pages/EditMedicine";
 import ContraIndicationsPage from "./pages/ContraIndicationsPage";
 import FoodAdvice from "./pages/FoodAdvice";
+import SafetyCheck from "./pages/SafetyCheck";
+import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 /* ============ PHARMACY ADMIN ============ */
 import PharmacyAdminDashboard from "./pages/PharmacyAdminDashboard";
@@ -37,9 +43,6 @@ import AlarmContainer from "./components/AlarmContainer";
 const isPharmacyAdmin = (user) =>
   user && user.user_type === "pharmacy_admin";
 
-const isPatient = (user) =>
-  user && user.user_type === "patient";
-
 /* ================= ROUTE HISTORY TRACKER ================= */
 const RouteHistoryTracker = ({ isAuthenticated }) => {
   const location = useLocation();
@@ -50,7 +53,7 @@ const RouteHistoryTracker = ({ isAuthenticated }) => {
     } else if (!isAuthenticated) {
       localStorage.removeItem("lastVisitedRoute");
     }
-  }, [location, isAuthenticated]);
+  }, [location.pathname, isAuthenticated]);
 
   return null;
 };
@@ -134,16 +137,18 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <LanguageProvider>
-      <Router>
-        <AlarmContainer />
-        <RouteHistoryTracker isAuthenticated={isAuthenticated} />
+    <ErrorBoundary>
+      <ThemeProvider>
+        <LanguageProvider>
+          <Router>
+            <AlarmContainer />
+            <RouteHistoryTracker isAuthenticated={isAuthenticated} />
 
         <Routes>
           {/* ================= PUBLIC ROUTES ================= */}
@@ -151,8 +156,12 @@ function App() {
           <Route
             path="/"
             element={
-              isAuthenticated ? (
+              isAuthenticated && lastRoute ? (
                 <Navigate to={lastRoute} replace />
+              ) : isAuthenticated ? (
+                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                  <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                </div>
               ) : (
                 <Home
                   setIsAuthenticated={setIsAuthenticated}
@@ -203,6 +212,11 @@ function App() {
               )
             }
           />
+
+          {/* ================= PUBLIC ROUTES ================= */}
+          <Route path="/verify-email/:token" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* ================= PATIENT ROUTES ================= */}
 
@@ -257,7 +271,7 @@ function App() {
                 allowedRoles={["patient"]}
                 redirectPath="/pharmacy-admin/dashboard"
               >
-                <Profile user={user} />
+                <Profile user={user} setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -346,6 +360,20 @@ function App() {
             }
           />
 
+          <Route
+            path="/safety-check"
+            element={
+              <RoleProtectedRoute
+                isAuthenticated={isAuthenticated}
+                user={user}
+                allowedRoles={["patient"]}
+                redirectPath="/pharmacy-admin/dashboard"
+              >
+                <SafetyCheck />
+              </RoleProtectedRoute>
+            }
+          />
+
           {/* ================= ADMIN ROUTES ================= */}
 
           <Route
@@ -394,7 +422,9 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
-    </LanguageProvider>
+      </LanguageProvider>
+    </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

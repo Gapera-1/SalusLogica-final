@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import BaseLayout from "../components/BaseLayout";
+import { useLanguage } from "../i18n";
 
 const API_BASE = "http://127.0.0.1:8000/api";
 
 const PharmacyAdminDashboard = ({ setIsAuthenticated }) => {
+  const { t } = useLanguage();
   const [pharmacyAdmin, setPharmacyAdmin] = useState(null);
   const [stats, setStats] = useState({
     totalPatients: 0,
@@ -89,9 +91,9 @@ const PharmacyAdminDashboard = ({ setIsAuthenticated }) => {
     return (
       <BaseLayout showNavigation setIsAuthenticated={setIsAuthenticated}>
         <div className="flex flex-col items-center justify-center min-h-96">
-          <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-gray-300 border-t-teal-600 rounded-full animate-spin" />
           <p className="mt-4 text-gray-600">
-            Loading pharmacy admin dashboard...
+            {t('pharmacyAdminDashboard.loading')}
           </p>
         </div>
       </BaseLayout>
@@ -117,11 +119,11 @@ const PharmacyAdminDashboard = ({ setIsAuthenticated }) => {
         {/* HEADER */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
-            Pharmacy Admin Dashboard
+            {t('pharmacyAdminDashboard.title')}
           </h1>
           {pharmacyAdmin && (
             <p className="mt-2 text-gray-600">
-              Welcome, {pharmacyAdmin.facility_name} (
+              {t('pharmacyAdminDashboard.welcome')} {pharmacyAdmin.facility_name} (
               {pharmacyAdmin.pharmacy_id})
             </p>
           )}
@@ -130,17 +132,17 @@ const PharmacyAdminDashboard = ({ setIsAuthenticated }) => {
         {/* STATS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard
-            title="Total Patients"
+            title={t('pharmacyAdminDashboard.totalPatients')}
             value={stats.totalPatients}
             color="blue"
           />
           <StatCard
-            title="Active Patients"
+            title={t('pharmacyAdminDashboard.activePatients')}
             value={stats.activePatients}
             color="green"
           />
           <StatCard
-            title="Adverse Reactions"
+            title={t('pharmacyAdminDashboard.adverseReactions')}
             value={stats.adverseReactions}
             color="red"
           />
@@ -149,26 +151,26 @@ const PharmacyAdminDashboard = ({ setIsAuthenticated }) => {
         {/* QUICK ACTIONS */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-6">
-            Quick Actions
+            {t('pharmacyAdminDashboard.quickActions')}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <QuickLink
               to="/pharmacy-admin/patients"
-              title="View Patients"
-              description="See all patients registered with you"
+              title={t('pharmacyAdminDashboard.viewPatients')}
+              description={t('pharmacyAdminDashboard.viewPatientsDesc')}
             />
 
             <QuickLink
               to="/pharmacy-admin/adverse-reactions"
-              title="Adverse Reactions"
-              description="View reported adverse reactions"
+              title={t('pharmacyAdminDashboard.adverseReactions')}
+              description={t('pharmacyAdminDashboard.adverseReactionsDesc')}
             />
 
             <QuickLink
               to="/profile"
-              title="Profile Settings"
-              description="Update your profile information"
+              title={t('pharmacyAdminDashboard.profileSettings')}
+              description={t('pharmacyAdminDashboard.profileSettingsDesc')}
             />
           </div>
         </div>

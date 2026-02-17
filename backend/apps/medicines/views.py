@@ -1,12 +1,14 @@
-from rest_framework import viewsets, permissions, filters
+from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
-from .models import Medicine, MedicineInteraction, UserAllergy
-from .serializers import MedicineSerializer, UserAllergySerializer
+from .models import Medicine, MedicineInteraction, UserAllergy, PatientProfile
+from .serializers import MedicineSerializer, UserAllergySerializer, PatientProfileSerializer
+from apps.authentication.models import UserProfile
+from saluslogica.throttles import MedicineCreationRateThrottle
 
 
 class MedicineViewSet(viewsets.ModelViewSet):
@@ -14,16 +16,52 @@ class MedicineViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['frequency', 'is_active', 'completed']
-    search_fields = ['name', 'prescribed_for', 'prescribing_doctor']
+    search_fields = ['name', 'scientific_name', 'prescribed_for', 'prescribing_doctor']
     ordering_fields = ['created_at', 'name', 'start_date']
     ordering = ['-created_at']
+    
+    def get_throttles(self):
+        """Apply medicine creation throttle only to POST requests"""
+        if self.action == 'create':
+            return [MedicineCreationRateThrottle()]
+        return super().get_throttles()
     
     def get_queryset(self):
         return Medicine.objects.filter(user=self.request.user)
     
+    def perform_create(self, serializer):
+        """Ensure user is set when creating medicine"""
+        serializer.save(user=self.request.user)
+    
+    def perform_update(self, serializer):
+        """Auto-delete medicine when stock reaches 0"""
+        instance = serializer.save()
+        
+        # Auto-delete when stock is 0
+        if instance.stock_count == 0 or instance.stock_count is None:
+            instance.delete()
+    
+    def destroy(self, request, *args, **kwargs):
+        """Override destroy to handle deletion properly"""
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    def perform_destroy(self, instance):
+        """Delete medicine"""
+        try:
+            instance.delete()
+        except Exception as e:
+            import traceback
+            print(f"Error deleting medicine: {str(e)}")
+            print(traceback.format_exc())
+            raise
+    
     def list(self, request, *args, **kwargs):
-        """Override list method to ensure proper response format"""
+        """Override list method to exclude zero-stock items"""
         queryset = self.get_queryset()
+        # Automatically exclude medicines with zero stock from list
+        queryset = queryset.exclude(stock_count=0).exclude(stock_count__isnull=True)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
@@ -55,6 +93,53 @@ class MedicineViewSet(viewsets.ModelViewSet):
         low_stock_medicines = self.get_queryset().filter(stock_count__lt=10, is_active=True)
         serializer = self.get_serializer(low_stock_medicines, many=True)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def search_by_name(self, request):
+        """
+        Search medicines by name or scientific name.
+        
+        Query Parameters:
+        - q: Search query (required)
+        - active_only: Filter only active medicines (default: false)
+        
+        Examples:
+        - /api/medicines/search_by_name/?q=aspirin
+        - /api/medicines/search_by_name/?q=paracetamol&active_only=true
+        """
+        search_query = request.query_params.get('q', '').strip()
+        active_only = request.query_params.get('active_only', 'false').lower() == 'true'
+        
+        if not search_query:
+            return Response(
+                {'error': 'Search query parameter "q" is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get base queryset (user's medicines)
+        queryset = self.get_queryset()
+        
+        # Apply active filter if requested
+        if active_only:
+            queryset = queryset.filter(is_active=True, completed=False)
+        
+        # Exclude zero-stock items
+        queryset = queryset.exclude(stock_count=0).exclude(stock_count__isnull=True)
+        
+        # Search by name or scientific name (case-insensitive)
+        from django.db.models import Q
+        queryset = queryset.filter(
+            Q(name__icontains=search_query) | 
+            Q(scientific_name__icontains=search_query)
+        )
+        
+        serializer = self.get_serializer(queryset, many=True)
+        
+        return Response({
+            'query': search_query,
+            'count': len(serializer.data),
+            'results': serializer.data
+        })
 
 
 # class MedicineInteractionViewSet(viewsets.ModelViewSet):
@@ -76,3 +161,61 @@ class UserAllergyViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         return UserAllergy.objects.filter(user=self.request.user)
+
+
+class PatientProfileViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing patient clinical profiles.
+    
+    Note: This now uses UserProfile from authentication app (unified model).
+    Kept for API backward compatibility with medicines app endpoints.
+    """
+    serializer_class = PatientProfileSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'post', 'put', 'patch', 'head', 'options']  # No delete
+    
+    def get_queryset(self):
+        # User can only access their own profile
+        return UserProfile.objects.filter(user=self.request.user)
+    
+    def get_object(self):
+        """Get or create patient profile for current user"""
+        profile, created = UserProfile.objects.get_or_create(
+            user=self.request.user
+        )
+        return profile
+    
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        """Get current user's patient profile (creates if doesn't exist)"""
+        profile = self.get_object()
+        serializer = self.get_serializer(profile)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['post', 'put', 'patch'])
+    def update_me(self, request):
+        """Update current user's patient profile"""
+        profile = self.get_object()
+        serializer = self.get_serializer(profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+    
+    def create(self, request, *args, **kwargs):
+        """Override create to ensure user field is set"""
+        # Check if profile already exists
+        existing = UserProfile.objects.filter(user=request.user).first()
+        if existing:
+            return Response(
+                {'error': 'Patient profile already exists. Use PUT/PATCH to update.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    def perform_update(self, serializer):
+        """Ensure user field is preserved on update"""
+        serializer.save(user=self.request.user)

@@ -1,5 +1,5 @@
 """
-Pharmacy Admin Views
+Pharmacy Admin Views and Custom Error Handlers
 """
 
 from rest_framework import status, generics, permissions
@@ -9,8 +9,33 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
+from django.shortcuts import render
 
 User = get_user_model()
+
+
+# ============================================================
+# Custom Error Handlers
+# ============================================================
+
+def handler404(request, exception=None):
+    """Custom 404 error handler"""
+    return render(request, '404.html', status=404)
+
+
+def handler500(request):
+    """Custom 500 error handler"""
+    return render(request, '500.html', status=500)
+
+
+def handler403(request, exception=None):
+    """Custom 403 error handler"""
+    return render(request, '403.html', status=403)
+
+
+# ============================================================
+# Pharmacy Admin Views
+# ============================================================
 
 from .models import PharmacyAdmin, PatientPharmacyAssociation, AdverseReaction
 from .serializers import (

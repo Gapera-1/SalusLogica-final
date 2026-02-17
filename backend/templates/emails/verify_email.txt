@@ -1,0 +1,29 @@
+VERIFY YOUR EMAIL - SALUSLOGICA
+==========================================
+
+Hello {{ user.first_name|default:user.username }}!
+
+Thank you for registering with SalusLogica – your trusted medication reminder and health companion.
+
+To complete your registration and start managing your medications safely, please verify your email address by clicking the link below:
+
+{{ verification_url }}
+
+SECURITY NOTICE:
+This verification link will expire in 24 hours for your security. If you didn't create an account with SalusLogica, please ignore this email.
+
+What happens after verification?
+- Access to all SalusLogica features
+- Set up medication reminders
+- Track your medication adherence
+- Get personalized health insights
+- Receive safety warnings and drug interaction alerts
+
+IMPORTANT: Don't forget to verify your email within 24 hours. After that, you may need to request a new verification link.
+
+--
+SalusLogica – Your Health, Our Priority
+This is an automated message. Please do not reply to this email.
+If you need help, contact us at support@saluslogica.com
+
+© {{ current_year }} SalusLogica. All rights reserved.

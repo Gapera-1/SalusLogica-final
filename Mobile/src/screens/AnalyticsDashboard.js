@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { Card, Button, Avatar, ProgressBar } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
-import { analyticsAPI } from '../services/apiService';
+import { analyticsAPI } from '../services/api';
 
 const AnalyticsDashboard = () => {
   const { t } = useLanguage();
@@ -26,8 +26,8 @@ const AnalyticsDashboard = () => {
 
   const loadAnalyticsData = async () => {
     try {
-      const data = await analyticsAPI.getAnalytics();
-      setAnalyticsData(data);
+      const data = await analyticsAPI.getDashboard();
+      setAnalyticsData(prev => ({ ...prev, ...data }));
     } catch (error) {
       console.error('Failed to load analytics:', error);
       Alert.alert(t('common.error'), t('common.failed'));
@@ -104,10 +104,10 @@ const AnalyticsDashboard = () => {
           </View>
           <View style={styles.chartContainer}>
             <Text style={styles.chartPlaceholder}>
-              📊 {t('analytics.adherenceOverTime')} Chart
+              📊 {t('analytics.adherenceOverTime')}
             </Text>
             <Text style={styles.chartNote}>
-              Chart implementation would go here with a library like react-native-chart-kit
+              {t('analytics.chartPlaceholder')}
             </Text>
           </View>
         </Card>
@@ -118,12 +118,12 @@ const AnalyticsDashboard = () => {
             <Text style={styles.sectionTitle}>{t('analytics.dailyAdherence')}</Text>
           </View>
           <View style={styles.adherenceList}>
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+            {[t('analytics.mon'), t('analytics.tue'), t('analytics.wed'), t('analytics.thu'), t('analytics.fri'), t('analytics.sat'), t('analytics.sun')].map((day, index) => (
               <View key={index} style={styles.adherenceItem}>
                 <Text style={styles.dayLabel}>{day}</Text>
                 <ProgressBar 
                   progress={0.8 + (index * 0.05)} 
-                  color="#2563eb" 
+                  color="#0d9488" 
                   style={styles.progressBar}
                 />
                 <Text style={styles.adherencePercent}>{Math.round((80 + index * 5))}%</Text>
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: '#0d9488',
     marginBottom: 4,
   },
   statLabel: {
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     width: 40,
     fontSize: 12,
     fontWeight: '600',
-    color: '#2563eb',
+    color: '#0d9488',
     textAlign: 'right',
   },
   tabContainer: {

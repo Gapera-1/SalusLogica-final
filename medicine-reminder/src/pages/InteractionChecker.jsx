@@ -161,7 +161,7 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
     return (
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
         <div className="flex flex-col items-center justify-center min-h-96">
-          <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-gray-300 border-t-teal-600 rounded-full animate-spin"></div>
           <p className="mt-4 text-gray-600">{t("interactionChecker.loading")}</p>
         </div>
       </BaseLayout>
@@ -200,7 +200,7 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
                           type="checkbox"
                           checked={selectedMedicines.includes(medicine.id)}
                           onChange={() => handleMedicineToggle(medicine.id)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
                         />
                         <div className="ml-3">
                           <div className="text-sm font-medium text-gray-900">{medicine.name}</div>
@@ -216,7 +216,7 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
                     type="button"
                     onClick={checkInteractions}
                     disabled={checking || selectedMedicines.length < 2}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-md font-medium disabled:cursor-not-allowed"
+                    className="bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-md font-medium disabled:cursor-not-allowed"
                   >
                     <i className="fas fa-shield-alt mr-2"></i>
                     {checking ? "Checking..." : "Check Interactions"}

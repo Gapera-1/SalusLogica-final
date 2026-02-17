@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { Card, Button, Avatar, Checkbox } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
-import { medicineAPI } from '../services/apiService';
+import { notificationAPI } from '../services/api';
 
 const NotificationCenter = () => {
   const { t } = useLanguage();
@@ -18,7 +18,7 @@ const NotificationCenter = () => {
 
   const loadNotifications = async () => {
     try {
-      const data = await medicineAPI.getNotifications();
+      const data = await notificationAPI.getNotifications();
       setNotifications(data || []);
     } catch (error) {
       console.error('Failed to load notifications:', error);
@@ -41,7 +41,7 @@ const NotificationCenter = () => {
 
   const handleMarkAsRead = async (notificationId) => {
     try {
-      await medicineAPI.markNotificationAsRead(notificationId);
+      await notificationAPI.markAsRead(notificationId);
       setNotifications(prev => 
         prev.map(n => 
           n.id === notificationId ? { ...n, read: true } : n
@@ -55,7 +55,7 @@ const NotificationCenter = () => {
 
   const handleMarkAllAsRead = async () => {
     try {
-      await medicineAPI.markAllNotificationsAsRead();
+      await notificationAPI.markAllAsRead();
       setNotifications(prev => 
         prev.map(n => ({ ...n, read: true }))
       );
@@ -81,7 +81,7 @@ const NotificationCenter = () => {
     if (read) return '#e5e7eb';
     
     switch (type) {
-      case 'reminder': return '#2563eb';
+      case 'reminder': return '#0d9488';
       case 'refill': return '#f59e0b';
       case 'appointment': return '#10b981';
       case 'safety': return '#ef4444';
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   activeFilter: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0d9488',
   },
   filterText: {
     fontSize: 12,

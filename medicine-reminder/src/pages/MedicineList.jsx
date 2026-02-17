@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import BaseLayout from "../components/BaseLayout";
+import { SkeletonMedicineList } from "../components/SkeletonLoaders";
 import { medicineAPI } from "../services/api";
 import { useLanguage } from "../i18n";
 
@@ -144,9 +145,9 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
   if (loading) {
     console.log('MedicineList: Loading state');
     return (
-      <div style={{padding: '20px', backgroundColor: 'white', minHeight: '100vh'}}>
-        <h2>{t('medicines.loadingMedicines')}</h2>
-      </div>
+      <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
+        <SkeletonMedicineList />
+      </BaseLayout>
     );
   }
 
@@ -166,7 +167,7 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
           </div>
           <button
             onClick={handleAddMedicine}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
+            className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center"
           >
             <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -192,12 +193,12 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
         )}
 
         {/* Quick Actions */}
-        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+        <div className="mb-6 bg-gradient-to-r from-teal-50 to-teal-50 border border-teal-200 rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">{t('medicines.quickActions')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
               <div className="flex-shrink-0">
-                <i className="fas fa-chart-line text-2xl text-blue-600"></i>
+                <i className="fas fa-chart-line text-2xl text-teal-600"></i>
               </div>
               <div className="ml-4">
                 <h4 className="text-sm font-medium text-gray-900">Analytics Dashboard</h4>
@@ -215,7 +216,7 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
             </button>
             <button className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
               <div className="flex-shrink-0">
-                <i className="fas fa-history text-2xl text-purple-600"></i>
+                <i className="fas fa-history text-2xl text-teal-600"></i>
               </div>
               <div className="ml-4">
                 <h4 className="text-sm font-medium text-gray-900">Dose History</h4>
@@ -234,7 +235,7 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
                 placeholder="Search medicines..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300"
+                className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-opacity-20 transition-all duration-300"
               />
               <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">🔍</div>
             </div>
@@ -243,7 +244,7 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
               <select 
                 value={filter} 
                 onChange={(e) => setFilter(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 cursor-pointer"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-opacity-20 transition-all duration-300 cursor-pointer"
               >
                 <option value="all">All Medicines</option>
                 <option value="low-stock">Low Stock</option>
@@ -268,7 +269,7 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
               {medicines.length === 0 && (
                 <button
                   onClick={handleAddMedicine}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                 >
                   Add Your First Medicine
                 </button>
@@ -276,11 +277,11 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
             </div>
           ) : (
             filteredMedicines.map(medicine => (
-              <div key={medicine.id} className="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+              <div key={medicine.id} className="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:-translate-y-1 hover:shadow-card transition-all duration-300">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <h3 className="text-gray-900 text-lg font-semibold mb-1">{medicine.name}</h3>
-                    <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">{medicine.dosage}</span>
+                    <span className="bg-teal-600 text-white px-2 py-1 rounded text-xs font-medium">{medicine.dosage}</span>
                   </div>
                   <div className={`font-semibold text-sm px-3 py-1 rounded-lg ${getStockColor(medicine.stock)}`}>
                     Stock: {medicine.stock}
@@ -295,7 +296,7 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
                 <div className="flex gap-2">
                   <button 
                     onClick={() => handleEditMedicine(medicine.id)}
-                    className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
+                    className="flex-1 bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors text-sm font-medium"
                   >
                     Edit
                   </button>
@@ -316,15 +317,15 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             <div className="stat-item">
               <span className="block text-white text-2xl font-bold mb-1">{medicines.length}</span>
-              <span className="text-purple-200 text-sm">Total Medicines</span>
+              <span className="text-gray-400 text-sm">Total Medicines</span>
             </div>
             <div className="stat-item">
               <span className="block text-white text-2xl font-bold mb-1">{medicines.filter(m => m.stock < 20).length}</span>
-              <span className="text-purple-200 text-sm">Low Stock Items</span>
+              <span className="text-gray-400 text-sm">Low Stock Items</span>
             </div>
             <div className="stat-item">
               <span className="block text-white text-2xl font-bold mb-1">{medicines.filter(m => m.stock < 10).length}</span>
-              <span className="text-purple-200 text-sm">Critical Stock</span>
+              <span className="text-gray-400 text-sm">Critical Stock</span>
             </div>
           </div>
         </div>

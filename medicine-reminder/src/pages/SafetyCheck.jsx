@@ -60,7 +60,7 @@ const SafetyCheck = () => {
       case 'moderate':
         return 'text-yellow-600 bg-yellow-50 border-yellow-200';
       case 'minor':
-        return 'text-blue-600 bg-blue-50 border-blue-200';
+        return 'text-teal-600 bg-teal-50 border-teal-200';
       default:
         return 'text-gray-600 bg-gray-50 border-gray-200';
     }
@@ -140,7 +140,7 @@ const SafetyCheck = () => {
             <button
               onClick={runSafetyCheck}
               disabled={!selectedMedicine || loading}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
             >
               {loading ? (
                 <div className="flex items-center">
@@ -231,7 +231,7 @@ const SafetyCheck = () => {
               </button>
               <button
                 onClick={() => navigate('/add-medicine')}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg"
+                className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg"
               >
                 Add New Medicine
               </button>

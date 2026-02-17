@@ -1,88 +1,191 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
-import { Card, Button, Avatar, Searchbar } from 'react-native-paper';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  RefreshControl,
+  Alert
+} from 'react-native';
+import { Card, Button, Avatar, Searchbar, Snackbar, IconButton } from 'react-native-paper';
+import { SkeletonMedicineList } from '../components/SkeletonLoaders';
 import { useLanguage } from '../i18n/LanguageContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '../contexts/AuthContext';
+import { medicineAPI } from '../services/api';
+import { medicinesStorage } from '../services/storage';
+import analytics from '../services/analytics';
 
-const MedicinesScreen = () => {
+export default function MedicinesScreen() {
   const { t } = useLanguage();
   const navigation = useNavigation();
+  const { user } = useAuth();
+  
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
   const [medicines, setMedicines] = useState([]);
   const [filteredMedicines, setFilteredMedicines] = useState([]);
+  const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
+  
+  const searchTimeoutRef = useRef(null);
 
-  useEffect(() => {
-    loadMedicines();
-  }, []);
+  // Reload when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadMedicines();
+    }, [])
+  );
 
+  // Handle search with debouncing and API call
   useEffect(() => {
-    if (searchQuery.trim()) {
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // If no search query, show all medicines
+    if (!searchQuery.trim()) {
+      setFilteredMedicines(medicines);
+      return;
+    }
+
+    // If search query is too short, do local filtering
+    if (searchQuery.trim().length < 2) {
       const filtered = medicines.filter(medicine =>
         medicine.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        medicine.scientificName?.toLowerCase().includes(searchQuery.toLowerCase())
+        medicine.scientific_name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredMedicines(filtered);
-    } else {
-      setFilteredMedicines(medicines);
+      return;
     }
+
+    // Debounce API search
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        setSearching(true);
+        const response = await medicineAPI.search(searchQuery, false);
+        const results = response.data?.results || [];
+        
+        setFilteredMedicines(results);
+        
+        // Track search analytics
+        analytics.trackSearch(searchQuery, results.length, false);
+        
+        if (results.length === 0) {
+          analytics.trackEmptySearchResults(searchQuery);
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        // Fallback to local filtering on search error
+        const filtered = medicines.filter(medicine =>
+          medicine.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          medicine.scientific_name?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setFilteredMedicines(filtered);
+      } finally {
+        setSearching(false);
+      }
+    }, 300); // 300ms debounce
+
+    // Cleanup on unmount
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
   }, [searchQuery, medicines]);
 
+  // Load medicines from API
   const loadMedicines = async () => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoading(true);
+      const data = await medicineAPI.getAll();
       
-      const mockMedicines = [
-        {
-          id: 1,
-          name: 'Aspirin',
-          scientificName: 'Acetylsalicylic acid',
-          dosage: '100mg',
-          frequency: 'Once daily',
-          stock: 20,
-          nextDose: '08:00 AM',
-          prescribedFor: 'Headache',
-          provider: 'Dr. Smith',
-        },
-        {
-          id: 2,
-          name: 'Vitamin D',
-          scientificName: 'Cholecalciferol',
-          dosage: '1000 IU',
-          frequency: 'Once daily',
-          stock: 45,
-          nextDose: '02:00 PM',
-          prescribedFor: 'Vitamin deficiency',
-          provider: 'Dr. Johnson',
-        },
-        {
-          id: 3,
-          name: 'Lisinopril',
-          scientificName: 'Lisinopril dihydrate',
-          dosage: '10mg',
-          frequency: 'Twice daily',
-          stock: 8,
-          nextDose: '06:00 PM',
-          prescribedFor: 'Hypertension',
-          provider: 'Dr. Brown',
-        },
-      ];
+      // Cache the medicines
+      await medicinesStorage.setMedicines(data);
       
-      setMedicines(mockMedicines);
-      setFilteredMedicines(mockMedicines);
+      setMedicines(data || []);
+      setFilteredMedicines(data || []);
     } catch (error) {
-      Alert.alert(t('common.error'), t('common.failed'));
+      console.error('Error loading medicines:', error);
+      
+      // Try to load from cache on error
+      const cached = await medicinesStorage.getMedicines();
+      if (cached && cached.length > 0) {
+        setMedicines(cached);
+        setFilteredMedicines(cached);
+        showSnackbar(t('common.loadedFromCache'));
+      } else {
+        showSnackbar(t('medicines.loadError'), 'error');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMedicinePress = (medicine) => {
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadMedicines();
+    setRefreshing(false);
+  };
+
+  // Show snackbar message
+  const showSnackbar = (message) => {
+    setSnackbar({ visible: true, message });
+  };
+
+  // Delete medicine
+  const handleDeleteMedicine = async (medicine) => {
     Alert.alert(
-      t('medicines.medicineAboutDrug', { drug: medicine.name }),
-      `${t('medicines.name')}: ${medicine.name}\n${t('medicines.scientificName')}: ${medicine.scientificName}\n${t('medicines.dosage')}: ${medicine.dosage}\n${t('medicines.frequency')}: ${medicine.frequency}\n${t('medicines.stock')}: ${medicine.stock}\n${t('medicines.nextDose')}: ${medicine.nextDose}`
+      t('common.confirm'),
+      t('medicines.confirmDelete'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await medicineAPI.delete(medicine.id);
+              showSnackbar(t('medicines.deleteSuccess'));
+              loadMedicines();
+            } catch (error) {
+              console.error('Error deleting medicine:', error);
+              showSnackbar(t('medicines.deleteError'));
+            }
+          },
+        },
+      ]
     );
+  };
+
+  const handleMedicinePress = (medicine, index) => {
+    // Track analytics
+    const source = searchQuery.trim() ? 'search' : 'list';
+    analytics.trackMedicineView(medicine, source);
+    
+    if (searchQuery.trim() && source === 'search') {
+      analytics.trackSearchResultClick(searchQuery, medicine, index);
+    }
+    
+    // Navigate to medicine details or show details modal
+    Alert.alert(
+      medicine.name,
+      `${t('medicines.dosage')}: ${medicine.dosage}\n${t('medicines.frequency')}: ${medicine.frequency || 'As needed'}\n${t('medicines.stock')}: ${medicine.stock || 'N/A'}`,
+      [
+        { text: t('common.cancel') },
+        { text: t('common.edit'), onPress: () => handleEditMedicine(medicine) },
+        { text: t('common.delete'), style: 'destructive', onPress: () => handleDeleteMedicine(medicine) },
+      ]
+    );
+  };
+
+  const handleEditMedicine = (medicine) => {
+    navigation.navigate('AddMedicine', { medicine });
   };
 
   const handleAddMedicine = () => {
@@ -95,11 +198,11 @@ const MedicinesScreen = () => {
     return '#10b981'; // Green
   };
 
-  if (loading) {
+  if (loading && medicines.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>{t('medicines.loadingMedicines')}</Text>
-      </View>
+      <ScrollView style={styles.container}>
+        <SkeletonMedicineList />
+      </ScrollView>
     );
   }
 
@@ -112,15 +215,28 @@ const MedicinesScreen = () => {
       </View>
 
       {/* Search Bar */}
-      <Searchbar
-        placeholder={t('medicines.searchMedicines')}
-        onChangeText={setSearchQuery}
-        value={searchQuery}
-        style={styles.searchBar}
-      />
+      <View style={styles.searchContainer}>
+        <Searchbar
+          placeholder={t('medicines.searchMedicines')}
+          onChangeText={setSearchQuery}
+          value={searchQuery}
+          style={styles.searchBar}
+        />
+        {searching && (
+          <View style={styles.searchingIndicator}>
+            <ActivityIndicator size="small" color="#0d9488" />
+            <Text style={styles.searchingText}>{t('medicines.searching')}</Text>
+          </View>
+        )}
+      </View>
 
       {/* Medicines List */}
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {filteredMedicines.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
@@ -128,36 +244,43 @@ const MedicinesScreen = () => {
             </Text>
           </View>
         ) : (
-          filteredMedicines.map((medicine) => (
-            <TouchableOpacity
-              key={medicine.id}
-              onPress={() => handleMedicinePress(medicine)}
-            >
-              <Card style={styles.medicineCard}>
+          filteredMedicines.map((medicine, index) => (
+            <Card key={medicine.id} style={styles.medicineCard}>
+              <TouchableOpacity onPress={() => handleMedicinePress(medicine, index)}>
                 <View style={styles.medicineContent}>
                   <View style={styles.medicineInfo}>
                     <Text style={styles.medicineName}>{medicine.name}</Text>
-                    <Text style={styles.medicineScientific}>{medicine.scientificName}</Text>
+                    {medicine.scientific_name && (
+                      <Text style={styles.medicineScientific}>{medicine.scientific_name}</Text>
+                    )}
                     <Text style={styles.medicineDetails}>
-                      {medicine.dosage} • {medicine.frequency}
+                      {medicine.dosage} • {medicine.frequency || t('addMedicine.asNeeded')}
                     </Text>
-                    <Text style={styles.medicineProvider}>
-                      {t('medicines.provider')}: {medicine.provider}
-                    </Text>
-                  </View>
-                  <View style={styles.medicineStatus}>
-                    <Text style={styles.nextDose}>{t('medicines.nextDose')}</Text>
-                    <Text style={styles.nextDoseTime}>{medicine.nextDose}</Text>
-                    <View style={styles.stockContainer}>
-                      <Text style={styles.stockLabel}>{t('medicines.stock')}: </Text>
-                      <Text style={[styles.stockValue, { color: getStockColor(medicine.stock) }]}>
-                        {medicine.stock}
+                    {medicine.prescribed_for && (
+                      <Text style={styles.medicineProvider}>
+                        {t('medicines.prescribedFor')}: {medicine.prescribed_for}
                       </Text>
-                    </View>
+                    )}
+                  </View>
+                  <View style={styles.medicineActions}>
+                    {medicine.stock != null && (
+                      <View style={styles.stockContainer}>
+                        <Text style={styles.stockLabel}>{t('medicines.stock')}: </Text>
+                        <Text style={[styles.stockValue, { color: getStockColor(medicine.stock) }]}>
+                          {medicine.stock}
+                        </Text>
+                      </View>
+                    )}
+                    <IconButton
+                      icon="delete"
+                      size={20}
+                      iconColor="#ef4444"
+                      onPress={() => handleDeleteMedicine(medicine)}
+                    />
                   </View>
                 </View>
-              </Card>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </Card>
           ))
         )}
       </ScrollView>
@@ -173,9 +296,18 @@ const MedicinesScreen = () => {
           {t('medicines.addMedicine')}
         </Button>
       </View>
+
+      {/* Snackbar for messages */}
+      <Snackbar
+        visible={snackbar.visible}
+        onDismiss={() => setSnackbar({ visible: false, message: '' })}
+        duration={3000}
+      >
+        {snackbar.message}
+      </Snackbar>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -186,6 +318,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6b7280',
   },
   header: {
     padding: 16,
@@ -201,9 +339,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
   },
-  searchBar: {
-    margin: 16,
+  searchContainer: {
+    marginHorizontal: 16,
     marginBottom: 8,
+  },
+  searchBar: {
+    marginBottom: 4,
+  },
+  searchingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  searchingText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#6b7280',
   },
   scrollView: {
     flex: 1,
@@ -251,20 +403,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
   },
-  medicineStatus: {
+  medicineActions: {
     alignItems: 'flex-end',
-    minWidth: 100,
-  },
-  nextDose: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 2,
-  },
-  nextDoseTime: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2563eb',
-    marginBottom: 8,
+    justifyContent: 'space-between',
   },
   stockContainer: {
     flexDirection: 'row',
@@ -286,7 +427,6 @@ const styles = StyleSheet.create({
   },
   addButton: {
     margin: 0,
+    backgroundColor: '#0d9488',
   },
 });
-
-export default MedicinesScreen;

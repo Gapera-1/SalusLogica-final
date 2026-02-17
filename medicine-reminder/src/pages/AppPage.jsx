@@ -15,7 +15,7 @@ function AppPage({ setIsAuthenticated }) {
   };
 
   return (
-    <div className="fixed inset-0 min-h-screen bg-blue-500 p-10"
+    <div className="fixed inset-0 min-h-screen bg-teal-500 p-10"
     style={{
       backgroundImage: "url('/images/AppPage-image.jpg')"
     }}

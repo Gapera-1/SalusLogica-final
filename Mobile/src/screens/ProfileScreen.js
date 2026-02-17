@@ -1,27 +1,79 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Picker } from 'react-native';
-import { Card, Button, TextInput, Avatar } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { Card, Button, TextInput, Avatar, Switch } from 'react-native-paper';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { userAPI, authAPI } from '../services/api';
 
 const ProfileScreen = () => {
   const { t, language, setLanguage, languages } = useLanguage();
+  const { isDark, toggleTheme } = useTheme();
+  const { user, signOut, updateProfile: updateAuthProfile } = useAuth();
   const navigation = useNavigation();
   const [formData, setFormData] = useState({
-    username: 'johndoe',
+    username: '',
     ageCategory: 'adult',
     gender: 'male',
     pregnant: false,
-    weight: '70',
-    height: '175',
-    phone: '+250788123456',
-    medicalConditions: 'Hypertension',
-    allergies: 'Penicillin',
+    weight: '',
+    height: '',
+    phone: '',
+    medicalConditions: '',
+    allergies: '',
     timezone: 'UTC+2',
     preferredLanguage: language,
   });
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [avatarUri, setAvatarUri] = useState(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showDeleteSection, setShowDeleteSection] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Load profile data from API or AuthContext on mount
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      const profile = await userAPI.getProfile();
+      if (profile) {
+        setFormData(prev => ({
+          ...prev,
+          username: profile.username || profile.user?.username || '',
+          ageCategory: profile.age_category || profile.ageCategory || 'adult',
+          gender: profile.gender || 'male',
+          pregnant: profile.pregnant || false,
+          weight: profile.weight ? String(profile.weight) : '',
+          height: profile.height ? String(profile.height) : '',
+          phone: profile.phone || profile.phone_number || '',
+          medicalConditions: profile.medical_conditions || profile.medicalConditions || '',
+          allergies: profile.allergies || '',
+          timezone: profile.timezone || 'UTC+2',
+          preferredLanguage: profile.preferred_language || profile.preferredLanguage || language,
+        }));
+        if (profile.avatar || profile.avatar_url) {
+          setAvatarUri(profile.avatar || profile.avatar_url);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+      // Fall back to AuthContext user data
+      if (user) {
+        setFormData(prev => ({
+          ...prev,
+          username: user.username || '',
+        }));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const ageCategories = [
     { label: t('profile.youngChild'), value: 'young_child' },
@@ -56,21 +108,105 @@ const ProfileScreen = () => {
     }));
   };
 
+  const handleSelectAvatar = () => {
+    const options = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 1000,
+      maxHeight: 1000,
+    };
+
+    launchImageLibrary(options, async (response) => {
+      if (response.didCancel) {
+        console.log('User cancelled image picker');
+      } else if (response.errorCode) {
+        console.log('ImagePicker Error: ', response.errorMessage);
+        Alert.alert(t('common.error'), t('profile.avatarFailed'));
+      } else if (response.assets && response.assets.length > 0) {
+        const asset = response.assets[0];
+        
+        // Set local preview
+        setAvatarUri(asset.uri);
+        
+        // Upload to server
+        try {
+          setLoading(true);
+          const formData = new FormData();
+          formData.append('avatar', {
+            uri: asset.uri,
+            type: asset.type || 'image/jpeg',
+            name: asset.fileName || 'avatar.jpg',
+          });
+
+          const result = await userAPI.uploadAvatar(formData);
+          Alert.alert(t('common.success'), t('profile.avatarUploaded'));
+        } catch (error) {
+          console.error('Avatar upload error:', error);
+          Alert.alert(t('common.error'), t('profile.avatarFailed'));
+          setAvatarUri(null); // Revert on error
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
+  const handleRemoveAvatar = async () => {
+    Alert.alert(
+      t('common.confirm'),
+      t('profile.removePhotoConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await userAPI.removeAvatar();
+              setAvatarUri(null);
+              Alert.alert(t('common.success'), t('profile.avatarRemoved'));
+            } catch (error) {
+              console.error('Remove avatar error:', error);
+              Alert.alert(t('common.error'), t('profile.avatarFailed'));
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleSaveProfile = async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      const profilePayload = {
+        username: formData.username,
+        age_category: formData.ageCategory,
+        gender: formData.gender,
+        pregnant: formData.pregnant,
+        weight: formData.weight ? parseFloat(formData.weight) : null,
+        height: formData.height ? parseFloat(formData.height) : null,
+        phone: formData.phone,
+        medical_conditions: formData.medicalConditions,
+        allergies: formData.allergies,
+        timezone: formData.timezone,
+        preferred_language: formData.preferredLanguage,
+      };
+
+      await userAPI.updateProfile(profilePayload);
+
       // Update language if changed
       if (formData.preferredLanguage !== language) {
         setLanguage(formData.preferredLanguage);
       }
-      
+
       Alert.alert(t('common.success'), t('profile.profileUpdated'));
       setEditing(false);
     } catch (error) {
-      Alert.alert(t('common.error'), t('profile.profileUpdateFailed'));
+      console.error('Save profile error:', error);
+      Alert.alert(t('common.error'), error.message || t('profile.profileUpdateFailed'));
     } finally {
       setLoading(false);
     }
@@ -91,20 +227,49 @@ const ProfileScreen = () => {
 
   const handleLogout = () => {
     Alert.alert(
-      t('navigation.signOut'),
-      'Are you sure you want to logout?',
+      t('profile.logoutConfirmTitle'),
+      t('profile.logoutConfirmMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         { 
-          text: 'Logout', 
-          onPress: () => {
-            // In real app, this would clear auth state
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
+          text: t('profile.logout'), 
+          onPress: async () => {
+            await signOut();
           }
         }
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    if (!deletePassword.trim()) {
+      Alert.alert(t('common.error'), t('profile.enterPasswordConfirm'));
+      return;
+    }
+
+    Alert.alert(
+      t('profile.deleteAccountConfirmTitle'),
+      t('profile.deleteAccountPermanent'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('profile.permanentlyDelete'),
+          style: 'destructive',
+          onPress: async () => {
+            setDeleteLoading(true);
+            try {
+              await authAPI.deleteAccount(deletePassword);
+              Alert.alert(t('profile.accountDeleted'), t('profile.accountDeletedMessage'));
+              await signOut();
+            } catch (error) {
+              console.error('Delete account error:', error);
+              Alert.alert(t('common.error'), error.message || t('profile.deleteAccountFailed'));
+            } finally {
+              setDeleteLoading(false);
+              setDeletePassword('');
+            }
+          },
+        },
       ]
     );
   };
@@ -112,12 +277,35 @@ const ProfileScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
-        {/* Header */}
+        {/* Header with Avatar */}
         <View style={styles.header}>
-          <Avatar.Text size={80} label="JD" style={styles.avatar} />
+          <TouchableOpacity onPress={handleSelectAvatar} activeOpacity={0.7}>
+            {avatarUri ? (
+              <Image
+                source={{ uri: avatarUri }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Avatar.Text 
+                size={80} 
+                label={formData.username.substring(0, 2).toUpperCase()} 
+                style={styles.avatar}
+              />
+            )}
+            <View style={styles.cameraIconContainer}>
+              <Text style={styles.cameraIcon}>📷</Text>
+            </View>
+          </TouchableOpacity>
+          
+          {avatarUri && (
+            <TouchableOpacity onPress={handleRemoveAvatar} style={styles.removeAvatarButton}>
+              <Text style={styles.removeAvatarText}>{t('profile.removePhoto')}</Text>
+            </TouchableOpacity>
+          )}
+          
           <Text style={styles.username}>{formData.username}</Text>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>{t('navigation.signOut')}</Text>
+            <Text style={styles.logoutText}>{t('profile.logout')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -274,6 +462,21 @@ const ProfileScreen = () => {
                     ))}
                   </Picker>
                 </View>
+
+              {/* Dark Mode Toggle */}
+              <View style={styles.themeToggleContainer}>
+                <View style={styles.themeToggleText}>
+                  <Text style={styles.label}>{t('profile.darkMode') || 'Dark Mode'}</Text>
+                  <Text style={styles.themeToggleSubtext}>
+                    {isDark ? t('profile.darkModeEnabled') || 'Dark theme enabled' : t('profile.lightModeEnabled') || 'Light theme enabled'}
+                  </Text>
+                </View>
+                <Switch
+                  value={isDark}
+                  onValueChange={toggleTheme}
+                  color="#14b8a6"
+                />
+              </View>
               </View>
             </View>
           </Card>
@@ -300,6 +503,60 @@ const ProfileScreen = () => {
               </Button>
             </View>
           )}
+
+          {/* Danger Zone - Delete Account */}
+          <Card style={[styles.card, styles.dangerCard]}>
+            <View style={styles.cardContent}>
+              <Text style={[styles.sectionTitle, { color: '#dc2626' }]}>{t('profile.dangerZone')}</Text>
+              
+              {!showDeleteSection ? (
+                <Button
+                  mode="outlined"
+                  onPress={() => setShowDeleteSection(true)}
+                  style={styles.deleteToggleButton}
+                  textColor="#dc2626"
+                >
+                  {t('profile.deleteAccount')}
+                </Button>
+              ) : (
+                <View style={styles.deleteSection}>
+                  <Text style={styles.deleteWarning}>
+                    {t('profile.deleteAccountWarning')}
+                  </Text>
+                  <TextInput
+                    label={t('profile.enterPasswordConfirm')}
+                    value={deletePassword}
+                    onChangeText={setDeletePassword}
+                    secureTextEntry
+                    style={styles.input}
+                  />
+                  <View style={styles.buttonContainer}>
+                    <Button
+                      mode="outlined"
+                      onPress={() => {
+                        setShowDeleteSection(false);
+                        setDeletePassword('');
+                      }}
+                      style={styles.cancelButton}
+                      disabled={deleteLoading}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      mode="contained"
+                      onPress={handleDeleteAccount}
+                      style={styles.deleteButton}
+                      buttonColor="#dc2626"
+                      loading={deleteLoading}
+                      disabled={deleteLoading || !deletePassword.trim()}
+                    >
+                      {t('profile.deleteAccount')}
+                    </Button>
+                  </View>
+                </View>
+              )}
+            </View>
+          </Card>
         </View>
       </View>
     </ScrollView>
@@ -321,11 +578,45 @@ const styles = StyleSheet.create({
   avatar: {
     marginBottom: 12,
   },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: '#14b8a6',
+  },
+  cameraIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#14b8a6',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  cameraIcon: {
+    fontSize: 16,
+  },
+  removeAvatarButton: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  removeAvatarText: {
+    color: '#ef4444',
+    fontSize: 12,
+    fontWeight: '500',
+  },
   username: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#1f2937',
     marginBottom: 8,
+    marginTop: 8,
   },
   logoutButton: {
     padding: 8,
@@ -403,6 +694,44 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   saveButton: {
+    flex: 1,
+  },
+  themeToggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    marginTop: 8,
+  },
+  themeToggleText: {
+    flex: 1,
+  },
+  themeToggleSubtext: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  dangerCard: {
+    borderColor: '#fecaca',
+    borderWidth: 1,
+  },
+  deleteToggleButton: {
+    borderColor: '#dc2626',
+    marginTop: 8,
+  },
+  deleteSection: {
+    marginTop: 8,
+  },
+  deleteWarning: {
+    color: '#dc2626',
+    fontSize: 13,
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  deleteButton: {
     flex: 1,
   },
 });

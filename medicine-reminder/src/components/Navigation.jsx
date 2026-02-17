@@ -4,6 +4,7 @@ import Logo from "./Logo";
 import useAlarmManager from "../hooks/useAlarmManager"; // ✅ FIXED IMPORT
 import { useLanguage } from "../i18n";
 import LanguageSwitcher from "./LanguageSwitcher";
+import ThemeToggle from "./ThemeToggle";
 
 const Navigation = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
@@ -65,17 +66,17 @@ const Navigation = ({ setIsAuthenticated }) => {
   };
 
   return (
-    <nav className="bg-white shadow-lg">
+    <nav className="sticky top-0 z-50 border-b" style={{ background: 'var(--nav-bg)', borderColor: 'var(--border-color)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-24">
+        <div className="flex justify-between h-16">
 
           {/* Logo */}
           <div className="flex items-center">
-            <Logo className="h-10 w-auto" />
+            <Logo className="h-9 w-auto" />
           </div>
 
           {/* Navigation Links */}
-          <div className="hidden sm:flex sm:space-x-8 items-center">
+          <div className="hidden sm:flex sm:space-x-1 items-center">
 
             {/* Language Switcher - Always visible */}
             <LanguageSwitcher variant="compact" />
@@ -85,10 +86,10 @@ const Navigation = ({ setIsAuthenticated }) => {
               <>
                 <Link
                   to="/dashboard"
-                  className={`text-sm font-medium ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/dashboard")
-                      ? "text-blue-600"
-                      : "text-gray-900 hover:text-blue-600"
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
                   }`}
                 >
                   {t('navigation.dashboard')}
@@ -96,10 +97,10 @@ const Navigation = ({ setIsAuthenticated }) => {
 
                 <Link
                   to="/medicine-list"
-                  className={`text-sm font-medium ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/medicine-list")
-                      ? "text-blue-600"
-                      : "text-gray-900 hover:text-blue-600"
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
                   }`}
                 >
                   {t('navigation.medicines')}
@@ -107,10 +108,10 @@ const Navigation = ({ setIsAuthenticated }) => {
 
                 <Link
                   to="/analytics"
-                  className={`text-sm font-medium ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/analytics")
-                      ? "text-blue-600"
-                      : "text-gray-900 hover:text-blue-600"
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
                   }`}
                 >
                   {t('navigation.analytics')}
@@ -118,10 +119,10 @@ const Navigation = ({ setIsAuthenticated }) => {
 
                 <Link
                   to="/interaction-checker"
-                  className={`text-sm font-medium ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/interaction-checker")
-                      ? "text-blue-600"
-                      : "text-gray-900 hover:text-blue-600"
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
                   }`}
                 >
                   {t('navigation.interactionChecker')}
@@ -129,10 +130,10 @@ const Navigation = ({ setIsAuthenticated }) => {
 
                 <Link
                   to="/dose-history"
-                  className={`text-sm font-medium ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/dose-history")
-                      ? "text-blue-600"
-                      : "text-gray-900 hover:text-blue-600"
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
                   }`}
                 >
                   {t('navigation.doseHistory')}
@@ -140,24 +141,24 @@ const Navigation = ({ setIsAuthenticated }) => {
 
                 <Link
                   to="/safety-check"
-                  className={`text-sm font-medium ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/safety-check")
-                      ? "text-blue-600"
-                      : "text-gray-900 hover:text-blue-600"
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
                   }`}
                 >
-                  🛡️ {t('navigation.safetyCheck')}
+                  {t('navigation.safetyCheck')}
                 </Link>
 
                 <Link
                   to="/food-advice"
-                  className={`text-sm font-medium ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/food-advice")
-                      ? "text-blue-600"
-                      : "text-gray-900 hover:text-blue-600"
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
                   }`}
                 >
-                  🍽 {t('navigation.foodAdvice')}
+                  {t('navigation.foodAdvice')}
                 </Link>
               </>
             )}
@@ -167,85 +168,103 @@ const Navigation = ({ setIsAuthenticated }) => {
               <>
                 <Link
                   to="/pharmacy-admin/dashboard"
-                  className={`text-sm font-medium ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/pharmacy-admin/dashboard")
-                      ? "text-green-600"
-                      : "text-gray-900 hover:text-green-600"
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
                   }`}
                 >
-                  🏪 Pharmacy Dashboard
+                  {t('navigation.dashboard')}
                 </Link>
 
                 <Link
                   to="/pharmacy-admin/patients"
-                  className={`text-sm font-medium ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/pharmacy-admin/patients")
-                      ? "text-green-600"
-                      : "text-gray-900 hover:text-green-600"
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
                   }`}
                 >
-                  👥 Patients
+                  {t('navigation.patients')}
                 </Link>
 
                 <Link
                   to="/pharmacy-admin/adverse-reactions"
-                  className={`text-sm font-medium ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/pharmacy-admin/adverse-reactions")
-                      ? "text-green-600"
-                      : "text-gray-900 hover:text-green-600"
+                      ? "bg-amber-50 text-amber-700"
+                      : "text-gray-600 hover:text-amber-700 hover:bg-amber-50"
                   }`}
                 >
-                  ⚠️ Adverse Reactions
+                  {t('navigation.adverseReactions')}
                 </Link>
               </>
             )}
           </div>
 
           {/* Right Section */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
 
-            {/* Alarm Indicator - Always visible */}
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
+            {/* Alarm Indicator */}
             {activeAlarms.length > 0 && (
               <Link
                 to="/notifications"
-                className="relative px-3 py-2 rounded-md text-white bg-orange-600 hover:bg-orange-700 animate-pulse"
+                className="relative px-3 py-2 rounded-xl text-white bg-amber-500 hover:bg-amber-600 transition-colors"
               >
                 🔔 {t('navigation.alarms')}
-                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
                   {activeAlarms.length}
                 </span>
               </Link>
             )}
 
-            {/* Profile Dropdown - Always visible */}
+            {/* Profile Dropdown */}
             <div ref={dropdownRef} className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="p-2 rounded-full text-gray-700 hover:bg-gray-100 transition-colors"
+                className="p-0.5 rounded-full hover:ring-2 hover:ring-teal-400 hover:ring-offset-2 transition-all"
                 title={t('navigation.profileMenu')}
               >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt="Profile"
+                    className="h-9 w-9 rounded-full object-cover border-2 border-teal-200"
+                  />
+                ) : (
+                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+                    <span className="text-white text-sm font-semibold">
+                      {user?.username ? user.username.charAt(0).toUpperCase() : '?'}
+                    </span>
+                  </div>
+                )}
               </button>
 
               {/* Dropdown Menu */}
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50 border border-gray-200">
+                <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg z-50 border border-gray-200 overflow-hidden animate-fade-in">
+                  {/* User info header */}
+                  <div className="px-4 py-3 bg-gradient-to-r from-teal-50 to-teal-100 border-b border-teal-100">
+                    <p className="text-sm font-semibold text-teal-800">{user?.username || 'User'}</p>
+                    <p className="text-xs text-teal-600 capitalize">{user?.user_type || 'Patient'}</p>
+                  </div>
                   <button
                     onClick={handleViewProfile}
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center space-x-2 border-b border-gray-100"
                   >
-                    <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    <span className="text-sm font-medium text-gray-900">{t('navigation.viewProfile')}</span>
+                    <span className="text-sm font-medium text-gray-700">{t('navigation.viewProfile')}</span>
                   </button>
                   <button
                     onClick={handleLogout}
                     className="w-full text-left px-4 py-3 hover:bg-red-50 transition-colors flex items-center space-x-2 text-red-600"
                   >
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
                     <span className="text-sm font-medium">{t('navigation.signOut')}</span>

@@ -140,7 +140,7 @@ const NotificationCenter = ({ setIsAuthenticated, setUser, user }) => {
 
   const getNotificationColor = (type) => {
     switch (type) {
-      case "EMAIL": return "border-blue-500";
+      case "EMAIL": return "border-teal-500";
       case "SMS": return "border-green-500";
       default: return "border-gray-500";
     }
@@ -149,7 +149,7 @@ const NotificationCenter = ({ setIsAuthenticated, setUser, user }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case "SENT": return "text-green-600 bg-green-100";
-      case "DELIVERED": return "text-blue-600 bg-blue-100";
+      case "DELIVERED": return "text-teal-600 bg-teal-100";
       case "FAILED": return "text-red-600 bg-red-100";
       case "PENDING": return "text-yellow-600 bg-yellow-100";
       default: return "text-gray-600 bg-gray-100";
@@ -180,7 +180,7 @@ const NotificationCenter = ({ setIsAuthenticated, setUser, user }) => {
     return (
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
         <div className="flex flex-col items-center justify-center min-h-96">
-          <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-gray-300 border-t-teal-600 rounded-full animate-spin"></div>
           <p className="mt-4 text-gray-600">Loading notifications...</p>
         </div>
       </BaseLayout>
@@ -196,7 +196,7 @@ const NotificationCenter = ({ setIsAuthenticated, setUser, user }) => {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  <i className="fas fa-bell text-blue-600 mr-2"></i>
+                  <i className="fas fa-bell text-teal-600 mr-2"></i>
                   Notification Center
                 </h1>
                 <p className="mt-1 text-sm text-gray-500">
@@ -204,12 +204,12 @@ const NotificationCenter = ({ setIsAuthenticated, setUser, user }) => {
                 </p>
               </div>
               <div className="flex items-center space-x-4">
-                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-sm font-medium">
                   {statistics.total_notifications} notifications
                 </span>
                 <button
                   onClick={() => navigate("/medicine-list")}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                  className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium"
                 >
                   <i className="fas fa-pills mr-2"></i>View Medicines
                 </button>
@@ -229,8 +229,8 @@ const NotificationCenter = ({ setIsAuthenticated, setUser, user }) => {
           <div className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white shadow rounded-lg p-4">
               <div className="flex items-center">
-                <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                  <i className="fas fa-bell text-blue-600"></i>
+                <div className="flex-shrink-0 bg-teal-100 rounded-md p-3">
+                  <i className="fas fa-bell text-teal-600"></i>
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-500">Total Notifications</p>
@@ -281,7 +281,7 @@ const NotificationCenter = ({ setIsAuthenticated, setUser, user }) => {
                   onClick={() => setFilter("all")}
                   className={`py-2 px-4 border-b-2 font-medium text-sm ${
                     filter === "all"
-                      ? "border-blue-500 text-blue-600"
+                      ? "border-teal-500 text-teal-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
@@ -291,7 +291,7 @@ const NotificationCenter = ({ setIsAuthenticated, setUser, user }) => {
                   onClick={() => setFilter("email")}
                   className={`py-2 px-4 border-b-2 font-medium text-sm ${
                     filter === "email"
-                      ? "border-blue-500 text-blue-600"
+                      ? "border-teal-500 text-teal-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
@@ -301,7 +301,7 @@ const NotificationCenter = ({ setIsAuthenticated, setUser, user }) => {
                   onClick={() => setFilter("sms")}
                   className={`py-2 px-4 border-b-2 font-medium text-sm ${
                     filter === "sms"
-                      ? "border-blue-500 text-blue-600"
+                      ? "border-teal-500 text-teal-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
@@ -311,7 +311,7 @@ const NotificationCenter = ({ setIsAuthenticated, setUser, user }) => {
                   onClick={() => setFilter("failed")}
                   className={`py-2 px-4 border-b-2 font-medium text-sm ${
                     filter === "failed"
-                      ? "border-blue-500 text-blue-600"
+                      ? "border-teal-500 text-teal-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
@@ -383,12 +383,12 @@ const NotificationCenter = ({ setIsAuthenticated, setUser, user }) => {
           </div>
 
           {/* Quick Actions */}
-          <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+          <div className="mt-8 bg-gradient-to-r from-teal-50 to-teal-50 border border-teal-200 rounded-lg p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
                 <div className="flex-shrink-0">
-                  <i className="fas fa-cog text-blue-600 text-xl"></i>
+                  <i className="fas fa-cog text-teal-600 text-xl"></i>
                 </div>
                 <div className="ml-4 text-left">
                   <h4 className="text-sm font-medium text-gray-900">Notification Settings</h4>

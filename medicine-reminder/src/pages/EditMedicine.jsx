@@ -166,7 +166,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
     return (
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
         <div className="flex flex-col items-center justify-center min-h-96">
-          <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-gray-300 border-t-teal-600 rounded-full animate-spin"></div>
           <p className="mt-4 text-gray-600">Loading medicine details...</p>
         </div>
       </BaseLayout>
@@ -182,7 +182,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
               <div className="flex items-center mb-6">
                 <button
                   onClick={() => navigate("/medicine-list")}
-                  className="text-blue-600 hover:text-blue-500 mr-3"
+                  className="text-teal-600 hover:text-teal-500 mr-3"
                 >
                   <i className="fas fa-arrow-left"></i>
                 </button>
@@ -192,9 +192,9 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
               </div>
 
               {message && (
-                <div className={`rounded-md p-4 mb-4 ${
+                <div className={`rounded-xl p-4 mb-4 ${
                   message.type === "error" ? "bg-red-50" : 
-                  message.type === "success" ? "bg-green-50" : "bg-blue-50"
+                  message.type === "success" ? "bg-green-50" : "bg-teal-50"
                 }`}>
                   <div className="flex">
                     <div className="flex-shrink-0">
@@ -203,13 +203,13 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                       ) : message.type === "success" ? (
                         <i className="fas fa-check-circle text-green-400"></i>
                       ) : (
-                        <i className="fas fa-info-circle text-blue-400"></i>
+                        <i className="fas fa-info-circle text-teal-400"></i>
                       )}
                     </div>
                     <div className="ml-3">
                       <p className={`text-sm font-medium ${
                         message.type === "error" ? "text-red-800" : 
-                        message.type === "success" ? "text-green-800" : "text-blue-800"
+                        message.type === "success" ? "text-green-800" : "text-teal-800"
                       }`}>
                         {message.text}
                       </p>
@@ -231,7 +231,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                       required
                       value={medicine.name}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                      className={`mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm ${
                         errors.name ? "border-red-300" : ""
                       }`}
                     />
@@ -252,7 +252,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                       placeholder="e.g., 500mg, 10ml"
                       value={medicine.dosage}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                      className={`mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm ${
                         errors.dosage ? "border-red-300" : ""
                       }`}
                     />
@@ -271,7 +271,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                       required
                       value={medicine.frequency}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                      className={`mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm ${
                         errors.frequency ? "border-red-300" : ""
                       }`}
                     >
@@ -299,7 +299,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                       min="1"
                       value={medicine.duration}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                      className={`mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm ${
                         errors.duration ? "border-red-300" : ""
                       }`}
                     />
@@ -319,7 +319,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                       required
                       value={medicine.start_date}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                      className={`mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm ${
                         errors.start_date ? "border-red-300" : ""
                       }`}
                     />
@@ -339,7 +339,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                       required
                       value={medicine.end_date}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                      className={`mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm ${
                         errors.end_date ? "border-red-300" : ""
                       }`}
                     />
@@ -359,7 +359,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                     rows={3}
                     value={medicine.instructions}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                     placeholder="How to take this medicine"
                   />
                 </div>
@@ -375,7 +375,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                       name="prescribed_for"
                       value={medicine.prescribed_for}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                       placeholder="Condition or symptom"
                     />
                   </div>
@@ -390,7 +390,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                       name="doctor"
                       value={medicine.doctor}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                       placeholder="Dr. Smith"
                     />
                   </div>
@@ -406,7 +406,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                     rows={3}
                     value={medicine.notes}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                     placeholder="Any additional information"
                   />
                 </div>
@@ -422,13 +422,13 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                           type="time"
                           value={time}
                           onChange={(e) => handleReminderTimeChange(index, e.target.value)}
-                          className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                          className="block w-full border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                         />
                         {medicine.reminder_times.length > 1 && (
                           <button
                             type="button"
                             onClick={() => removeReminderTime(index)}
-                            className="px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm"
+                            className="px-3 py-2 bg-red-100 text-red-700 rounded-xl hover:bg-red-200 text-sm"
                           >
                             <i className="fas fa-trash"></i>
                           </button>
@@ -438,7 +438,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                     <button
                       type="button"
                       onClick={addReminderTime}
-                      className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 text-sm font-medium"
+                      className="px-4 py-2 bg-teal-100 text-teal-700 rounded-xl hover:bg-teal-200 text-sm font-medium"
                     >
                       <i className="fas fa-plus mr-2"></i>
                       Add Reminder Time
@@ -450,14 +450,14 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
                   <button
                     type="button"
                     onClick={() => navigate("/medicine-list")}
-                    className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                    className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-xl text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {saving ? "Saving..." : "Save Changes"}
                   </button>

@@ -1,160 +1,130 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView, Picker } from 'react-native';
+import {
+  View,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  StatusBar,
+  TouchableOpacity,
+} from 'react-native';
+import { TextInput, Button, Text, Snackbar } from 'react-native-paper';
+import { Picker } from '@react-native-picker/picker';
+import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
-import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../hooks/useAuth';
+import { authAPI } from '../services/api';
 
-const SignupScreen = () => {
+export default function SignupScreen({ navigation }) {
+  const { signUp, isLoading: authLoading } = useAuth();
   const { t } = useLanguage();
-  const navigation = useNavigation();
-  const { register, loading } = useAuth();
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    username: '',
-    password: '',
-    confirmPassword: '',
-    role: 'patient',
-    pharmacyAdminId: '',
-    // Pharmacy admin fields
-    country: '',
-    province: '',
-    district: '',
-    facilityName: '',
-    facilityType: '',
-    phoneNumber: '',
-    address: '',
-    licenseNumber: '',
-    licenseExpiry: '',
-  });
-  const [showPharmacyFields, setShowPharmacyFields] = useState(false);
-  const [locationOptions, setLocationOptions] = useState(null);
+  
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState('patient');
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' });
+  const [secureTextEntry, setSecureTextEntry] = useState(true);
+  const [secureConfirmEntry, setSecureConfirmEntry] = useState(true);
+  const [registeredEmail, setRegisteredEmail] = useState(null);
+  const [resendLoading, setResendLoading] = useState(false);
 
   const roles = [
-    { label: t('signup.patient'), value: 'patient' },
-    { label: t('signup.pharmacyAdmin'), value: 'pharmacy_admin' },
-    { label: t('signup.systemAdministrator'), value: 'system_admin' },
+    { label: t('signup.patient') || 'Patient', value: 'patient' },
+    { label: t('signup.pharmacyAdmin') || 'Pharmacy Admin', value: 'pharmacy_admin' },
   ];
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Show/hide pharmacy fields based on role
-    if (field === 'role') {
-      setShowPharmacyFields(value === 'pharmacy_admin');
-      if (value === 'pharmacy_admin') {
-        loadLocationOptions();
-      }
-    }
+  // Validate email format
+  const validateEmail = (mail) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(mail);
   };
 
-  const loadLocationOptions = async () => {
-    try {
-      const response = await fetch('http://127.0.0.1:8000/api/pharmacy-admin/location-options/');
-      const data = await response.json();
-      setLocationOptions(data);
-    } catch (error) {
-      console.error('Failed to load location options:', error);
-    }
-  };
-
+  // Validate form
   const validateForm = () => {
-    if (!formData.firstName.trim()) {
-      Alert.alert(t('common.error'), t('signup.firstName') + ' ' + t('common.error'));
-      return false;
+    const newErrors = {};
+
+    if (!firstName.trim()) {
+      newErrors.firstName = t('signup.firstNameRequired') || 'First name is required';
     }
-    if (!formData.email.trim()) {
-      Alert.alert(t('common.error'), t('signup.emailRequired'));
-      return false;
+
+    if (!lastName.trim()) {
+      newErrors.lastName = t('signup.lastNameRequired') || 'Last name is required';
     }
-    if (!formData.username.trim()) {
-      Alert.alert(t('common.error'), t('signup.usernameRequired'));
-      return false;
+
+    if (!email.trim()) {
+      newErrors.email = t('signup.emailRequired') || 'Email is required';
+    } else if (!validateEmail(email)) {
+      newErrors.email = t('signup.emailInvalid') || 'Please enter a valid email';
     }
-    if (!formData.password.trim()) {
-      Alert.alert(t('common.error'), t('signup.passwordRequired'));
-      return false;
+
+    if (!username.trim()) {
+      newErrors.username = t('signup.usernameRequired') || 'Username is required';
     }
-    if (formData.password.length < 8) {
-      Alert.alert(t('common.error'), t('signup.passwordMinLength'));
-      return false;
+
+    if (!password.trim()) {
+      newErrors.password = t('signup.passwordRequired') || 'Password is required';
+    } else if (password.length < 8) {
+      newErrors.password = t('signup.passwordMinLength') || 'Password must be at least 8 characters';
     }
-    if (formData.password !== formData.confirmPassword) {
-      Alert.alert(t('common.error'), t('signup.passwordsMustMatch'));
-      return false;
+
+    if (!confirmPassword.trim()) {
+      newErrors.confirmPassword = t('signup.confirmPasswordRequired') || 'Please confirm your password';
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = t('signup.passwordsMustMatch') || 'Passwords must match';
     }
-    return true;
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleSignup = async () => {
-    if (!validateForm()) return;
+  // Show snackbar message
+  const showSnackbar = (message, type = 'success') => {
+    setSnackbar({ visible: true, message, type });
+  };
 
+  // Handle signup
+  const handleSignup = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
     try {
-      let result;
-      
-      if (formData.role === 'pharmacy_admin') {
-        // Pharmacy admin signup
-        const pharmacyData = {
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-          confirm_password: formData.confirmPassword,
-          country: formData.country,
-          province: formData.province,
-          district: formData.district,
-          facility_name: formData.facilityName,
-          facility_type: formData.facilityType,
-          phone_number: formData.phoneNumber,
-          address: formData.address,
-          license_number: formData.licenseNumber,
-          license_expiry: formData.licenseExpiry
-        };
-        
-        const response = await fetch('http://127.0.0.1:8000/api/pharmacy-admin/signup/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(pharmacyData)
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-          Alert.alert(
-            t('common.success'),
-            t('signup.pharmacyAdminSuccess') + '\n\n' + t('signup.pharmacyId') + ': ' + data.pharmacy_id
-          );
-          navigation.navigate('Login');
+      const userData = {
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        username,
+        password,
+        password_confirm: confirmPassword,
+        role,
+      };
+
+      const result = await signUp(userData);
+
+      if (result.success) {
+        if (result.requiresVerification) {
+          // Show "check your email" screen
+          setRegisteredEmail(email);
         } else {
-          Alert.alert(t('common.error'), data.error || t('common.failed'));
+          showSnackbar(t('auth.signupSuccess') || 'Signup successful! Please login.', 'success');
+          setTimeout(() => {
+            navigation.navigate('Login');
+          }, 1500);
         }
       } else {
-        // Regular user signup
-        result = await register({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          email: formData.email,
-          username: formData.username,
-          password: formData.password,
-          password_confirm: formData.confirmPassword,
-          role: formData.role,
-          pharmacy_admin_id: formData.pharmacyAdminId || null,
-        });
-        
-        if (result.success) {
-          Alert.alert(t('common.success'), t('auth.signupSuccess'));
-          navigation.navigate('Login');
-        } else {
-          Alert.alert(t('common.error'), result.error || t('common.failed'));
-        }
+        showSnackbar(result.error || t('auth.failedToCreateAccount') || 'Signup failed', 'error');
       }
     } catch (error) {
-      Alert.alert(t('common.error'), t('common.failed'));
+      console.error('Signup error:', error);
+      showSnackbar(error.message || t('common.error') || 'An error occurred', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -162,283 +132,331 @@ const SignupScreen = () => {
     navigation.navigate('Login');
   };
 
+  const handleResendVerification = async () => {
+    if (!registeredEmail) return;
+    setResendLoading(true);
+    try {
+      await authAPI.resendVerification(registeredEmail);
+      showSnackbar(t('emailVerification.resentSuccess'), 'success');
+    } catch (error) {
+      showSnackbar(error.message || t('emailVerification.resentFailedShort'), 'error');
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const isFormLoading = loading || authLoading;
+
+  // Show "Check Your Email" screen after successful registration
+  if (registeredEmail) {
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.verificationCard}>
+            <Text style={styles.verificationIcon}>📧</Text>
+            <Text style={styles.verificationTitle}>{t('emailVerification.checkYourEmail')}</Text>
+            <Text style={styles.verificationMessage}>
+              {t('emailVerification.verificationSentTo')}{' '}
+              <Text style={{ fontWeight: 'bold' }}>{registeredEmail}</Text>.{' '}
+              {t('emailVerification.clickLinkToVerify')}
+            </Text>
+            <Text style={styles.verificationSubtext}>
+              {t('emailVerification.didntReceive')}
+            </Text>
+
+            <Button
+              mode="outlined"
+              onPress={handleResendVerification}
+              loading={resendLoading}
+              disabled={resendLoading}
+              style={styles.resendVerificationButton}
+            >
+              {resendLoading ? t('emailVerification.sending') : t('emailVerification.resendVerification')}
+            </Button>
+
+            <Button
+              mode="contained"
+              onPress={() => navigation.navigate('Login')}
+              style={styles.goToLoginButton}
+            >
+              {t('emailVerification.goToLogin')}
+            </Button>
+          </View>
+        </ScrollView>
+
+        <Snackbar
+          visible={snackbar.visible}
+          onDismiss={() => setSnackbar({ ...snackbar, visible: false })}
+          duration={3000}
+          style={[
+            styles.snackbar,
+            snackbar.type === 'error' && styles.snackbarError,
+          ]}
+        >
+          {snackbar.message}
+        </Snackbar>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+      
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('signup.title')}</Text>
+          <Text style={styles.appName}>SalusLogica</Text>
+          <Text style={styles.title}>{t('signup.title') || 'Create Account'}</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
+          {/* Name Fields */}
           <View style={styles.row}>
-            <View style={[styles.inputGroup, styles.halfWidth]}>
-              <Text style={styles.label}>{t('signup.firstName')}</Text>
+            <View style={styles.halfWidth}>
+              <Text style={styles.label}>{t('signup.firstName') || 'First Name'}</Text>
               <TextInput
+                mode="outlined"
+                placeholder={t('auth.firstNamePlaceholder')}
+                value={firstName}
+                onChangeText={(text) => {
+                  setFirstName(text);
+                  if (errors.firstName) setErrors({ ...errors, firstName: null });
+                }}
+                disabled={isFormLoading}
+                error={!!errors.firstName}
                 style={styles.input}
-                value={formData.firstName}
-                onChangeText={(value) => handleInputChange('firstName', value)}
-                placeholder="John"
+                outlineColor="#d1d5db"
+                activeOutlineColor="#0d9488"
               />
+              {errors.firstName && (
+                <Text style={styles.errorText}>{errors.firstName}</Text>
+              )}
             </View>
 
-            <View style={[styles.inputGroup, styles.halfWidth]}>
-              <Text style={styles.label}>{t('signup.lastName')}</Text>
+            <View style={styles.halfWidth}>
+              <Text style={styles.label}>{t('signup.lastName') || 'Last Name'}</Text>
               <TextInput
+                mode="outlined"
+                placeholder={t('auth.lastNamePlaceholder')}
+                value={lastName}
+                onChangeText={(text) => {
+                  setLastName(text);
+                  if (errors.lastName) setErrors({ ...errors, lastName: null });
+                }}
+                disabled={isFormLoading}
+                error={!!errors.lastName}
                 style={styles.input}
-                value={formData.lastName}
-                onChangeText={(value) => handleInputChange('lastName', value)}
-                placeholder="Doe"
+                outlineColor="#d1d5db"
+                activeOutlineColor="#0d9488"
               />
+              {errors.lastName && (
+                <Text style={styles.errorText}>{errors.lastName}</Text>
+              )}
             </View>
           </View>
 
+          {/* Email */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('signup.email')}</Text>
+            <Text style={styles.label}>{t('signup.email') || 'Email'}</Text>
             <TextInput
-              style={styles.input}
-              value={formData.email}
-              onChangeText={(value) => handleInputChange('email', value)}
-              placeholder="john.doe@example.com"
-              autoCapitalize="none"
+              mode="outlined"
+              placeholder={t('auth.emailPlaceholder')}
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (errors.email) setErrors({ ...errors, email: null });
+              }}
+              disabled={isFormLoading}
               keyboardType="email-address"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('signup.username')}</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.username}
-              onChangeText={(value) => handleInputChange('username', value)}
-              placeholder="johndoe"
               autoCapitalize="none"
+              error={!!errors.email}
+              style={styles.input}
+              outlineColor="#d1d5db"
+              activeOutlineColor="#0d9488"
             />
+            {errors.email && (
+              <Text style={styles.errorText}>{errors.email}</Text>
+            )}
           </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, styles.halfWidth]}>
-              <Text style={styles.label}>{t('signup.password')}</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.password}
-                onChangeText={(value) => handleInputChange('password', value)}
-                placeholder="•••••••••"
-                secureTextEntry
-              />
-            </View>
-
-            <View style={[styles.inputGroup, styles.halfWidth]}>
-              <Text style={styles.label}>{t('signup.confirmPassword')}</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.confirmPassword}
-                onChangeText={(value) => handleInputChange('confirmPassword', value)}
-                placeholder="•••••••••"
-                secureTextEntry
-              />
-            </View>
-          </View>
-
+          {/* Username */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('signup.role')}</Text>
+            <Text style={styles.label}>{t('signup.username') || 'Username'}</Text>
+            <TextInput
+              mode="outlined"
+              placeholder={t('auth.usernamePlaceholder')}
+              value={username}
+              onChangeText={(text) => {
+                setUsername(text);
+                if (errors.username) setErrors({ ...errors, username: null });
+              }}
+              disabled={isFormLoading}
+              autoCapitalize="none"
+              error={!!errors.username}
+              style={styles.input}
+              outlineColor="#d1d5db"
+              activeOutlineColor="#0d9488"
+            />
+            {errors.username && (
+              <Text style={styles.errorText}>{errors.username}</Text>
+            )}
+          </View>
+
+          {/* Password Fields */}
+          <View style={styles.row}>
+            <View style={styles.halfWidth}>
+              <Text style={styles.label}>{t('signup.password') || 'Password'}</Text>
+              <TextInput
+                mode="outlined"
+                placeholder="••••••••"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) setErrors({ ...errors, password: null });
+                }}
+                disabled={isFormLoading}
+                secureTextEntry={secureTextEntry}
+                error={!!errors.password}
+                style={styles.input}
+                outlineColor="#d1d5db"
+                activeOutlineColor="#0d9488"
+                right={
+                  <TextInput.Icon
+                    icon={secureTextEntry ? 'eye-off' : 'eye'}
+                    onPress={() => setSecureTextEntry(!secureTextEntry)}
+                  />
+                }
+              />
+              {errors.password && (
+                <Text style={styles.errorText}>{errors.password}</Text>
+              )}
+            </View>
+
+            <View style={styles.halfWidth}>
+              <Text style={styles.label}>{t('signup.confirmPassword') || 'Confirm'}</Text>
+              <TextInput
+                mode="outlined"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: null });
+                }}
+                disabled={isFormLoading}
+                secureTextEntry={secureConfirmEntry}
+                error={!!errors.confirmPassword}
+                style={styles.input}
+                outlineColor="#d1d5db"
+                activeOutlineColor="#0d9488"
+                right={
+                  <TextInput.Icon
+                    icon={secureConfirmEntry ? 'eye-off' : 'eye'}
+                    onPress={() => setSecureConfirmEntry(!secureConfirmEntry)}
+                  />
+                }
+              />
+              {errors.confirmPassword && (
+                <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+              )}
+            </View>
+          </View>
+
+          {/* Role Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{t('signup.role') || 'Role'}</Text>
             <View style={styles.pickerContainer}>
               <Picker
-                selectedValue={formData.role}
-                onValueChange={(value) => handleInputChange('role', value)}
+                selectedValue={role}
+                onValueChange={setRole}
                 style={styles.picker}
+                enabled={!isFormLoading}
               >
-                {roles.map((role) => (
-                  <Picker.Item key={role.value} label={role.label} value={role.value} />
+                {roles.map((roleItem) => (
+                  <Picker.Item key={roleItem.value} label={roleItem.label} value={roleItem.value} />
                 ))}
               </Picker>
             </View>
           </View>
 
-          {showPharmacyFields && (
-            <View style={styles.pharmacySection}>
-              <Text style={styles.sectionTitle}>Pharmacy Information</Text>
-              
-              {/* Location Fields */}
-              <View style={styles.row}>
-                <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>Country</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={formData.country}
-                      onValueChange={(value) => handleInputChange('country', value)}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="Select Country" value="" />
-                      {locationOptions?.countries?.map(country => (
-                        <Picker.Item key={country} label={country} value={country} />
-                      ))}
-                    </Picker>
-                  </View>
-                </View>
-
-                <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>Province</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={formData.province}
-                      onValueChange={(value) => handleInputChange('province', value)}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="Select Province" value="" />
-                      {locationOptions?.provinces?.map(province => (
-                        <Picker.Item key={province} label={province} value={province} />
-                      ))}
-                    </Picker>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>District</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={formData.district}
-                    onValueChange={(value) => handleInputChange('district', value)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Select District" value="" />
-                    {locationOptions?.districts?.[formData.province]?.map(district => (
-                      <Picker.Item key={district} label={district} value={district} />
-                    ))}
-                  </Picker>
-                </View>
-              </View>
-
-              {/* Facility Details */}
-              <View style={styles.row}>
-                <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>Facility Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={formData.facilityName}
-                    onChangeText={(value) => handleInputChange('facilityName', value)}
-                    placeholder="Enter facility name"
-                  />
-                </View>
-
-                <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>Facility Type</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={formData.facilityType}
-                      onValueChange={(value) => handleInputChange('facilityType', value)}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="Select Type" value="" />
-                      <Picker.Item label="Pharmacy" value="pharmacy" />
-                      <Picker.Item label="Hospital" value="hospital" />
-                    </Picker>
-                  </View>
-                </View>
-              </View>
-
-              {/* Contact Information */}
-              <View style={styles.row}>
-                <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>Phone Number</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={formData.phoneNumber}
-                    onChangeText={(value) => handleInputChange('phoneNumber', value)}
-                    placeholder="Enter phone number"
-                    keyboardType="phone-pad"
-                  />
-                </View>
-
-                <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>License Number</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={formData.licenseNumber}
-                    onChangeText={(value) => handleInputChange('licenseNumber', value)}
-                    placeholder="Enter license number"
-                  />
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Address</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.address}
-                  onChangeText={(value) => handleInputChange('address', value)}
-                  placeholder="Enter address"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>License Expiry Date</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.licenseExpiry}
-                  onChangeText={(value) => handleInputChange('licenseExpiry', value)}
-                  placeholder="YYYY-MM-DD"
-                />
-              </View>
-            </View>
-          )}
-
-          {formData.role === 'patient' && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>{t('signup.pharmacyAdminId')}</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.pharmacyAdminId}
-                onChangeText={(value) => handleInputChange('pharmacyAdminId', value)}
-                placeholder={t('signup.pharmacyAdminPlaceholder')}
-              />
-            </View>
-          )}
-
-          <TouchableOpacity 
-            style={[styles.button, styles.signupButton]}
+          {/* Signup Button */}
+          <Button
+            mode="contained"
             onPress={handleSignup}
-            disabled={loading}
+            disabled={isFormLoading}
+            loading={isFormLoading}
+            style={styles.signupButton}
+            contentStyle={styles.signupButtonContent}
+            labelStyle={styles.signupButtonLabel}
           >
-            <Text style={styles.signupButtonText}>
-              {loading ? t('signup.signingUp') : t('signup.signupButton')}
+            {isFormLoading
+              ? t('signup.signingUp') || 'Creating account...'
+              : t('signup.signupButton') || 'Create Account'}
+          </Button>
+
+          {/* Login Link */}
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>
+              {t('signup.alreadyHave') || 'Already have an account?'}{' '}
             </Text>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogin} disabled={isFormLoading}>
+              <Text style={styles.loginLink}>
+                {t('signup.login') || 'Sign in'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
+      </ScrollView>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>{t('signup.alreadyHave')}</Text>
-          <TouchableOpacity onPress={handleLogin}>
-            <Text style={styles.loginText}>{t('signup.login')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </ScrollView>
+      {/* Snackbar for messages */}
+      <Snackbar
+        visible={snackbar.visible}
+        onDismiss={() => setSnackbar({ ...snackbar, visible: false })}
+        duration={3000}
+        style={[
+          styles.snackbar,
+          snackbar.type === 'error' && styles.snackbarError,
+        ]}
+      >
+        {snackbar.message}
+      </Snackbar>
+    </KeyboardAvoidingView>
   );
-};
-
+}
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
   },
-  content: {
-    padding: 20,
+  scrollContent: {
+    flexGrow: 1,
+    padding: 24,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 32,
+    marginTop: 20,
+  },
+  appName: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#0d9488',
+    marginBottom: 8,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '600',
     color: '#1f2937',
   },
   form: {
-    marginBottom: 32,
+    width: '100%',
   },
   row: {
     flexDirection: 'row',
@@ -451,72 +469,107 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
     color: '#374151',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#fff',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#ef4444',
+    marginTop: 4,
   },
   pickerContainer: {
     borderWidth: 1,
     borderColor: '#d1d5db',
     borderRadius: 8,
     backgroundColor: '#ffffff',
+    overflow: 'hidden',
   },
   picker: {
     height: 50,
   },
-  button: {
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
   signupButton: {
-    backgroundColor: '#2563eb',
+    marginTop: 16,
+    marginBottom: 16,
+    backgroundColor: '#0d9488',
+    borderRadius: 8,
   },
-  signupButtonText: {
-    color: '#ffffff',
+  signupButtonContent: {
+    paddingVertical: 8,
+  },
+  signupButtonLabel: {
     fontSize: 16,
     fontWeight: '600',
   },
-  footer: {
+  loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  footerText: {
-    color: '#6b7280',
-    fontSize: 14,
-    marginRight: 4,
+    marginTop: 8,
+    marginBottom: 16,
   },
   loginText: {
-    color: '#2563eb',
     fontSize: 14,
+    color: '#6b7280',
+  },
+  loginLink: {
+    fontSize: 14,
+    color: '#0d9488',
     fontWeight: '600',
   },
-  pharmacySection: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: '#f8fafc',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+  snackbar: {
+    backgroundColor: '#10b981',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1f2937',
+  snackbarError: {
+    backgroundColor: '#ef4444',
+  },
+  verificationCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 32,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  verificationIcon: {
+    fontSize: 64,
     marginBottom: 16,
+  },
+  verificationTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 12,
+  },
+  verificationMessage: {
+    fontSize: 15,
+    color: '#4b5563',
     textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  verificationSubtext: {
+    fontSize: 13,
+    color: '#9ca3af',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  resendVerificationButton: {
+    marginBottom: 12,
+    width: '100%',
+    borderColor: '#0d9488',
+  },
+  goToLoginButton: {
+    width: '100%',
+    backgroundColor: '#0d9488',
+    borderRadius: 8,
   },
 });
 
-export default SignupScreen;

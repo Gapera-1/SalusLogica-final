@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Picker } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Card, Button } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
-import { medicineAPI } from '../services/apiService';
+import { medicineAPI, safetyAPI } from '../services/api';
 
 const FoodAdvice = () => {
   const { t } = useLanguage();
@@ -12,22 +12,29 @@ const FoodAdvice = () => {
   const [selectedMedicine, setSelectedMedicine] = useState('');
   const [results, setResults] = useState(null);
 
-  const availableMedicines = [
-    'Aspirin',
-    'Vitamin D',
-    'Lisinopril',
-    'Metformin',
-    'Ibuprofen',
-    'Amoxicillin',
-  ];
+  const [availableMedicines, setAvailableMedicines] = useState([]);
+
+  useEffect(() => {
+    loadMedicines();
+  }, []);
+
+  const loadMedicines = async () => {
+    try {
+      const medicines = await medicineAPI.getAll();
+      const names = (medicines || []).map(m => m.name || m.medicine_name);
+      setAvailableMedicines(names);
+    } catch (error) {
+      console.error('Failed to load medicines:', error);
+    }
+  };
 
   const handleMedicineSelect = async (medicine) => {
     if (!medicine) return;
     
     setLoading(true);
     try {
-      const response = await medicineAPI.getFoodAdvice(medicine);
-      setResults(response.data);
+      const response = await safetyAPI.foodAdvice();
+      setResults(response.data || response);
       setSelectedMedicine(medicine);
     } catch (error) {
       console.error('Failed to get food advice:', error);
@@ -69,7 +76,7 @@ const FoodAdvice = () => {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{t('foodAdvice.title')}</Text>
-          <Text style={styles.subtitle}>{t('foodAdvice.foodRecommendations', { drug: selectedMedicine || 'Select Medicine' })}</Text>
+          <Text style={styles.subtitle}>{t('foodAdvice.foodRecommendations', { drug: selectedMedicine || t('foodAdvice.selectMedicine') })}</Text>
         </View>
 
         {/* Medicine Selection */}
@@ -145,21 +152,21 @@ const FoodAdvice = () => {
                   <Text style={[styles.timingText, { color: getInteractionColor('with_food') }]}>
                     🍽️ {t('foodAdvice.withFood')}
                   </Text>
-                  <Text style={styles.timingDescription}>{results.timing?.withFood || 'Take with meal'}</Text>
+                  <Text style={styles.timingDescription}>{results.timing?.withFood || t('foodAdvice.takeWithMeal')}</Text>
                 </View>
 
                 <View style={styles.timingOption}>
                   <Text style={[styles.timingText, { color: getInteractionColor('without_food') }]}>
                     🚫 {t('foodAdvice.withoutFood')}
                   </Text>
-                  <Text style={styles.timingDescription}>{results.timing?.withoutFood || 'Take on empty stomach'}</Text>
+                  <Text style={styles.timingDescription}>{results.timing?.withoutFood || t('foodAdvice.takeOnEmptyStomach')}</Text>
                 </View>
 
                 <View style={styles.timingOption}>
                   <Text style={[styles.timingText, { color: getInteractionColor('anytime') }]}>
                     ⏰ {t('foodAdvice.anytime')}
                   </Text>
-                  <Text style={styles.timingDescription}>{results.timing?.anytime || 'No timing restrictions'}</Text>
+                  <Text style={styles.timingDescription}>{results.timing?.anytime || t('foodAdvice.noTimingRestrictions')}</Text>
                 </View>
               </View>
             </View>

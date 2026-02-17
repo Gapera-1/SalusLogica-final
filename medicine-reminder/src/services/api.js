@@ -84,10 +84,20 @@ const apiCall = async (endpoint, options = {}) => {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error(`API Error Response:`, errorData);
-      throw new Error(errorData.message || errorData.non_field_errors?.[0] || `HTTP error! status: ${response.status}`);
+      const error = new Error(
+        errorData.error || errorData.message || errorData.non_field_errors?.[0] || errorData.detail || `HTTP error! status: ${response.status}`
+      );
+      error.response = { data: errorData, status: response.status };
+      throw error;
     }
 
-    const data = await response.json();
+    // Handle 204 No Content or empty responses
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      console.log(`API Response: (No Content)`);
+      return {};
+    }
+
+    const data = await response.json().catch(() => ({}));
     console.log(`API Response:`, data);
     return data;
   } catch (error) {
@@ -125,6 +135,45 @@ export const authAPI = {
   refreshToken: async () => {
     return await apiCall('/auth/refresh/', {
       method: 'POST',
+    });
+  },
+
+  verifyEmail: async (token) => {
+    return await apiCall(`/auth/verify-email/${token}/`);
+  },
+
+  resendVerification: async (email) => {
+    return await apiCall('/auth/resend-verification/', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  deleteAccount: async (password) => {
+    return await apiCall('/auth/delete-account/', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+  },
+
+  forgotPassword: async (email) => {
+    return await apiCall('/auth/forgot-password/', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  validateResetToken: async (token) => {
+    return await apiCall(`/auth/validate-reset-token/${token}/`);
+  },
+
+  resetPassword: async (token, newPassword, confirmPassword) => {
+    return await apiCall(`/auth/reset-password/${token}/`, {
+      method: 'POST',
+      body: JSON.stringify({
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      }),
     });
   },
 };
@@ -167,6 +216,15 @@ export const medicineAPI = {
   // Get medicines for a specific patient (for pharmacy admins)
   getPatientMedicines: async (patientId) => {
     return await apiCall(`/medicines/patient/${patientId}/`);
+  },
+
+  // Search medicines by name
+  search: async (query, activeOnly = false) => {
+    const params = new URLSearchParams({ q: query });
+    if (activeOnly) {
+      params.append('active_only', 'true');
+    }
+    return await apiCall(`/medicines/search_by_name/?${params.toString()}`);
   },
 };
 
@@ -444,6 +502,38 @@ export const profileAPI = {
     return await apiCall('/auth/profile/', {
       method: 'PUT',
       body: JSON.stringify(profileData),
+    });
+  },
+
+  // Upload avatar
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    const token = localStorage.getItem('access_token');
+    const url = `${API_BASE_URL}/auth/upload-avatar/`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...(token && { 'Authorization': `Token ${token}` }),
+      },
+      credentials: 'include',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || 'Failed to upload avatar');
+    }
+
+    return await response.json();
+  },
+
+  // Remove avatar
+  removeAvatar: async () => {
+    return await apiCall('/auth/remove-avatar/', {
+      method: 'DELETE',
     });
   },
 };

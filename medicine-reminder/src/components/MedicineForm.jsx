@@ -81,7 +81,7 @@ function MedicineForm() {
         className="border p-2"
         min="1"
       />
-      <button type="submit" className="bg-blue-600 text-white p-2 rounded">
+      <button type="submit" className="bg-teal-600 text-white p-2 rounded">
         Add
       </button>
     </form>

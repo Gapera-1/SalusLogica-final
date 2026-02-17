@@ -3,11 +3,16 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
-from .models import Medicine, MedicineInteraction, UserAllergy
+from .models import (
+    Medicine, MedicineInteraction, UserAllergy, Drug, 
+    Contraindication, PatientProfile, get_population_category, check_contraindications
+)
 from .serializers import (
     MedicineSerializer, UserAllergySerializer,
-    MedicineInteractionCheckSerializer, SafetyCheckSerializer
+    MedicineInteractionCheckSerializer, SafetyCheckSerializer,
+    PatientProfileSerializer, ContraindicationSerializer
 )
+from apps.authentication.models import UserProfile
 
 
 class SafetyCheckViewSet(viewsets.ViewSet):
@@ -16,12 +21,14 @@ class SafetyCheckViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['post'])
     def safety_check(self, request):
-        """Comprehensive safety check for a specific medicine"""
-        serializer = SafetyCheckSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        """Comprehensive safety check for a specific medicine using patient profile"""
+        medicine_id = request.data.get('medicine_id')
         
-        medicine_id = serializer.validated_data['medicine_id']
-        population_type = serializer.validated_data['population_type']
+        if not medicine_id:
+            return Response(
+                {'error': 'medicine_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         try:
             medicine = get_object_or_404(Medicine, id=medicine_id, user=request.user)
@@ -31,9 +38,24 @@ class SafetyCheckViewSet(viewsets.ViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        safety_alerts = []
+        # Get patient profile from unified UserProfile model
+        try:
+            patient_profile = request.user.profile
+        except (UserProfile.DoesNotExist, AttributeError):
+            return Response({
+                'error': 'No patient profile found',
+                'message': 'Please complete your patient profile for safety checks',
+                'medicine': {
+                    'id': medicine.id,
+                    'name': medicine.name,
+                    'dosage': medicine.dosage
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Clinical safety validation (from monolith)
+        safety_alerts = []
+        population_cat = get_population_category(patient_profile)
+        
+        # Clinical safety validation (dosage checks)
         if medicine.dose_mg and medicine.weight_kg and medicine.dose_per_kg:
             expected = medicine.weight_kg * medicine.dose_per_kg
             tolerance = expected * 0.10
@@ -45,39 +67,68 @@ class SafetyCheckViewSet(viewsets.ViewSet):
                     'recommendation': "Consult with healthcare provider for dosage adjustment"
                 })
         
-        # Population-specific checks
-        if population_type == 'pregnant':
+        # Check contraindications from database
+        drug = Drug.objects.filter(
+            Q(name__iexact=medicine.name) | Q(generic_name__iexact=medicine.name)
+        ).first()
+        
+        if drug:
+            contraindications = check_contraindications(drug, patient_profile)
+            
+            for contra in contraindications:
+                safety_alerts.append({
+                    'type': 'contraindication',
+                    'severity': contra.severity,
+                    'population': contra.get_population_display(),
+                    'condition': contra.condition,
+                    'message': contra.description,
+                    'source': contra.source
+                })
+        
+        # Population-specific checks for common drugs
+        if population_cat == 'pregnant':
             pregnancy_contraindicated = [
                 'warfarin', 'isotretinoin', 'methotrexate', 'valproic acid',
-                'ace_inhibitors', 'statins', 'tetracyclines'
+                'ace_inhibitor', 'statin', 'tetracycline'
             ]
             
             medicine_name_lower = medicine.name.lower()
-            if any(drug in medicine_name_lower for drug in pregnancy_contraindicated):
+            if any(drug_name in medicine_name_lower for drug_name in pregnancy_contraindicated):
                 safety_alerts.append({
                     'type': 'pregnancy_contraindication',
                     'severity': 'critical',
+                    'population': 'Pregnant',
                     'message': f"{medicine.name} is contraindicated for pregnancy",
                     'recommendation': "Consult with obstetrician immediately"
                 })
         
-        elif population_type == 'elderly':
+        elif population_cat == 'elderly':
             if medicine.dose_mg and float(medicine.dose_mg) > 500:
                 safety_alerts.append({
                     'type': 'elderly_dosage',
                     'severity': 'moderate',
+                    'population': 'Elderly (65+)',
                     'message': f"High dose {medicine.dose_mg}mg detected for elderly patient",
                     'recommendation': "Consider dose reduction for elderly patients"
                 })
         
-        # Check food interactions
-        food_interactions = FoodInteraction.objects.filter(medicine=medicine)
-        for food_interaction in food_interactions:
+        elif population_cat in ['infant_toddler', 'child']:
+            if medicine.dose_mg and not medicine.dose_per_kg:
+                safety_alerts.append({
+                    'type': 'pediatric_dosing',
+                    'severity': 'moderate',
+                    'population': 'Pediatric',
+                    'message': 'Pediatric dosing should be weight-based (mg/kg)',
+                    'recommendation': 'Please specify dose per kg for pediatric safety'
+                })
+        
+        # Check food interactions using Medicine model's built-in fields
+        if medicine.food_to_avoid:
             safety_alerts.append({
                 'type': 'food_interaction',
-                'severity': food_interaction.severity,
-                'message': f"Avoid {food_interaction.food} when taking {medicine.name}",
-                'recommendation': food_interaction.recommendation
+                'severity': 'moderate',
+                'message': f"Avoid certain foods when taking {medicine.name}",
+                'recommendation': f"Foods to avoid: {', '.join(medicine.food_to_avoid)}"
             })
         
         return Response({
@@ -87,17 +138,15 @@ class SafetyCheckViewSet(viewsets.ViewSet):
                 'dosage': medicine.dosage,
                 'dose_mg': medicine.dose_mg
             },
-            'population_type': population_type,
+            'patient_profile': {
+                'age': patient_profile.age,
+                'is_pregnant': patient_profile.is_pregnant,
+                'is_lactating': patient_profile.is_lactating,
+                'population_category': population_cat
+            },
             'safety_alerts': safety_alerts,
-            'food_interactions': [
-                {
-                    'food': fi.food,
-                    'food_category': fi.food_category,
-                    'severity': fi.severity,
-                    'recommendation': fi.recommendation
-                } for fi in food_interactions
-            ],
-            'overall_safety': len(safety_alerts) == 0
+            'overall_safety': len(safety_alerts) == 0,
+            'total_alerts': len(safety_alerts)
         })
     
     @action(detail=False, methods=['get'])
@@ -109,22 +158,12 @@ class SafetyCheckViewSet(viewsets.ViewSet):
         food_advice = {}
         
         for medicine in medicines:
-            food_interactions = FoodInteraction.objects.filter(medicine=medicine)
-            
-            if food_interactions.exists():
+            # Use built-in food interaction fields from Medicine model
+            if medicine.food_to_avoid or medicine.food_advised:
                 advice = {
                     'medicine_name': medicine.name,
                     'foods_to_avoid': medicine.food_to_avoid or [],
                     'foods_advised': medicine.food_advised or [],
-                    'interactions': [
-                        {
-                            'food': fi.food,
-                            'food_category': fi.food_category,
-                            'severity': fi.severity,
-                            'recommendation': fi.recommendation,
-                            'description': fi.description
-                        } for fi in food_interactions
-                    ]
                 }
                 food_advice[medicine.id] = advice
         
@@ -136,25 +175,39 @@ class SafetyCheckViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'])
     def contraindications(self, request):
-        """Get contraindications for user's population type"""
+        """Get contraindications for user's population category based on their profile"""
         user = request.user
-        population_type = request.query_params.get('population_type', 'young')
+        
+        # Get patient profile from unified UserProfile model
+        try:
+            patient_profile = user.profile
+            population_cat = get_population_category(patient_profile)
+        except (UserProfile.DoesNotExist, AttributeError):
+            return Response({
+                'error': 'No patient profile found',
+                'message': 'Please complete your patient profile to view contraindications',
+                'contraindications': []
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         contraindications = Contraindication.objects.filter(
-            population_groups__contains=[population_type]
+            population=population_cat
         ).select_related('drug')
         
         return Response({
-            'population_type': population_type,
+            'patient_profile': {
+                'age': patient_profile.age,
+                'is_pregnant': patient_profile.is_pregnant,
+                'is_lactating': patient_profile.is_lactating,
+                'population_category': population_cat
+            },
             'contraindications': [
                 {
                     'drug': c.drug.name,
-                    'contraindication_type': c.contraindication_type,
+                    'generic_name': c.drug.generic_name,
                     'condition': c.condition,
                     'severity': c.severity,
                     'description': c.description,
-                    'population_groups': c.population_groups,
-                    'alternatives': c.alternatives
+                    'source': c.source
                 } for c in contraindications
             ],
             'total_contraindications': len(contraindications)

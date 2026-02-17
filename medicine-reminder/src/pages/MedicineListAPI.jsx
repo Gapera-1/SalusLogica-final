@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BaseLayout from '../components/BaseLayout';
+import MedicineCard from '../components/MedicineCard';
+import MedicineSearchAutocomplete from '../components/MedicineSearchAutocomplete';
 import { useAppContext } from '../contexts/AppContext';
+import analytics from '../services/analytics';
 import toast from 'react-hot-toast';
 
 const MedicineListAPI = () => {
@@ -23,32 +26,27 @@ const MedicineListAPI = () => {
 
   // Filter medicines based on search and filter
   const filteredMedicines = medicines.filter(medicine => {
-    const matchesSearch = medicine.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = medicine.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filter === 'all' || 
-      (filter === 'low-stock' && medicine.stock < 10) ||
+      (filter === 'low-stock' && (medicine.stock_count || 0) < 10) ||
       (filter === 'today' && medicine.nextDose === 'Today');
     
     return matchesSearch && matchesFilter;
   });
 
   // Handle medicine actions
-  const handleEditMedicine = async (id) => {
-    try {
-      const medicine = await getMedicine(id);
-      // Navigate to edit page with medicine data
-      navigate(`/edit-medicine/${id}`, { state: { medicine } });
-    } catch (error) {
-      toast.error('Failed to load medicine for editing');
-    }
+  const handleEditMedicine = (medicine) => {
+    navigate(`/edit-medicine/${medicine.id}`, { state: { medicine } });
   };
 
-  const handleDeleteMedicine = async (id) => {
-    if (window.confirm('Are you sure you want to delete this medicine?')) {
+  const handleDeleteMedicine = async (medicine) => {
+    if (window.confirm(`Delete "${medicine.name}" from your medicines?`)) {
       try {
-        await deleteMedicine(id);
-        toast.success('Medicine deleted successfully');
+        await deleteMedicine(medicine.id);
+        toast.success(`"${medicine.name}" has been deleted`);
       } catch (error) {
-        toast.error('Failed to delete medicine');
+        console.error('Failed to delete medicine:', error);
+        toast.error(error?.message || 'Failed to delete medicine');
       }
     }
   };
@@ -63,39 +61,15 @@ const MedicineListAPI = () => {
     }
   };
 
-  const handleMarkDoseTaken = async (medicineId, time) => {
-    try {
-      // This would typically create a dose log entry
-      // For now, we'll update the medicine's taken times
-      const medicine = medicines.find(m => m.id === medicineId);
-      if (medicine) {
-        const updatedMedicine = {
-          ...medicine,
-          takenTimes: {
-            ...medicine.takenTimes,
-            [time]: new Date().toISOString(),
-          },
-        };
-        await updateMedicine(medicineId, updatedMedicine);
-        toast.success('Dose marked as taken');
-      }
-    } catch (error) {
-      toast.error('Failed to mark dose as taken');
-    }
+  const handleAutocompleteSelect = (medicine) => {
+    // Navigate to medicine details
+    analytics.trackMedicineView(medicine, 'autocomplete');
+    navigate(`/medicine/${medicine.id}`);
   };
 
-  // Get stock color
-  const getStockColor = (stock) => {
-    if (stock <= 5) return 'text-red-600 bg-red-100';
-    if (stock <= 10) return 'text-yellow-600 bg-yellow-100';
-    return 'text-green-600 bg-green-100';
-  };
-
-  // Get next dose color
-  const getNextDoseColor = (nextDose) => {
-    if (nextDose === 'Overdue') return 'text-red-600';
-    if (nextDose === 'Today') return 'text-orange-600';
-    return 'text-blue-600';
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter);
+    analytics.trackFilterUsage('medicine_list', newFilter);
   };
 
   useEffect(() => {
@@ -112,7 +86,7 @@ const MedicineListAPI = () => {
             <p className="text-gray-600">{error}</p>
             <button 
               onClick={() => window.location.reload()}
-              className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              className="mt-4 bg-teal-600 text-white px-4 py-2 rounded hover:bg-teal-700"
             >
               Retry
             </button>
@@ -137,7 +111,7 @@ const MedicineListAPI = () => {
               </div>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium"
               >
                 <i className="fas fa-plus mr-2"></i>
                 Add Medicine
@@ -151,10 +125,10 @@ const MedicineListAPI = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button
                 onClick={() => navigate('/analytics')}
-                className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                className="flex items-center p-4 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors"
               >
                 <div className="flex-shrink-0">
-                  <i className="fas fa-chart-line text-blue-600 text-xl"></i>
+                  <i className="fas fa-chart-line text-teal-600 text-xl"></i>
                 </div>
                 <div className="ml-4 text-left">
                   <h4 className="text-sm font-medium text-gray-900">Analytics Dashboard</h4>
@@ -193,22 +167,20 @@ const MedicineListAPI = () => {
           {/* Search and Filter */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <div className="flex gap-4 mb-4 flex-wrap">
-              <div className="relative flex-1 min-w-64">
-                <input
-                  type="text"
-                  placeholder="Search medicines..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20"
+              <div className="flex-1 min-w-64">
+                <MedicineSearchAutocomplete
+                  onSelect={handleAutocompleteSelect}
+                  placeholder="Search medicines by name or scientific name..."
+                  activeOnly={false}
+                  minSearchLength={2}
                 />
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">🔍</div>
               </div>
               
               <div className="min-w-40">
                 <select 
                   value={filter} 
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20"
+                  onChange={(e) => handleFilterChange(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-opacity-20"
                 >
                   <option value="all">All Medicines</option>
                   <option value="low-stock">Low Stock</option>
@@ -221,7 +193,7 @@ const MedicineListAPI = () => {
           {/* Loading State */}
           {loading.medicines ? (
             <div className="flex justify-center items-center h-64">
-              <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+              <div className="w-12 h-12 border-4 border-gray-300 border-t-teal-600 rounded-full animate-spin"></div>
             </div>
           ) : (
             /* Medicine Cards */
@@ -234,59 +206,13 @@ const MedicineListAPI = () => {
                 </div>
               ) : (
                 filteredMedicines.map(medicine => (
-                  <div key={medicine.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-gray-900 text-lg font-semibold mb-1">{medicine.name}</h3>
-                        <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">{medicine.dosage}</span>
-                      </div>
-                      <div className={`font-semibold text-sm px-3 py-1 rounded-lg ${getStockColor(medicine.stock)}`}>
-                        {medicine.stock} left
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-gray-600 text-sm">Frequency:</span>
-                        <span className="text-gray-900 font-medium text-sm">{medicine.frequency}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-gray-600 text-sm">Next Dose:</span>
-                        <span className={`font-medium text-sm ${getNextDoseColor(medicine.nextDose)}`}>
-                          {medicine.nextDose}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-gray-600 text-sm">Prescribed for:</span>
-                        <span className="text-gray-900 font-medium text-sm">{medicine.prescribedFor}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-gray-600 text-sm">Doctor:</span>
-                        <span className="text-gray-900 font-medium text-sm">{medicine.doctor}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-gray-600 text-sm">Started:</span>
-                        <span className="text-gray-900 font-medium text-sm">{medicine.startDate}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleEditMedicine(medicine.id)}
-                        className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                      >
-                        <i className="fas fa-edit mr-2"></i>
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteMedicine(medicine.id)}
-                        className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-                      >
-                        <i className="fas fa-trash mr-2"></i>
-                        Delete
-                      </button>
-                    </div>
-                  </div>
+                  <MedicineCard
+                    key={medicine.id}
+                    medicine={medicine}
+                    onEdit={handleEditMedicine}
+                    onDelete={handleDeleteMedicine}
+                    showActions={true}
+                  />
                 ))
               )}
             </div>
@@ -315,15 +241,15 @@ const MedicineListAPI = () => {
             }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Medicine Name</label>
-                <input name="name" type="text" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                <input name="name" type="text" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-teal-500 focus:border-teal-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Dosage</label>
-                <input name="dosage" type="text" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                <input name="dosage" type="text" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-teal-500 focus:border-teal-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
-                <select name="frequency" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <select name="frequency" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-teal-500 focus:border-teal-500">
                   <option value="">Select frequency</option>
                   <option value="Once Daily">Once Daily</option>
                   <option value="Twice Daily">Twice Daily</option>
@@ -334,25 +260,25 @@ const MedicineListAPI = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Duration (days)</label>
-                <input name="duration" type="number" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                <input name="duration" type="number" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-teal-500 focus:border-teal-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Times (comma separated)</label>
-                <input name="times" type="text" required placeholder="08:00, 14:00, 20:00" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                <input name="times" type="text" required placeholder="08:00, 14:00, 20:00" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-teal-500 focus:border-teal-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Prescribed For</label>
-                <input name="prescribedFor" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                <input name="prescribedFor" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-teal-500 focus:border-teal-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Doctor</label>
-                <input name="doctor" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                <input name="doctor" type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-teal-500 focus:border-teal-500" />
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                <button type="submit" className="flex-1 bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700">
                   Add Medicine
                 </button>
               </div>

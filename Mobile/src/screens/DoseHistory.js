@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Picker } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Card, Button, Avatar, DataTable } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
-import { medicineAPI } from '../services/apiService';
+import { doseAPI } from '../services/api';
 
 const DoseHistory = () => {
   const { t } = useLanguage();
@@ -16,13 +16,13 @@ const DoseHistory = () => {
     dateRange: '7',
   });
 
-  const medicines = ['All Medicines', 'Aspirin', 'Vitamin D', 'Lisinopril'];
-  const statuses = ['All Statuses', 'Taken', 'Missed', 'Pending'];
+  const medicines = [t('doseHistory.allMedicines'), t('doseHistory.aspirin'), t('doseHistory.vitaminD'), t('doseHistory.lisinopril')];
+  const statuses = [t('doseHistory.allStatuses'), t('doseHistory.taken'), t('doseHistory.missed'), t('doseHistory.pending')];
   const dateRanges = [
-    { label: 'Last 7 days', value: '7' },
-    { label: 'Last 30 days', value: '30' },
-    { label: 'Last 90 days', value: '90' },
-    { label: 'All Time', value: 'all' },
+    { label: t('doseHistory.last7Days'), value: '7' },
+    { label: t('doseHistory.last30Days'), value: '30' },
+    { label: t('doseHistory.last90Days'), value: '90' },
+    { label: t('doseHistory.allTime'), value: 'all' },
   ];
 
   useEffect(() => {
@@ -33,7 +33,7 @@ const DoseHistory = () => {
     try {
       setLoading(true);
       // In a real app, this would call the API with filters
-      const data = await medicineAPI.getDoseHistory(filters);
+      const data = await doseAPI.getHistory(filters);
       setDoseHistory(data || []);
     } catch (error) {
       console.error('Failed to load dose history:', error);
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   backText: {
-    color: '#2563eb',
+    color: '#0d9488',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: '#0d9488',
     marginBottom: 4,
   },
   statLabel: {

@@ -56,7 +56,7 @@ function SignupForm({
         {t('signup.alreadyHave')}{" "}
         <button
           type="button"
-          className="text-blue-600 hover:underline"
+          className="text-teal-600 hover:underline"
           onClick={() => setIsSignup(false)}
         >
           {t('signup.login')}

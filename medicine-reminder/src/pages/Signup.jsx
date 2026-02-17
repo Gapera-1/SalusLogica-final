@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../i18n";
 import { authAPI } from "../services/api";
@@ -30,6 +30,10 @@ const Signup = ({ setIsAuthenticated }) => {
   const [message, setMessage] = useState(null);
   const [locationOptions, setLocationOptions] = useState(null);
   const [showPharmacyFields, setShowPharmacyFields] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
 
   const roleDescriptions = {
     PATIENT: t('roleDescriptions.patient'),
@@ -237,17 +241,9 @@ const Signup = ({ setIsAuthenticated }) => {
             navigate("/login");
           }, 3000);
         } else {
-          // Regular user login
-          localStorage.setItem("loggedIn", "true");
-          localStorage.setItem("user", JSON.stringify(data.user));
-          const successMsg = t('common.success') || 'Success';
-          const loadingMsg = t('common.loading') || 'Loading...';
-          setMessage(successMsg + ", " + loadingMsg);
-          
-          setTimeout(() => {
-            setIsAuthenticated(true);
-            navigate("/dashboard");
-          }, 2000);
+          // Regular user - show persistent verification screen
+          setRegisteredEmail(formData.email);
+          setRegistrationSuccess(true);
         }
       } else {
         // Handle validation errors
@@ -295,24 +291,84 @@ const Signup = ({ setIsAuthenticated }) => {
   };
 
   const getRoleHelpText = () => {
-    return roleDescriptions[formData.role] || "Select your role to see description";
+    return roleDescriptions[formData.role] || t('emailVerification.selectRoleDescription');
   };
 
   const showPharmacyAdminField = formData.role === "PATIENT";
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100">
-            <i className="fas fa-pills text-blue-600 text-xl"></i>
+  // Show persistent verification screen after successful registration
+  if (registrationSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ background: 'var(--bg-page)' }}>
+        <div className="max-w-md w-full space-y-6">
+          <div className="hc-card p-8 text-center">
+            <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-2xl bg-emerald-100 mb-4">
+              <svg className="h-10 w-10 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('emailVerification.checkYourEmail')}</h2>
+            <p className="text-gray-600 mb-4">
+              {t('emailVerification.verificationSentTo')}
+            </p>
+            <p className="text-teal-600 font-semibold text-lg mb-4">{registeredEmail}</p>
+            <p className="text-sm text-gray-500 mb-6">
+              {t('emailVerification.clickLinkToVerify')}
+            </p>
+
+            <div className="border-t border-gray-200 pt-4 space-y-3">
+              <p className="text-sm text-gray-500">{t('emailVerification.didntReceive')}</p>
+              <button
+                type="button"
+                disabled={resendLoading}
+                onClick={async () => {
+                  setResendLoading(true);
+                  setResendMessage("");
+                  try {
+                    await authAPI.resendVerification(registeredEmail);
+                    setResendMessage({ text: t('emailVerification.resentSuccess'), success: true });
+                  } catch (err) {
+                    setResendMessage({ text: err.message || t('emailVerification.resentFailedShort'), success: false });
+                  } finally {
+                    setResendLoading(false);
+                  }
+                }}
+                className="w-full inline-flex justify-center items-center px-4 py-2.5 border border-teal-300 text-sm font-medium rounded-xl text-teal-700 bg-teal-50 hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 transition-colors"
+              >
+                {resendLoading ? t('emailVerification.sending') : t('emailVerification.resendVerification')}
+              </button>
+              {resendMessage && (
+                <p className={`text-sm ${resendMessage.success ? 'text-green-600' : 'text-red-600'}`}>
+                  {resendMessage.text}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="w-full inline-flex justify-center items-center px-4 py-2.5 border border-gray-300 text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors"
+              >
+                {t('emailVerification.goToLogin')}
+              </button>
+            </div>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ background: 'var(--bg-page)' }}>
+      <div className="max-w-md w-full space-y-8 animate-fade-in">
+        <div>
+          <div className="mx-auto h-14 w-14 flex items-center justify-center rounded-2xl bg-teal-100">
+            <i className="fas fa-pills text-teal-600 text-xl"></i>
+          </div>
+          <h2 className="mt-6 text-center text-3xl font-bold text-gray-900 tracking-tight">
             {t('signup.title')}
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or 
-            <a href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+          <p className="mt-2 text-center text-sm text-gray-500">
+            {t('common.or')}{' '}
+            <a href="/login" className="font-medium text-teal-600 hover:text-teal-500">
               {t('signup.alreadyHave')}
             </a>
           </p>
@@ -361,7 +417,7 @@ const Signup = ({ setIsAuthenticated }) => {
                 required
                 value={formData.username}
                 onChange={handleInputChange}
-                className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
+                className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-teal-500 focus:border-teal-500 focus:z-10 sm:text-sm ${
                   errors.username ? "border-red-300" : "border-gray-300"
                 }`}
                 placeholder={t('signup.username')}
@@ -379,7 +435,7 @@ const Signup = ({ setIsAuthenticated }) => {
                 required
                 value={formData.email}
                 onChange={handleInputChange}
-                className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
+                className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-teal-500 focus:border-teal-500 focus:z-10 sm:text-sm ${
                   errors.email ? "border-red-300" : "border-gray-300"
                 }`}
                 placeholder={t('signup.email')}
@@ -397,7 +453,7 @@ const Signup = ({ setIsAuthenticated }) => {
                 required
                 value={formData.password1}
                 onChange={handleInputChange}
-                className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
+                className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-teal-500 focus:border-teal-500 focus:z-10 sm:text-sm ${
                   errors.password1 ? "border-red-300" : "border-gray-300"
                 }`}
                 placeholder={t('signup.password')}
@@ -415,7 +471,7 @@ const Signup = ({ setIsAuthenticated }) => {
                 required
                 value={formData.password2}
                 onChange={handleInputChange}
-                className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
+                className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-teal-500 focus:border-teal-500 focus:z-10 sm:text-sm ${
                   errors.password2 ? "border-red-300" : "border-gray-300"
                 }`}
                 placeholder={t('signup.confirmPassword')}
@@ -435,7 +491,7 @@ const Signup = ({ setIsAuthenticated }) => {
               required
               value={formData.role}
               onChange={handleInputChange}
-              className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+              className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm ${
                 errors.role ? "border-red-300" : "border-gray-300"
               }`}
             >
@@ -464,7 +520,7 @@ const Signup = ({ setIsAuthenticated }) => {
                     name="country"
                     value={formData.country}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                   >
                     <option value="">{t('pharmacyAdmin.selectCountry')}</option>
                     {locationOptions?.countries?.map(country => (
@@ -480,7 +536,7 @@ const Signup = ({ setIsAuthenticated }) => {
                     name="province"
                     value={formData.province}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                   >
                     <option value="">{t('pharmacyAdmin.selectProvince')}</option>
                     {locationOptions?.provinces?.map(province => (
@@ -496,7 +552,7 @@ const Signup = ({ setIsAuthenticated }) => {
                     name="district"
                     value={formData.district}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                   >
                     <option value="">{t('pharmacyAdmin.selectDistrict')}</option>
                     {locationOptions?.districts?.[formData.province]?.map(district => (
@@ -516,7 +572,7 @@ const Signup = ({ setIsAuthenticated }) => {
                     type="text"
                     value={formData.facility_name}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                     placeholder={t('pharmacyAdmin.enterFacilityName')}
                   />
                 </div>
@@ -528,7 +584,7 @@ const Signup = ({ setIsAuthenticated }) => {
                     name="facility_type"
                     value={formData.facility_type}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                   >
                     <option value="">{t('pharmacyAdmin.selectType')}</option>
                     <option value="pharmacy">{t('pharmacyAdmin.pharmacy')}</option>
@@ -547,7 +603,7 @@ const Signup = ({ setIsAuthenticated }) => {
                     type="tel"
                     value={formData.phone_number}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                     placeholder={t('pharmacyAdmin.enterPhoneNumber')}
                   />
                 </div>
@@ -560,7 +616,7 @@ const Signup = ({ setIsAuthenticated }) => {
                     type="text"
                     value={formData.address}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                     placeholder={t('pharmacyAdmin.enterAddress')}
                   />
                 </div>
@@ -576,7 +632,7 @@ const Signup = ({ setIsAuthenticated }) => {
                     type="text"
                     value={formData.license_number}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                     placeholder={t('pharmacyAdmin.enterLicenseNumber')}
                   />
                 </div>
@@ -589,7 +645,7 @@ const Signup = ({ setIsAuthenticated }) => {
                     type="date"
                     value={formData.license_expiry}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                   />
                 </div>
               </div>
@@ -606,7 +662,7 @@ const Signup = ({ setIsAuthenticated }) => {
                 type="text"
                 value={formData.pharmacy_admin_id}
                 onChange={handleInputChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                 placeholder={t('signup.pharmacyAdminPlaceholder')}
               />
               {errors.pharmacy_admin_id && (
@@ -624,7 +680,7 @@ const Signup = ({ setIsAuthenticated }) => {
                 type="checkbox"
                 checked={formData.remember_me}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
                 {t('login.rememberMe')}
@@ -635,11 +691,11 @@ const Signup = ({ setIsAuthenticated }) => {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}
             >
               <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                <i className="fas fa-user-plus text-blue-500 group-hover:text-blue-400"></i>
+                <i className="fas fa-user-plus text-teal-500 group-hover:text-teal-400"></i>
               </span>
               {loading ? t('signup.signingUp') : t('signup.signupButton')}
             </button>

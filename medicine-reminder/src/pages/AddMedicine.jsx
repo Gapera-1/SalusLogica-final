@@ -132,28 +132,57 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
     setLoading(true);
     
     try {
-      // Use real backend API
+      // Use real backend API - all fields must match Django model snake_case
       const medicineData = {
         name: formData.name,
         dosage: formData.dosage,
         frequency: formData.frequency.toLowerCase().replace(" ", "_"),
-        times: formData.times, // Use the exact times array
-        duration: parseInt(formData.stock) || 30, // Use stock as duration
-        prescribedFor: formData.prescribedFor,
-        prescribing_doctor: formData.doctor,
+        times: formData.times, // Array of times
+        duration: parseInt(formData.stock) || 30,
+        stock_count: parseInt(formData.stock) || 30,
+        prescribed_for: formData.prescribedFor || "",
+        prescribing_doctor: formData.doctor || "",
         start_date: formData.startDate || new Date().toISOString().split('T')[0],
         end_date: formData.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        notes: formData.notes,
-        reminder_enabled: formData.reminderEnabled,
-        instructions: formData.instructions
+        instructions: formData.instructions || "",
+        notes: formData.notes || "",
+        reminder_enabled: formData.reminderEnabled
       };
       
-      await medicineAPI.create(medicineData);
+      const response = await medicineAPI.create(medicineData);
+      
+      // Check for safety warnings
+      if (response.safety_warnings && response.safety_warnings.length > 0) {
+        const warnings = response.safety_warnings;
+        const criticalWarnings = warnings.filter(w => 
+          w.severity === 'absolute' || w.severity === 'critical'
+        );
+        
+        if (criticalWarnings.length > 0) {
+          const warningMessage = criticalWarnings.map(w => 
+            `⚠️ ${w.type?.toUpperCase()}: ${w.message}\n${w.recommendation || ''}`
+          ).join('\n\n');
+          alert(`${t("addMedicine.criticalSafetyWarning")}\n\n${warningMessage}\n\n${t("addMedicine.consultDoctor")}`);
+        } else {
+          const warningMessage = warnings.map(w => 
+            `ℹ️ ${w.message}`
+          ).join('\n\n');
+          alert(`${t("addMedicine.safetyInformation")}\n\n${warningMessage}`);
+        }
+      }
+      
       alert(t("addMedicine.success"));
       navigate("/medicine-list");
     } catch (error) {
       console.error("Error adding medicine:", error);
-      alert(t("addMedicine.error"));
+      console.error("Error details:", error.response || error.message);
+      
+      // Show more detailed error message
+      const errorMessage = error.response?.data?.detail 
+        || error.response?.data?.message 
+        || error.message 
+        || t("addMedicine.error");
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -165,7 +194,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
 
   return (
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-card p-8">
         {/* Header */}
         <div className="text-center mb-8">
           <h2 className="text-gray-900 text-2xl font-bold mb-2">{t("addMedicine.title")}</h2>
@@ -185,7 +214,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 ${
+                className={`w-full px-4 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-opacity-20 transition-all duration-300 ${
                   errors.name ? "border-red-500 focus:ring-red-500 focus:ring-opacity-20" : "border-gray-300"
                 }`}
                 placeholder={t("addMedicine.medicinePlaceholder")}
@@ -203,10 +232,10 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                 name="dosage"
                 value={formData.dosage}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 ${
+                className={`w-full px-4 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-opacity-20 transition-all duration-300 ${
                   errors.dosage ? "border-red-500 focus:ring-red-500 focus:ring-opacity-20" : "border-gray-300"
                 }`}
-                placeholder="e.g., 100mg, 2 tablets"
+                placeholder={t("addMedicine.dosagePlaceholder")}
               />
               {errors.dosage && <span className="text-red-400 text-xs">{errors.dosage}</span>}
             </div>
@@ -220,7 +249,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                 name="frequency"
                 value={formData.frequency}
                 onChange={handleFrequencyChange}
-                className={`w-full px-4 py-3 border rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 cursor-pointer ${
+                className={`w-full px-4 py-3 border rounded-lg text-gray-900 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-opacity-20 transition-all duration-300 cursor-pointer ${
                   errors.frequency ? "border-red-500 focus:ring-red-500 focus:ring-opacity-20" : "border-gray-300"
                 }`}
               >
@@ -242,14 +271,14 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                       type="time"
                       value={time}
                       onChange={(e) => updateTime(index, e.target.value)}
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-opacity-20 transition-all duration-300"
                     />
                     {formData.times.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeTimeSlot(index)}
                         className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Remove time"
+                        title={t("addMedicine.removeTimeSlot")}
                       >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -261,7 +290,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                 <button
                   type="button"
                   onClick={addTimeSlot}
-                  className="w-full px-4 py-2 border border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2"
+                  className="w-full px-4 py-2 border border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-teal-500 hover:text-teal-500 transition-colors flex items-center justify-center gap-2"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -270,7 +299,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                 </button>
               </div>
               <p className="text-xs text-gray-500">
-                {t("addMedicine.selectExactTimes") || "Select exact times when you need to take this medicine"}
+                {t("addMedicine.selectExactTimes")}
               </p>
               {errors.times && <span className="text-red-400 text-xs">{errors.times}</span>}
             </div>
@@ -285,10 +314,10 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                 name="stock"
                 value={formData.stock}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 ${
+                className={`w-full px-4 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-opacity-20 transition-all duration-300 ${
                   errors.stock ? "border-red-500 focus:ring-red-500 focus:ring-opacity-20" : "border-gray-300"
                 }`}
-                placeholder="Number of tablets/capsules"
+                placeholder={t("addMedicine.stockPlaceholder")}
                 min="0"
               />
               {errors.stock && <span className="text-red-400 text-xs">{errors.stock}</span>}
@@ -303,7 +332,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                 value={formData.prescribedFor}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-white border-opacity-30 rounded-lg bg-white bg-opacity-10 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:border-green-500 focus:ring-3 focus:ring-green-500 focus:ring-opacity-30 transition-all duration-300"
-                placeholder="e.g., Headaches, Blood pressure"
+                placeholder={t("addMedicine.prescribedForPlaceholder")}
               />
             </div>
 
@@ -316,7 +345,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                 value={formData.doctor}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-white border-opacity-30 rounded-lg bg-white bg-opacity-10 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:border-green-500 focus:ring-3 focus:ring-green-500 focus:ring-opacity-30 transition-all duration-300"
-                placeholder="Dr. Smith"
+                placeholder={t("addMedicine.doctorPlaceholder")}
               />
             </div>
 
@@ -328,7 +357,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                 name="startDate"
                 value={formData.startDate}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-opacity-20 transition-all duration-300"
               />
             </div>
           </div>
@@ -340,9 +369,22 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
               name="instructions"
               value={formData.instructions}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 resize-vertical min-h-20"
-              placeholder="e.g., Take with food, avoid grapefruit"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-opacity-20 transition-all duration-300 resize-vertical min-h-20"
+              placeholder={t("addMedicine.instructionsPlaceholder")}
               rows="3"
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <label className="text-gray-700 text-sm font-medium">{t("addMedicine.notes")}</label>
+            <textarea
+              name="notes"
+              value={formData.notes}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-opacity-20 transition-all duration-300 resize-vertical min-h-20"
+              placeholder={t("addMedicine.notesPlaceholder")}
+              rows="4"
             />
           </div>
 
@@ -365,7 +407,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                   </svg>
                 )}
               </span>
-              {t("addMedicine.enableReminders") || "Enable reminders for this medicine"}
+              {t("addMedicine.enableReminders")}
             </label>
           </div>
 
@@ -381,7 +423,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {loading ? (
                 <>

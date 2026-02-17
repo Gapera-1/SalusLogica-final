@@ -171,7 +171,7 @@ const FoodAdvice = () => {
                     ...prev,
                     [medicine.id]: generateFoodAdvice(medicine)
                   }))}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300"
+                  className="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors duration-300"
                 >
                   {t("foodAdvice.selectMedicine")}
                 </button>
@@ -243,15 +243,15 @@ const FoodAdvice = () => {
                   {/* Timing Advice */}
                   {advice.timing_advice.length > 0 && (
                     <div className="mb-6">
-                      <h3 className="text-lg font-semibold text-blue-600 mb-3">
+                      <h3 className="text-lg font-semibold text-teal-600 mb-3">
                         ⏰ Timing Instructions
                       </h3>
                       <div className="space-y-2">
                         {advice.timing_advice.map((timing, index) => (
-                          <div key={index} className="flex items-start p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div key={index} className="flex items-start p-3 bg-teal-50 rounded-lg border border-teal-200">
                             <span className="text-xl mr-3">⏰</span>
                             <div>
-                              <p className="font-medium text-blue-800">{timing}</p>
+                              <p className="font-medium text-teal-800">{timing}</p>
                             </div>
                           </div>
                         ))}
@@ -280,11 +280,11 @@ const FoodAdvice = () => {
         )}
 
         {/* Educational Content */}
-        <div className="bg-blue-50 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-4">
+        <div className="bg-teal-50 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-teal-900 mb-4">
             🎓 Understanding Food-Drug Interactions
           </h3>
-          <div className="prose text-blue-800 space-y-3">
+          <div className="prose text-teal-800 space-y-3">
             <p>
               Food can significantly affect how your body absorbs and processes medications. 
               Some foods can enhance drug effectiveness, while others may reduce it or cause side effects.
@@ -312,7 +312,7 @@ const FoodAdvice = () => {
           </button>
           <button
             onClick={() => navigate('/safety-check')}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300"
+            className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors duration-300"
           >
             Run Safety Check
           </button>

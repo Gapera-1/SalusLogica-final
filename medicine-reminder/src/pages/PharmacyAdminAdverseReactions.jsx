@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import BaseLayout from "../components/BaseLayout";
+import { useLanguage } from "../i18n";
 
 const PharmacyAdminAdverseReactions = ({ setIsAuthenticated }) => {
+  const { t } = useLanguage();
   const [reactions, setReactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -54,8 +56,8 @@ const PharmacyAdminAdverseReactions = ({ setIsAuthenticated }) => {
     return (
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
         <div className="flex flex-col items-center justify-center min-h-96">
-          <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-600">Loading adverse reactions...</p>
+          <div className="w-12 h-12 border-4 border-gray-300 border-t-teal-600 rounded-full animate-spin"></div>
+          <p className="mt-4 text-gray-600">{t('pharmacyAdminAdverseReactions.loading')}</p>
         </div>
       </BaseLayout>
     );
@@ -66,9 +68,9 @@ const PharmacyAdminAdverseReactions = ({ setIsAuthenticated }) => {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Adverse Reactions</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t('pharmacyAdminAdverseReactions.title')}</h1>
           <p className="mt-2 text-gray-600">
-            Monitor adverse reactions reported by your patients
+            {t('pharmacyAdminAdverseReactions.subtitle')}
           </p>
         </div>
 
@@ -84,33 +86,33 @@ const PharmacyAdminAdverseReactions = ({ setIsAuthenticated }) => {
             {/* Severity Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Filter by Severity
+                {t('pharmacyAdminAdverseReactions.filterBySeverity')}
               </label>
               <select
                 value={filterSeverity}
                 onChange={(e) => setFilterSeverity(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
-                <option value="all">All Severities</option>
-                <option value="mild">Mild</option>
-                <option value="moderate">Moderate</option>
-                <option value="severe">Severe</option>
+                <option value="all">{t('pharmacyAdminAdverseReactions.allSeverities')}</option>
+                <option value="mild">{t('pharmacyAdminAdverseReactions.mild')}</option>
+                <option value="moderate">{t('pharmacyAdminAdverseReactions.moderate')}</option>
+                <option value="severe">{t('pharmacyAdminAdverseReactions.severe')}</option>
               </select>
             </div>
 
             {/* Resolution Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Filter by Status
+                {t('pharmacyAdminAdverseReactions.filterByStatus')}
               </label>
               <select
                 value={filterResolved}
                 onChange={(e) => setFilterResolved(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
-                <option value="all">All Status</option>
-                <option value="unresolved">Unresolved</option>
-                <option value="resolved">Resolved</option>
+                <option value="all">{t('pharmacyAdminAdverseReactions.allStatus')}</option>
+                <option value="unresolved">{t('pharmacyAdminAdverseReactions.unresolved')}</option>
+                <option value="resolved">{t('pharmacyAdminAdverseReactions.resolved')}</option>
               </select>
             </div>
           </div>
@@ -127,24 +129,24 @@ const PharmacyAdminAdverseReactions = ({ setIsAuthenticated }) => {
                     ? 'border-red-500'
                     : reaction.severity === 'moderate'
                     ? 'border-yellow-500'
-                    : 'border-blue-500'
+                    : 'border-teal-500'
                 }`}
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Left Section */}
                   <div>
-                    <h3 className="font-semibold text-gray-900">{reaction.patient_name || 'Patient'}</h3>
-                    <p className="text-sm text-gray-600">{reaction.medicine_name || 'Unknown Medicine'}</p>
+                    <h3 className="font-semibold text-gray-900">{reaction.patient_name || t('pharmacyAdminAdverseReactions.patient')}</h3>
+                    <p className="text-sm text-gray-600">{reaction.medicine_name || t('pharmacyAdminAdverseReactions.unknownMedicine')}</p>
                   </div>
 
                   {/* Middle Section */}
                   <div className="space-y-2">
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Reaction Type</p>
+                      <p className="text-xs text-gray-500 uppercase">{t('pharmacyAdminAdverseReactions.reactionType')}</p>
                       <p className="text-sm text-gray-900 capitalize">{reaction.reaction_type}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Description</p>
+                      <p className="text-xs text-gray-500 uppercase">{t('pharmacyAdminAdverseReactions.description')}</p>
                       <p className="text-sm text-gray-900">{reaction.description}</p>
                     </div>
                   </div>
@@ -158,10 +160,10 @@ const PharmacyAdminAdverseReactions = ({ setIsAuthenticated }) => {
                             ? 'bg-red-100 text-red-800'
                             : reaction.severity === 'moderate'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-blue-100 text-blue-800'
+                            : 'bg-teal-100 text-teal-800'
                         }`}
                       >
-                        {reaction.severity?.charAt(0).toUpperCase() + reaction.severity?.slice(1) || 'Unknown'}
+                        {reaction.severity?.charAt(0).toUpperCase() + reaction.severity?.slice(1) || t('common.unknown')}
                       </span>
                       <span
                         className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
@@ -170,15 +172,15 @@ const PharmacyAdminAdverseReactions = ({ setIsAuthenticated }) => {
                             : 'bg-gray-100 text-gray-800'
                         }`}
                       >
-                        {reaction.is_resolved ? 'Resolved' : 'Unresolved'}
+                        {reaction.is_resolved ? t('pharmacyAdminAdverseReactions.resolved') : t('pharmacyAdminAdverseReactions.unresolved')}
                       </span>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Reported</p>
+                      <p className="text-xs text-gray-500 uppercase">{t('pharmacyAdminAdverseReactions.reported')}</p>
                       <p className="text-sm text-gray-900">
                         {reaction.reported_date
                           ? new Date(reaction.reported_date).toLocaleDateString()
-                          : 'N/A'}
+                          : t('common.na')}
                       </p>
                     </div>
                   </div>
@@ -188,16 +190,16 @@ const PharmacyAdminAdverseReactions = ({ setIsAuthenticated }) => {
                 <div className="mt-4 flex gap-2 border-t pt-4">
                   <button
                     onClick={() => alert(`View details for reaction ${reaction.id}`)}
-                    className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                    className="text-teal-600 hover:text-teal-900 text-sm font-medium"
                   >
-                    View Details
+                    {t('pharmacyAdminAdverseReactions.viewDetails')}
                   </button>
                   {!reaction.is_resolved && (
                     <button
                       onClick={() => alert(`Mark reaction ${reaction.id} as resolved`)}
                       className="text-green-600 hover:text-green-900 text-sm font-medium"
                     >
-                      Mark Resolved
+                      {t('pharmacyAdminAdverseReactions.markResolved')}
                     </button>
                   )}
                 </div>
@@ -219,11 +221,11 @@ const PharmacyAdminAdverseReactions = ({ setIsAuthenticated }) => {
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <h3 className="mt-2 text-lg font-medium text-gray-900">No adverse reactions found</h3>
+            <h3 className="mt-2 text-lg font-medium text-gray-900">{t('pharmacyAdminAdverseReactions.noReactions')}</h3>
             <p className="mt-1 text-sm text-gray-600">
               {filterSeverity !== "all" || filterResolved !== "all"
-                ? "No adverse reactions match your filters"
-                : "No adverse reactions reported yet"}
+                ? t('pharmacyAdminAdverseReactions.noMatchFilters')
+                : t('pharmacyAdminAdverseReactions.noReported')}
             </p>
           </div>
         )}

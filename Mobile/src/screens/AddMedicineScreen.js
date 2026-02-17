@@ -1,28 +1,57 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Picker } from 'react-native';
-import { Card, Button, TextInput } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { Card, Button, TextInput, Snackbar } from 'react-native-paper';
+import { Picker } from '@react-native-picker/picker';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
+import { medicineAPI } from '../services/api';
 
-const AddMedicineScreen = () => {
+export default function AddMedicineScreen({ route }) {
   const { t } = useLanguage();
   const navigation = useNavigation();
+  const { medicine } = route?.params || {}; // For edit mode
+  
+  const isEditMode = !!medicine;
+  
   const [formData, setFormData] = useState({
     name: '',
-    scientificName: '',
+    scientific_name: '',
     dosage: '',
     frequency: 'once_daily',
     times: ['08:00'],
     stock: '',
-    prescribedFor: '',
-    provider: '',
+    prescribed_for: '',
+    doctor: '',
     notes: '',
-    reminderEnabled: true,
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: '',
+    reminder_enabled: true,
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: '',
     instructions: '',
   });
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' });
+
+  // Load medicine data if editing
+  useEffect(() => {
+    if (medicine && isEditMode) {
+      setFormData({
+        name: medicine.name || '',
+        scientific_name: medicine.scientific_name || '',
+        dosage: medicine.dosage || '',
+        frequency: medicine.frequency || 'once_daily',
+        times: medicine.times || ['08:00'],
+        stock: medicine.stock?.toString() || '',
+        prescribed_for: medicine.prescribed_for || '',
+        doctor: medicine.doctor || '',
+        notes: medicine.notes || '',
+        reminder_enabled: medicine.reminder_enabled !== false,
+        start_date: medicine.start_date || new Date().toISOString().split('T')[0],
+        end_date: medicine.end_date || '',
+        instructions: medicine.instructions || '',
+      });
+    }
+  }, [medicine, isEditMode]);
 
   const frequencies = [
     { label: t('addMedicine.onceDaily'), value: 'once_daily' },
@@ -39,22 +68,33 @@ const AddMedicineScreen = () => {
       ...prev,
       [field]: value
     }));
+    // Clear error for this field
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: null }));
+    }
   };
 
   const validateForm = () => {
+    const newErrors = {};
+
     if (!formData.name.trim()) {
-      Alert.alert(t('common.error'), t('addMedicine.medicineNameRequired'));
-      return false;
+      newErrors.name = t('addMedicine.medicineNameRequired');
     }
     if (!formData.dosage.trim()) {
-      Alert.alert(t('common.error'), t('addMedicine.dosageRequired'));
-      return false;
+      newErrors.dosage = t('addMedicine.dosageRequired');
     }
     if (!formData.stock.trim()) {
-      Alert.alert(t('common.error'), t('addMedicine.stockRequired'));
-      return false;
+      newErrors.stock = t('addMedicine.stockRequired');
+    } else if (isNaN(parseInt(formData.stock))) {
+      newErrors.stock = t('addMedicine.stockMustBeNumber');
     }
-    return true;
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const showSnackbar = (message, type = 'success') => {
+    setSnackbar({ visible: true, message, type });
   };
 
   const handleSubmit = async () => {
@@ -62,15 +102,43 @@ const AddMedicineScreen = () => {
 
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      Alert.alert(t('common.success'), t('addMedicine.success'));
-      
-      // Navigate back to medicines list
-      navigation.goBack();
+      const medicineData = {
+        name: formData.name,
+        scientific_name: formData.scientific_name,
+        dosage: formData.dosage,
+        frequency: formData.frequency,
+        times: formData.times,
+        duration: parseInt(formData.stock) || 30,
+        stock_count: parseInt(formData.stock) || 30,
+        prescribed_for: formData.prescribed_for,
+        prescribing_doctor: formData.doctor,
+        notes: formData.notes,
+        reminder_enabled: formData.reminder_enabled,
+        start_date: formData.start_date,
+        end_date: formData.end_date || null,
+        instructions: formData.instructions,
+      };
+
+      if (isEditMode) {
+        // Update existing medicine
+        await medicineAPI.update(medicine.id, medicineData);
+        showSnackbar(t('notifications.medicineUpdateSuccess'), 'success');
+      } else {
+        // Create new medicine
+        await medicineAPI.create(medicineData);
+        showSnackbar(t('notifications.medicineAddSuccess'), 'success');
+      }
+
+      // Wait a bit for user to see the message
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
     } catch (error) {
-      Alert.alert(t('common.error'), t('addMedicine.error'));
+      console.error('Error saving medicine:', error);
+      showSnackbar(
+        error.message || t('addMedicine.error'),
+        'error'
+      );
     } finally {
       setLoading(false);
     }
@@ -101,47 +169,68 @@ const AddMedicineScreen = () => {
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('addMedicine.title')}</Text>
-          <Text style={styles.subtitle}>{t('addMedicine.subtitle')}</Text>
+          <Text style={styles.title}>
+            {isEditMode ? t('common.edit') + ' ' + t('medicines.title') : t('addMedicine.title')}
+          </Text>
+          <Text style={styles.subtitle}>
+            {isEditMode ? t('addMedicine.editSubtitle') : t('addMedicine.subtitle')}
+          </Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           <Card style={styles.card}>
             <View style={styles.cardContent}>
-              <Text style={styles.sectionTitle}>{t('addMedicine.medicineName')}</Text>
               <TextInput
-                label={t('addMedicine.medicinePlaceholder')}
+                label={t('addMedicine.medicineName')}
+                placeholder={t('addMedicine.medicinePlaceholder')}
                 value={formData.name}
                 onChangeText={(value) => handleInputChange('name', value)}
+                disabled={loading}
+                error={!!errors.name}
+                mode="outlined"
                 style={styles.input}
               />
+              {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
 
               <TextInput
                 label={t('medicines.scientificName')}
-                value={formData.scientificName}
-                onChangeText={(value) => handleInputChange('scientificName', value)}
+                placeholder={t('addMedicine.scientificNamePlaceholder')}
+                value={formData.scientific_name}
+                onChangeText={(value) => handleInputChange('scientific_name', value)}
+                disabled={loading}
+                mode="outlined"
                 style={styles.input}
               />
 
               <View style={styles.row}>
-                <View style={[styles.inputGroup, styles.halfWidth]}>
+                <View style={styles.halfWidth}>
                   <TextInput
                     label={t('addMedicine.dosage')}
+                    placeholder={t('addMedicine.dosagePlaceholder')}
                     value={formData.dosage}
                     onChangeText={(value) => handleInputChange('dosage', value)}
+                    disabled={loading}
+                    error={!!errors.dosage}
+                    mode="outlined"
                     style={styles.input}
                   />
+                  {errors.dosage && <Text style={styles.errorText}>{errors.dosage}</Text>}
                 </View>
 
-                <View style={[styles.inputGroup, styles.halfWidth]}>
+                <View style={styles.halfWidth}>
                   <TextInput
                     label={t('addMedicine.stock')}
+                    placeholder={t('addMedicine.stockPlaceholder')}
                     value={formData.stock}
                     onChangeText={(value) => handleInputChange('stock', value)}
+                    disabled={loading}
                     keyboardType="numeric"
+                    error={!!errors.stock}
+                    mode="outlined"
                     style={styles.input}
                   />
+                  {errors.stock && <Text style={styles.errorText}>{errors.stock}</Text>}
                 </View>
               </View>
 
@@ -192,24 +281,33 @@ const AddMedicineScreen = () => {
 
               <TextInput
                 label={t('addMedicine.prescribedFor')}
-                value={formData.prescribedFor}
-                onChangeText={(value) => handleInputChange('prescribedFor', value)}
+                placeholder={t('addMedicine.prescribedForPlaceholder')}
+                value={formData.prescribed_for}
+                onChangeText={(value) => handleInputChange('prescribed_for', value)}
+                disabled={loading}
+                mode="outlined"
                 style={styles.input}
               />
 
               <TextInput
-                label={t('addMedicine.provider')}
-                value={formData.provider}
-                onChangeText={(value) => handleInputChange('provider', value)}
+                label={t('addMedicine.doctor')}
+                placeholder={t('addMedicine.doctorPlaceholder')}
+                value={formData.doctor}
+                onChangeText={(value) => handleInputChange('doctor', value)}
+                disabled={loading}
+                mode="outlined"
                 style={styles.input}
               />
 
               <TextInput
                 label={t('addMedicine.notes')}
+                placeholder={t('addMedicine.instructionsPlaceholder')}
                 value={formData.notes}
                 onChangeText={(value) => handleInputChange('notes', value)}
+                disabled={loading}
                 multiline
                 numberOfLines={3}
+                mode="outlined"
                 style={styles.input}
               />
             </View>
@@ -232,14 +330,27 @@ const AddMedicineScreen = () => {
               loading={loading}
               disabled={loading}
             >
-              {t('addMedicine.submit')}
+              {loading ? t('addMedicine.submitting') : (isEditMode ? t('common.update') : t('addMedicine.submit'))}
             </Button>
           </View>
         </View>
       </View>
+
+      {/* Snackbar for messages */}
+      <Snackbar
+        visible={snackbar.visible}
+        onDismiss={() => setSnackbar({ visible: false, message: '', type: 'success' })}
+        duration={3000}
+        style={[
+          styles.snackbar,
+          snackbar.type === 'error' && styles.snackbarError,
+        ]}
+      >
+        {snackbar.message}
+      </Snackbar>
     </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -354,7 +465,18 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flex: 1,
+    backgroundColor: '#0d9488',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#ef4444',
+    marginTop: -4,
+    marginBottom: 8,
+  },
+  snackbar: {
+    backgroundColor: '#10b981',
+  },
+  snackbarError: {
+    backgroundColor: '#ef4444',
   },
 });
-
-export default AddMedicineScreen;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -6,6 +7,8 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageProvider } from './src/i18n/LanguageContext';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 
 // Import screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -22,27 +25,34 @@ import FoodAdvice from './src/screens/FoodAdvice';
 import InteractionChecker from './src/screens/InteractionChecker';
 import ContraIndications from './src/screens/ContraIndications';
 import NotificationCenter from './src/screens/NotificationCenter';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
+const AuthStack = createStackNavigator();
 
+// Auth Stack for login/signup
+function AuthStackScreens() {
+  return (
+    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="Signup" component={SignupScreen} />
+      <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    </AuthStack.Navigator>
+  );
+}
+
+// Main Tab Navigator for authenticated users
 function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
-          else if (route.name === 'Dashboard') iconName = focused ? 'grid' : 'grid-outline';
+          if (route.name === 'Dashboard') iconName = focused ? 'grid' : 'grid-outline';
           else if (route.name === 'Medicines') iconName = focused ? 'medkit' : 'medkit-outline';
-          else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
           else if (route.name === 'Analytics') iconName = focused ? 'bar-chart' : 'bar-chart-outline';
-          else if (route.name === 'DoseHistory') iconName = focused ? 'clock' : 'clock-outline';
-          else if (route.name === 'SafetyCheck') iconName = focused ? 'shield-check' : 'shield-check-outline';
-          else if (route.name === 'FoodAdvice') iconName = focused ? 'restaurant' : 'restaurant-outline';
-          else if (route.name === 'InteractionChecker') iconName = focused ? 'pulse' : 'pulse-outline';
-          else if (route.name === 'ContraIndications') iconName = focused ? 'alert' : 'alert-outline';
-          else if (route.name === 'Notifications') iconName = focused ? 'notifications' : 'notifications-outline';
+          else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
           else iconName = 'help';
           
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -52,42 +62,74 @@ function MainTabs() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen 
+        name="Dashboard" 
+        component={DashboardScreen}
+        options={{ tabBarLabel: 'Home' }}
+      />
       <Tab.Screen name="Medicines" component={MedicinesScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
       <Tab.Screen name="Analytics" component={AnalyticsDashboard} />
-      <Tab.Screen name="DoseHistory" component={DoseHistory} />
-      <Tab.Screen name="SafetyCheck" component={SafetyCheck} />
-      <Tab.Screen name="FoodAdvice" component={FoodAdvice} />
-      <Tab.Screen name="InteractionChecker" component={InteractionChecker} />
-      <Tab.Screen name="ContraIndications" component={ContraIndications} />
-      <Tab.Screen name="Notifications" component={NotificationCenter} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
+  );
+}
+
+// Main App Stack with authenticated screens
+function AppStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Screen name="AddMedicine" component={AddMedicineScreen} />
+      <Stack.Screen name="DoseHistory" component={DoseHistory} />
+      <Stack.Screen name="SafetyCheck" component={SafetyCheck} />
+      <Stack.Screen name="FoodAdvice" component={FoodAdvice} />
+      <Stack.Screen name="InteractionChecker" component={InteractionChecker} />
+      <Stack.Screen name="ContraIndications" component={ContraIndications} />
+      <Stack.Screen name="Notifications" component={NotificationCenter} />
+    </Stack.Navigator>
+  );
+}
+
+// Navigation component that handles auth state
+function Navigation() {
+  const { user, isLoading } = useAuth();
+  const { currentTheme, isDark } = useTheme();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: currentTheme.colors.background }}>
+        <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <NavigationContainer>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      {user ? <AppStack /> : <AuthStackScreens />}
+    </NavigationContainer>
+  );
+}
+
+// Themed App Wrapper
+function ThemedApp() {
+  const { currentTheme } = useTheme();
+
+  return (
+    <PaperProvider theme={currentTheme}>
+      <AuthProvider>
+        <Navigation />
+      </AuthProvider>
+    </PaperProvider>
   );
 }
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <PaperProvider>
-        <NavigationContainer>
-          <StatusBar style="auto" />
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Signup" component={SignupScreen} />
-            <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen name="AddMedicine" component={AddMedicineScreen} />
-            <Stack.Screen name="SafetyCheck" component={SafetyCheck} />
-            <Stack.Screen name="FoodAdvice" component={FoodAdvice} />
-            <Stack.Screen name="InteractionChecker" component={InteractionChecker} />
-            <Stack.Screen name="ContraIndications" component={ContraIndications} />
-            <Stack.Screen name="DoseHistory" component={DoseHistory} />
-            <Stack.Screen name="Analytics" component={AnalyticsDashboard} />
-            <Stack.Screen name="Notifications" component={NotificationCenter} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </PaperProvider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <ThemedApp />
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert 
 import { Card, Button } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
-import { medicineAPI } from '../services/apiService';
+import { medicineAPI, safetyAPI } from '../services/api';
 
 const ContraIndications = () => {
   const { t } = useLanguage();
@@ -20,8 +20,8 @@ const ContraIndications = () => {
 
     setLoading(true);
     try {
-      const response = await medicineAPI.getContraIndications(medicineName);
-      setResults(response.data);
+      const response = await safetyAPI.contraindications(medicineName);
+      setResults(response.data || response);
     } catch (error) {
       console.error('Failed to get contraindications:', error);
       Alert.alert(t('common.error'), t('common.failed'));
@@ -46,8 +46,8 @@ const ContraIndications = () => {
       case 'Breastfeeding': return '🤱';
       case 'Pediatrics': return '👶';
       case 'Geriatrics': return '👴';
-      case 'Renal Impairment': return '🫁';
-      case 'Hepatic Impairment': return '🫁';
+      case 'Renal Impairment': return '🪱';
+      case 'Hepatic Impairment': return '🪱';
       case 'Cardiovascular': return '❤️';
       default: return '⚠️';
     }
@@ -78,7 +78,7 @@ const ContraIndications = () => {
               value={medicineName}
               onChangeText={setMedicineName}
               style={styles.searchInput}
-              placeholder="e.g., Aspirin, Lisinopril"
+              placeholder={t('contraIndications.searchPlaceholder')}
               onSubmitEditing={() => {}}
             />
             <Button
@@ -119,7 +119,7 @@ const ContraIndications = () => {
                         style={styles.categoryButton}
                         onPress={() => Alert.alert(
                           `${getCategoryIcon(contraIndication.category)} ${contraIndication.category}`,
-                          contraIndication.categoryDescription || 'No description available'
+                          contraIndication.categoryDescription || t('contraIndications.noDescription')
                         )}
                       >
                         <Text style={styles.categoryText}>{getCategoryIcon(contraIndication.category)}</Text>
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 8,
     padding: 12,
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#f0fdfa',
     borderRadius: 8,
   },
   precautionIcon: {
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   },
   precautionText: {
     fontSize: 14,
-    color: '#1e40af',
+    color: '#115e59',
     flex: 1,
   },
   monitoringSection: {

@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import models
 from apps.doses.models import DoseLog
+from apps.alarms.models import MedicationSchedule, AlarmNotification
 
 
 class AlarmViewSet(viewsets.ViewSet):
@@ -245,4 +246,196 @@ class AlarmViewSet(viewsets.ViewSet):
                 for dose in upcoming_doses
             ],
             'count': upcoming_doses.count()
+        })
+    
+    @action(detail=False, methods=['get'], url_path='reminders')
+    def reminders(self, request):
+        """
+        Main reminders endpoint for the React app to poll.
+        Returns active alarms and notifications in Kinyarwanda.
+        """
+        now = timezone.now()
+        
+        # Get active alarm notifications for the user
+        notifications = AlarmNotification.objects.filter(
+            user=request.user,
+            notification_type='in_app',
+            created_at__gte=now - timezone.timedelta(hours=1)  # Last hour
+        ).select_related('medication_schedule', 'medication_schedule__medicine')
+        
+        # Get upcoming medication schedules
+        upcoming_schedules = MedicationSchedule.objects.filter(
+            user=request.user,
+            is_active=True,
+            alarm_sent=False,
+            scheduled_time__lte=now + timezone.timedelta(minutes=30)
+        ).select_related('medicine')
+        
+        # Get due/overdue schedules
+        due_schedules = MedicationSchedule.objects.filter(
+            user=request.user,
+            is_active=True,
+            scheduled_time__lte=now
+        ).select_related('medicine')
+        
+        # Format notifications
+        formatted_notifications = []
+        for notification in notifications:
+            formatted_notifications.append({
+                'id': notification.id,
+                'title': notification.title,  # Already in Kinyarwanda
+                'message': notification.message,  # Already in Kinyarwanda
+                'type': 'notification',
+                'created_at': notification.created_at.isoformat(),
+                'medicine_name': notification.medication_schedule.medicine.name if notification.medication_schedule else None,
+                'scheduled_time': notification.medication_schedule.scheduled_time.isoformat() if notification.medication_schedule else None,
+                'is_overdue': notification.medication_schedule.scheduled_time < now if notification.medication_schedule else False
+            })
+        
+        # Format upcoming schedules
+        formatted_upcoming = []
+        for schedule in upcoming_schedules:
+            minutes_until = int((schedule.scheduled_time - now).total_seconds() / 60)
+            formatted_upcoming.append({
+                'id': f"schedule_{schedule.id}",
+                'title': "Igihe cyo gufata umuti kigeze",
+                'message': f"{schedule.medicine.name} - {schedule.medicine.dosage or ''}".strip(),
+                'type': 'upcoming',
+                'minutes_until': minutes_until,
+                'scheduled_time': schedule.scheduled_time.isoformat(),
+                'medicine_name': schedule.medicine.name,
+                'dosage': schedule.medicine.dosage
+            })
+        
+        # Format due schedules
+        formatted_due = []
+        for schedule in due_schedules:
+            is_overdue = schedule.scheduled_time < now
+            formatted_due.append({
+                'id': f"schedule_{schedule.id}",
+                'title': "Igihe cyo gufata umuti kigeze",
+                'message': f"{schedule.medicine.name} - {schedule.medicine.dosage or ''}".strip(),
+                'type': 'due',
+                'is_overdue': is_overdue,
+                'scheduled_time': schedule.scheduled_time.isoformat(),
+                'medicine_name': schedule.medicine.name,
+                'dosage': schedule.medicine.dosage,
+                'group_id': f"schedule_{schedule.id}"
+            })
+        
+        # Combine all reminders
+        all_reminders = formatted_notifications + formatted_upcoming + formatted_due
+        
+        # Sort by urgency (overdue first, then upcoming)
+        all_reminders.sort(key=lambda x: (
+            0 if x.get('is_overdue') else 1 if x.get('minutes_until', 999) < 5 else 2,
+            x.get('scheduled_time', '')
+        ))
+        
+        return Response({
+            'reminders': all_reminders,
+            'count': len(all_reminders),
+            'has_active_alarms': len(formatted_due) > 0,
+            'timestamp': now.isoformat()
+        })
+    
+    @action(detail=False, methods=['post'], url_path='reminders/(?P<reminder_id>[^/.]+)/acknowledge')
+    def acknowledge_reminder(self, request, reminder_id=None):
+        """Acknowledge a reminder (mark as seen)"""
+        try:
+            # Try to find notification first
+            notification = AlarmNotification.objects.get(
+                id=reminder_id,
+                user=request.user
+            )
+            notification.acknowledged_at = timezone.now()
+            notification.save(update_fields=['acknowledged_at'])
+            
+            return Response({'status': 'acknowledged'})
+            
+        except AlarmNotification.DoesNotExist:
+            # Try to find schedule and mark alarm as sent
+            if reminder_id.startswith('schedule_'):
+                schedule_id = reminder_id.split('_')[-1]
+                try:
+                    schedule = MedicationSchedule.objects.get(
+                        id=schedule_id,
+                        user=request.user
+                    )
+                    schedule.mark_alarm_sent()
+                    return Response({'status': 'acknowledged'})
+                except MedicationSchedule.DoesNotExist:
+                    pass
+            
+            return Response(
+                {'error': 'Reminder not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=False, methods=['get'])
+    def diagnose(self, request):
+        """Diagnostic endpoint - shows alarm system status"""
+        from apps.medicines.models import Medicine
+        import pytz
+        
+        now = timezone.now()
+        
+        try:
+            user_profile = request.user.userprofile
+            user_tz_str = user_profile.timezone or 'UTC'
+            user_tz = pytz.timezone(user_tz_str)
+        except:
+            user_tz_str = 'UTC'
+            user_tz = pytz.UTC
+        
+        # Get user's local time
+        local_now = now.astimezone(user_tz)
+        
+        # Count medicines and schedules
+        medicines_count = Medicine.objects.filter(user=request.user, is_active=True).count()
+        schedules_count = MedicationSchedule.objects.filter(user=request.user).count()
+        pending_schedules = MedicationSchedule.objects.filter(
+            user=request.user,
+            is_active=True,
+            alarm_sent=False,
+            scheduled_time__lte=now + timezone.timedelta(minutes=5)
+        ).count()
+        
+        # Get next scheduled alarm
+        next_schedule = MedicationSchedule.objects.filter(
+            user=request.user,
+            is_active=True,
+            alarm_sent=False,
+            scheduled_time__gt=now
+        ).order_by('scheduled_time').first()
+        
+        # Get next local time medicine
+        next_local = None
+        if next_schedule:
+            next_local = next_schedule.local_time.strftime('%Y-%m-%d %H:%M:%S') if next_schedule.local_time else "N/A"
+        
+        # Check for dose logs
+        pending_doses = DoseLog.objects.filter(
+            medicine__user=request.user,
+            status='pending'
+        ).count()
+        
+        return Response({
+            'timestamp': now.isoformat(),
+            'server_time': now.strftime('%Y-%m-%d %H:%M:%S UTC'),
+            'user_timezone': user_tz_str,
+            'user_local_time': local_now.strftime('%Y-%m-%d %H:%M:%S'),
+            'medicines_count': medicines_count,
+            'total_schedules': schedules_count,
+            'pending_schedules_now': pending_schedules,
+            'pending_dose_logs': pending_doses,
+            'next_alarm': {
+                'timestamp': next_schedule.scheduled_time.isoformat() if next_schedule else None,
+                'utc_time': next_schedule.scheduled_time.strftime('%Y-%m-%d %H:%M:%S UTC') if next_schedule else None,
+                'local_time': next_local,
+                'medicine_name': next_schedule.medicine.name if next_schedule else None,
+                'minutes_away': round((next_schedule.scheduled_time - now).total_seconds() / 60) if next_schedule else None,
+            },
+            'signal_handler_active': True,  # If this endpoint works, signals are working
+            'frontend_should_poll': 'GET /api/alarms/active/ every 30 seconds',
         })
