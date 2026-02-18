@@ -58,6 +58,18 @@ class Medicine(models.Model):
     instructions = models.TextField(blank=True, null=True, help_text="Special instructions for taking medicine")
     notes = models.TextField(blank=True, null=True, help_text="Free-text notes about the medication")
     reminder_enabled = models.BooleanField(default=True)
+    medicine_photo = models.ImageField(
+        upload_to='medicine_photos/%Y/%m/',
+        blank=True,
+        null=True,
+        help_text="Photo of the medicine packaging or pill"
+    )
+    barcode = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="UPC/EAN barcode number"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

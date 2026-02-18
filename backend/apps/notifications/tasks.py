@@ -62,12 +62,25 @@ def send_notification(user_id, notification_type, title, message, data=None):
             except Exception as e:
                 logger.error(f"Failed to send email to {user.email}: {str(e)}")
         
-        # Push notification (in a real app, you'd integrate with FCM/APNS)
+        # Push notification via Firebase Cloud Messaging
         if notification_settings.push_notifications:
             try:
-                # Simulate push notification - in production, integrate with push service
-                logger.info(f"Push notification sent to {user.username}: {title}")
-                success_count += 1
+                from .fcm import send_push_to_user
+                push_count = send_push_to_user(
+                    user=user,
+                    title=title,
+                    body=message,
+                    data={
+                        'type': notification_type,
+                        'notification_id': str(notification.id),
+                        **(data or {}),
+                    },
+                )
+                if push_count > 0:
+                    success_count += 1
+                    logger.info(f"FCM push sent to {push_count} device(s) for {user.username}")
+                else:
+                    logger.info(f"No active FCM devices for {user.username}")
             except Exception as e:
                 logger.error(f"Failed to send push notification to {user.username}: {str(e)}")
         

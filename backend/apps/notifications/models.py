@@ -46,6 +46,32 @@ class Notification(models.Model):
         return f"{self.user.username} - {self.title}"
 
 
+class FCMDevice(models.Model):
+    """Stores Firebase Cloud Messaging device tokens for push notifications."""
+    DEVICE_TYPES = (
+        ('web', 'Web Browser'),
+        ('android', 'Android'),
+        ('ios', 'iOS'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fcm_devices')
+    registration_token = models.TextField(unique=True)
+    device_type = models.CharField(max_length=10, choices=DEVICE_TYPES, default='web')
+    device_name = models.CharField(max_length=255, blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.device_type} ({self.registration_token[:20]}...)"
+
+
 class NotificationSettings(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='notification_settings')
     email_notifications = models.BooleanField(default=True)

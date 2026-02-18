@@ -275,6 +275,50 @@ export const medicineAPI = {
     }
     return await apiCall(`/medicines/search_by_name/?${params.toString()}`);
   },
+
+  // Barcode lookup via OpenFDA
+  barcodeLookup: async (barcode) => {
+    return await apiCall(`/medicines/barcode-lookup/?barcode=${encodeURIComponent(barcode)}`);
+  },
+
+  // External medicine search
+  searchExternal: async (query) => {
+    return await apiCall(`/medicines/medicine-search-external/?q=${encodeURIComponent(query)}`);
+  },
+
+  // Upload medicine photo (multipart)
+  uploadPhoto: async (medicineId, uri, fileName, mimeType) => {
+    const token = await getAuthToken();
+    const url = `${API_BASE_URL}/medicines/${medicineId}/upload-photo/`;
+    const formData = new FormData();
+    formData.append('photo', {
+      uri,
+      name: fileName || 'medicine_photo.jpg',
+      type: mimeType || 'image/jpeg',
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...(token && { 'Authorization': `Token ${token}` }),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to upload photo');
+    }
+
+    return await response.json();
+  },
+
+  // Delete medicine photo
+  deletePhoto: async (medicineId) => {
+    return await apiCall(`/medicines/${medicineId}/delete-photo/`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ============ DOSE LOGGING API ============
@@ -478,6 +522,98 @@ export const notificationAPI = {
       method: 'POST',
     });
   },
+
+  // Delete notification
+  delete: async (notificationId) => {
+    return await apiCall(`/notifications/${notificationId}/`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// ============ FCM DEVICE REGISTRATION API ============
+export const fcmDeviceAPI = {
+  // Register FCM device token
+  register: async (registrationId, deviceType = 'android') => {
+    return await apiCall('/fcm-devices/', {
+      method: 'POST',
+      body: JSON.stringify({
+        registration_id: registrationId,
+        type: deviceType,
+      }),
+    });
+  },
+
+  // Unregister device
+  unregister: async (registrationId) => {
+    return await apiCall('/fcm-devices/unregister/', {
+      method: 'POST',
+      body: JSON.stringify({ registration_id: registrationId }),
+    });
+  },
+
+  // Send test push
+  sendTestPush: async () => {
+    return await apiCall('/fcm-devices/test-push/', {
+      method: 'POST',
+    });
+  },
+};
+
+// ============ SIDE EFFECT / SYMPTOM TRACKING API ============
+export const sideEffectAPI = {
+  // Get all side effects for the current patient
+  getAll: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.severity) params.append('severity', filters.severity);
+    if (filters.reaction_type) params.append('reaction_type', filters.reaction_type);
+    if (filters.is_resolved !== undefined) params.append('is_resolved', filters.is_resolved);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return await apiCall(`/side-effects/${query}`);
+  },
+
+  // Log a new side effect
+  create: async (data) => {
+    return await apiCall('/side-effects/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Get a single side effect by ID
+  getById: async (id) => {
+    return await apiCall(`/side-effects/${id}/`);
+  },
+
+  // Update a side effect (e.g., mark as resolved)
+  update: async (id, data) => {
+    return await apiCall(`/side-effects/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+// ============ EXPORT REPORTS API ============
+export const exportReportAPI = {
+  // Download PDF report (returns blob-like response)
+  downloadPDF: async (reportType, days = 30) => {
+    const token = await getAuthToken();
+    const url = `${API_BASE_URL}/analytics/reports/download/?type=${reportType}&days=${days}`;
+
+    const response = await fetch(url, {
+      headers: {
+        ...(token && { 'Authorization': `Token ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to generate report');
+    }
+
+    return response;
+  },
 };
 
 // ============ DASHBOARD API ============
@@ -496,5 +632,8 @@ export default {
   medicineInfoAPI,
   userAPI,
   notificationAPI,
+  fcmDeviceAPI,
+  sideEffectAPI,
+  exportReportAPI,
   dashboardAPI,
 };

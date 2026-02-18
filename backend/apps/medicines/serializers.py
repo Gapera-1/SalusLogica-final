@@ -93,7 +93,9 @@ class MedicineSerializer(serializers.ModelSerializer):
             'food_to_avoid', 'food_advised', 'start_date', 'end_date',
             'taken_times', 'last_notified', 'is_active', 'completed',
             'stock_count', 'prescribed_for', 'prescribing_doctor',
-            'instructions', 'notes', 'reminder_enabled', 'created_at', 'updated_at'
+            'instructions', 'notes', 'reminder_enabled',
+            'medicine_photo', 'barcode',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     

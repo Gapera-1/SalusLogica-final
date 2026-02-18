@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,10 +26,12 @@ import InteractionChecker from './src/screens/InteractionChecker';
 import ContraIndications from './src/screens/ContraIndications';
 import NotificationCenter from './src/screens/NotificationCenter';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
+import ExportReportsScreen from './src/screens/ExportReportsScreen';
+import SideEffectTrackerScreen from './src/screens/SideEffectTrackerScreen';
 
 const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
-const AuthStack = createStackNavigator();
+const Stack = createNativeStackNavigator();
+const AuthStack = createNativeStackNavigator();
 
 // Auth Stack for login/signup
 function AuthStackScreens() {
@@ -86,6 +88,8 @@ function AppStack() {
       <Stack.Screen name="InteractionChecker" component={InteractionChecker} />
       <Stack.Screen name="ContraIndications" component={ContraIndications} />
       <Stack.Screen name="Notifications" component={NotificationCenter} />
+      <Stack.Screen name="ExportReports" component={ExportReportsScreen} />
+      <Stack.Screen name="SideEffects" component={SideEffectTrackerScreen} />
     </Stack.Navigator>
   );
 }

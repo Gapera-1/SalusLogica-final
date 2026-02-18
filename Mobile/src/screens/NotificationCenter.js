@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Card, Button, Avatar, Checkbox } from 'react-native-paper';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { Card, Button, Avatar, Checkbox, Switch } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
-import { notificationAPI } from '../services/api';
+import { notificationAPI, fcmDeviceAPI } from '../services/api';
 
 const NotificationCenter = () => {
   const { t } = useLanguage();
@@ -11,6 +11,8 @@ const NotificationCenter = () => {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
 
   useEffect(() => {
     loadNotifications();
@@ -62,6 +64,49 @@ const NotificationCenter = () => {
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
       Alert.alert(t('common.error'), t('common.failed'));
+    }
+  };
+
+  const handleDelete = async (notificationId) => {
+    try {
+      await notificationAPI.delete(notificationId);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+      Alert.alert(t('common.error'), t('common.failed'));
+    }
+  };
+
+  const handleTogglePush = async () => {
+    setPushLoading(true);
+    try {
+      if (pushEnabled) {
+        // Unregister - in a real app you'd pass the stored token
+        setPushEnabled(false);
+        Alert.alert(t('common.success'), t('notifications.pushDisabled'));
+      } else {
+        // In a real Expo app, you would:
+        // 1. Register for push via Notifications.getExpoPushTokenAsync()
+        // 2. Send token to backend via fcmDeviceAPI.register(token, Platform.OS)
+        // For now, simulate registration
+        setPushEnabled(true);
+        Alert.alert(t('common.success'), t('notifications.pushEnabled'));
+      }
+    } catch (error) {
+      console.error('Push toggle error:', error);
+      Alert.alert(t('common.error'), t('notifications.pushToggleError'));
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    try {
+      const result = await fcmDeviceAPI.sendTestPush();
+      Alert.alert(t('common.success'), t('notifications.testPushSent'));
+    } catch (error) {
+      console.error('Test push error:', error);
+      Alert.alert(t('common.error'), t('notifications.testPushError'));
     }
   };
 
@@ -119,6 +164,35 @@ const NotificationCenter = () => {
             {filteredNotifications.length} {t('notifications.notifications')}
           </Text>
         </View>
+
+        {/* Push Notification Settings */}
+        <Card style={styles.pushCard}>
+          <View style={styles.pushContent}>
+            <View style={styles.pushHeader}>
+              <Text style={styles.pushIcon}>🔔</Text>
+              <View style={styles.pushInfo}>
+                <Text style={styles.pushTitle}>{t('notifications.pushNotifications')}</Text>
+                <Text style={styles.pushDesc}>{t('notifications.pushDescription')}</Text>
+              </View>
+              <Switch
+                value={pushEnabled}
+                onValueChange={handleTogglePush}
+                disabled={pushLoading}
+                color="#0d9488"
+              />
+            </View>
+            {pushEnabled && (
+              <Button
+                mode="outlined"
+                onPress={handleTestPush}
+                style={styles.testPushButton}
+                compact
+              >
+                {t('notifications.sendTestPush')}
+              </Button>
+            )}
+          </View>
+        </Card>
 
         {/* Filter Tabs */}
         <View style={styles.filterContainer}>
@@ -331,6 +405,39 @@ const styles = StyleSheet.create({
   },
   markAllButton: {
     flex: 1,
+  },
+  pushCard: {
+    marginBottom: 16,
+    borderRadius: 12,
+  },
+  pushContent: {
+    padding: 16,
+  },
+  pushHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  pushIcon: {
+    fontSize: 28,
+  },
+  pushInfo: {
+    flex: 1,
+  },
+  pushTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 2,
+  },
+  pushDesc: {
+    fontSize: 12,
+    color: '#6b7280',
+    lineHeight: 16,
+  },
+  testPushButton: {
+    marginTop: 12,
+    borderColor: '#0d9488',
   },
 });
 

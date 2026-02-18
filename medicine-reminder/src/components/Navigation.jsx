@@ -160,6 +160,39 @@ const Navigation = ({ setIsAuthenticated }) => {
                 >
                   {t('navigation.foodAdvice')}
                 </Link>
+
+                <Link
+                  to="/side-effects"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive("/side-effects")
+                      ? "bg-amber-50 text-amber-700"
+                      : "text-gray-600 hover:text-amber-700 hover:bg-amber-50"
+                  }`}
+                >
+                  {t('navigation.sideEffects')}
+                </Link>
+
+                <Link
+                  to="/export-reports"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive("/export-reports")
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                  }`}
+                >
+                  {t('navigation.exportReports')}
+                </Link>
+
+                <Link
+                  to="/notifications"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive("/notifications")
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                  }`}
+                >
+                  {t('navigation.notifications')}
+                </Link>
               </>
             )}
 
@@ -197,6 +230,17 @@ const Navigation = ({ setIsAuthenticated }) => {
                   }`}
                 >
                   {t('navigation.adverseReactions')}
+                </Link>
+
+                <Link
+                  to="/export-reports"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive("/export-reports")
+                      ? "bg-teal-50 text-teal-700"
+                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                  }`}
+                >
+                  {t('navigation.exportReports')}
                 </Link>
               </>
             )}

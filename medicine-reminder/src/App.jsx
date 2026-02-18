@@ -27,6 +27,9 @@ import EditMedicine from "./pages/EditMedicine";
 import ContraIndicationsPage from "./pages/ContraIndicationsPage";
 import FoodAdvice from "./pages/FoodAdvice";
 import SafetyCheck from "./pages/SafetyCheck";
+import ExportReports from "./pages/ExportReports";
+import SideEffectTracker from "./pages/SideEffectTracker";
+import NotificationCenter from "./pages/NotificationCenter";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -370,6 +373,48 @@ function App() {
                 redirectPath="/pharmacy-admin/dashboard"
               >
                 <SafetyCheck />
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/export-reports"
+            element={
+              <RoleProtectedRoute
+                isAuthenticated={isAuthenticated}
+                user={user}
+                allowedRoles={["patient", "pharmacy_admin"]}
+                redirectPath="/login"
+              >
+                <ExportReports setIsAuthenticated={setIsAuthenticated} />
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/side-effects"
+            element={
+              <RoleProtectedRoute
+                isAuthenticated={isAuthenticated}
+                user={user}
+                allowedRoles={["patient"]}
+                redirectPath="/pharmacy-admin/dashboard"
+              >
+                <SideEffectTracker setIsAuthenticated={setIsAuthenticated} />
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/notifications"
+            element={
+              <RoleProtectedRoute
+                isAuthenticated={isAuthenticated}
+                user={user}
+                allowedRoles={["patient"]}
+                redirectPath="/pharmacy-admin/dashboard"
+              >
+                <NotificationCenter setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />

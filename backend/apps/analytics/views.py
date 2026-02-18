@@ -1,10 +1,11 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes as perm_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.utils import timezone
+from django.http import HttpResponse
 from django.db.models import Avg, Sum, Count
 from datetime import timedelta
 
@@ -247,3 +248,97 @@ class ExportRequestViewSet(viewsets.ModelViewSet):
                 {'type': 'full_data', 'name': 'Full Data Export'},
             ]
         })
+
+
+# ─────────────── PDF Report Download View ───────────────────
+
+@api_view(['GET'])
+@perm_classes([IsAuthenticated])
+def download_pdf_report(request):
+    """
+    Generate and download a PDF report.
+
+    Query params:
+      - type: medicine_list | dose_history | adherence_report | full_report
+      - days: number of days to include (default 30)
+    """
+    from .pdf_reports import generate_pdf_report
+
+    report_type = request.query_params.get('type', 'full_report')
+    days = request.query_params.get('days', '30')
+
+    valid_types = ['medicine_list', 'dose_history', 'adherence_report', 'full_report']
+    if report_type not in valid_types:
+        return Response(
+            {'error': f'Invalid report type. Choose from: {", ".join(valid_types)}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        days_int = int(days)
+        if days_int < 1 or days_int > 365:
+            days_int = 30
+    except (ValueError, TypeError):
+        days_int = 30
+
+    try:
+        pdf_buffer = generate_pdf_report(
+            user=request.user,
+            report_type=report_type,
+            parameters={'days': days_int},
+        )
+
+        filename = f"saluslogica_{report_type}_{timezone.now().strftime('%Y%m%d')}.pdf"
+
+        response = HttpResponse(pdf_buffer.read(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to generate report: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+@perm_classes([IsAuthenticated])
+def report_types(request):
+    """Return available PDF report types with descriptions."""
+    return Response({
+        'report_types': [
+            {
+                'type': 'medicine_list',
+                'name': 'Medication List',
+                'description': 'Complete list of all your medications with dosage, frequency, and status.',
+                'icon': 'pills',
+            },
+            {
+                'type': 'dose_history',
+                'name': 'Dose History',
+                'description': 'Detailed log of all scheduled doses and their status (taken, missed, snoozed).',
+                'icon': 'history',
+            },
+            {
+                'type': 'adherence_report',
+                'name': 'Adherence Statistics',
+                'description': 'Adherence rates per medicine with daily breakdown and visual progress bars.',
+                'icon': 'chart-bar',
+            },
+            {
+                'type': 'full_report',
+                'name': 'Complete Health Report',
+                'description': 'Comprehensive report combining medications, dose history, and adherence analysis.',
+                'icon': 'file-medical',
+            },
+        ],
+        'period_options': [
+            {'value': 7, 'label': 'Last 7 days'},
+            {'value': 14, 'label': 'Last 14 days'},
+            {'value': 30, 'label': 'Last 30 days'},
+            {'value': 60, 'label': 'Last 60 days'},
+            {'value': 90, 'label': 'Last 90 days'},
+            {'value': 180, 'label': 'Last 6 months'},
+            {'value': 365, 'label': 'Last year'},
+        ],
+    })

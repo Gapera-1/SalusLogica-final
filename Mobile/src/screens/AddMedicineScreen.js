@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image, Alert, Modal } from 'react-native';
 import { Card, Button, TextInput, Snackbar } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -31,6 +31,10 @@ export default function AddMedicineScreen({ route }) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' });
+  const [showScanner, setShowScanner] = useState(false);
+  const [barcodeLookupLoading, setBarcodeLookupLoading] = useState(false);
+  const [barcodeResult, setBarcodeResult] = useState(null);
+  const [medicinePhoto, setMedicinePhoto] = useState(null); // { uri, fileName, mimeType }
 
   // Load medicine data if editing
   useEffect(() => {
@@ -97,6 +101,110 @@ export default function AddMedicineScreen({ route }) {
     setSnackbar({ visible: true, message, type });
   };
 
+  // Handle barcode scan result
+  const handleBarcodeScan = async (barcode) => {
+    setShowScanner(false);
+    setBarcodeLookupLoading(true);
+    setBarcodeResult(null);
+
+    try {
+      const data = await medicineAPI.barcodeLookup(barcode);
+      if (data && data.name) {
+        setFormData(prev => ({
+          ...prev,
+          name: data.name || prev.name,
+          dosage: data.dosage || prev.dosage,
+          instructions: data.instructions || prev.instructions,
+          notes: data.notes ? `${prev.notes ? prev.notes + '\n' : ''}${data.notes}` : prev.notes,
+        }));
+        setBarcodeResult(data);
+        showSnackbar(t('scanner.autoFillSuccess'), 'success');
+      } else {
+        showSnackbar(t('scanner.notFound'), 'error');
+      }
+    } catch (err) {
+      console.error('Barcode lookup error:', err);
+      showSnackbar(t('scanner.lookupError'), 'error');
+    } finally {
+      setBarcodeLookupLoading(false);
+    }
+  };
+
+  // Manual barcode entry (for devices without camera or as fallback)
+  const handleManualBarcode = () => {
+    Alert.prompt(
+      t('scanner.title'),
+      t('scanner.enterManually'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.search'),
+          onPress: (barcode) => {
+            if (barcode && barcode.trim()) {
+              handleBarcodeScan(barcode.trim());
+            }
+          },
+        },
+      ],
+      'plain-text',
+      '',
+      'number-pad'
+    );
+  };
+
+  // Photo picker using standard React Native approach
+  const handlePickPhoto = async (useCamera = false) => {
+    try {
+      // Dynamic import to avoid crash if expo-image-picker is not installed
+      const ImagePicker = require('expo-image-picker');
+      
+      // Request permissions
+      if (useCamera) {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(t('common.error'), t('medicinePhoto.cameraPermission'));
+          return;
+        }
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(t('common.error'), t('medicinePhoto.galleryPermission'));
+          return;
+        }
+      }
+
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+            allowsEditing: true,
+            aspect: [4, 3],
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+            allowsEditing: true,
+            aspect: [4, 3],
+          });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        setMedicinePhoto({
+          uri: asset.uri,
+          fileName: asset.fileName || 'medicine_photo.jpg',
+          mimeType: asset.mimeType || 'image/jpeg',
+        });
+      }
+    } catch (err) {
+      // expo-image-picker might not be installed
+      console.warn('Image picker not available:', err.message);
+      Alert.alert(
+        t('medicinePhoto.label'),
+        t('medicinePhoto.notAvailable')
+      );
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
@@ -117,15 +225,36 @@ export default function AddMedicineScreen({ route }) {
         start_date: formData.start_date,
         end_date: formData.end_date || null,
         instructions: formData.instructions,
+        barcode: barcodeResult?.barcode || '',
       };
 
       if (isEditMode) {
         // Update existing medicine
         await medicineAPI.update(medicine.id, medicineData);
+
+        // Upload photo if new one selected
+        if (medicinePhoto) {
+          try {
+            await medicineAPI.uploadPhoto(medicine.id, medicinePhoto.uri, medicinePhoto.fileName, medicinePhoto.mimeType);
+          } catch (photoErr) {
+            console.error('Photo upload failed:', photoErr);
+          }
+        }
+
         showSnackbar(t('notifications.medicineUpdateSuccess'), 'success');
       } else {
         // Create new medicine
-        await medicineAPI.create(medicineData);
+        const response = await medicineAPI.create(medicineData);
+
+        // Upload photo after creation
+        if (medicinePhoto && response.id) {
+          try {
+            await medicineAPI.uploadPhoto(response.id, medicinePhoto.uri, medicinePhoto.fileName, medicinePhoto.mimeType);
+          } catch (photoErr) {
+            console.error('Photo upload failed:', photoErr);
+          }
+        }
+
         showSnackbar(t('notifications.medicineAddSuccess'), 'success');
       }
 
@@ -179,6 +308,43 @@ export default function AddMedicineScreen({ route }) {
 
         {/* Form */}
         <View style={styles.form}>
+          {/* Barcode Scanner Toolbar */}
+          <Card style={styles.scannerCard}>
+            <View style={styles.scannerContent}>
+              <Text style={styles.scannerLabel}>📷 {t('scanner.quickFill')}</Text>
+              <View style={styles.scannerButtons}>
+                <Button
+                  mode="contained"
+                  onPress={() => {
+                    // On Android, use Alert.prompt workaround
+                    if (Platform.OS === 'ios') {
+                      handleManualBarcode();
+                    } else {
+                      // Android doesn't support Alert.prompt, show simple input
+                      Alert.alert(
+                        t('scanner.title'),
+                        t('scanner.enterManually'),
+                        [
+                          { text: t('common.cancel'), style: 'cancel' },
+                          { text: 'OK' },
+                        ]
+                      );
+                    }
+                  }}
+                  loading={barcodeLookupLoading}
+                  disabled={barcodeLookupLoading}
+                  style={styles.scanButton}
+                  compact
+                  icon="barcode-scan"
+                >
+                  {t('scanner.scanBarcode')}
+                </Button>
+              </View>
+              {barcodeResult && (
+                <Text style={styles.scanSuccess}>✓ {t('scanner.autoFillSuccess')}</Text>
+              )}
+            </View>
+          </Card>
           <Card style={styles.card}>
             <View style={styles.cardContent}>
               <TextInput
@@ -310,6 +476,41 @@ export default function AddMedicineScreen({ route }) {
                 mode="outlined"
                 style={styles.input}
               />
+
+              {/* Medicine Photo Section */}
+              <View style={styles.photoSection}>
+                <Text style={styles.photoLabel}>{t('medicinePhoto.label')}</Text>
+                <Text style={styles.photoHint}>{t('medicinePhoto.hint')}</Text>
+                
+                {medicinePhoto ? (
+                  <View style={styles.photoPreview}>
+                    <Image source={{ uri: medicinePhoto.uri }} style={styles.photoImage} />
+                    <TouchableOpacity
+                      style={styles.removePhotoButton}
+                      onPress={() => setMedicinePhoto(null)}
+                    >
+                      <Text style={styles.removePhotoText}>✕ {t('medicinePhoto.remove')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.photoButtons}>
+                    <TouchableOpacity
+                      style={styles.photoButton}
+                      onPress={() => handlePickPhoto(true)}
+                    >
+                      <Text style={styles.photoButtonIcon}>📷</Text>
+                      <Text style={styles.photoButtonText}>{t('medicinePhoto.takePhoto')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.photoButton}
+                      onPress={() => handlePickPhoto(false)}
+                    >
+                      <Text style={styles.photoButtonIcon}>🖼️</Text>
+                      <Text style={styles.photoButtonText}>{t('medicinePhoto.fromGallery')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
             </View>
           </Card>
 
@@ -478,5 +679,99 @@ const styles = StyleSheet.create({
   },
   snackbarError: {
     backgroundColor: '#ef4444',
+  },
+  // Barcode scanner styles
+  scannerCard: {
+    marginBottom: 4,
+    borderRadius: 12,
+    backgroundColor: '#f0fdfa',
+  },
+  scannerContent: {
+    padding: 14,
+  },
+  scannerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0d9488',
+    marginBottom: 10,
+  },
+  scannerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  scanButton: {
+    backgroundColor: '#0d9488',
+    borderRadius: 8,
+  },
+  scanSuccess: {
+    marginTop: 8,
+    fontSize: 13,
+    color: '#0d9488',
+    fontWeight: '500',
+  },
+  // Photo styles
+  photoSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  photoLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  photoHint: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginBottom: 10,
+  },
+  photoButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  photoButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    borderStyle: 'dashed',
+  },
+  photoButtonIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  photoButtonText: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  photoPreview: {
+    position: 'relative',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  photoImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  removePhotoText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

@@ -223,6 +223,12 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
+# Firebase Cloud Messaging (FCM) configuration
+# Path to the Firebase service account JSON key file.
+# Download from: Firebase Console → Project Settings → Service Accounts → Generate new private key
+# Set via environment variable: FCM_SERVICE_ACCOUNT_FILE=/path/to/firebase-service-account.json
+FCM_SERVICE_ACCOUNT_FILE = config('FCM_SERVICE_ACCOUNT_FILE', default='')
+
 # Celery beat schedule for periodic tasks
 CELERY_BEAT_SCHEDULE = {
     'check-missed-doses': {

@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from apps.api.views import health_check, api_root
 from . import pharmacy_urls
+from .views import AdverseReactionListCreateView, AdverseReactionDetailView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -19,6 +20,10 @@ urlpatterns = [
     path('api/interactions/', include('apps.interactions.urls')),
     path('api/alarms/', include('apps.alarms.urls')),
     path('api/pharmacy-admin/', include(pharmacy_urls)),
+    
+    # Patient-facing side effect tracking (reuses AdverseReaction model)
+    path('api/side-effects/', AdverseReactionListCreateView.as_view(), name='patient_side_effects'),
+    path('api/side-effects/<int:pk>/', AdverseReactionDetailView.as_view(), name='patient_side_effect_detail'),
 ]
 
 if settings.DEBUG:

@@ -226,6 +226,48 @@ export const medicineAPI = {
     }
     return await apiCall(`/medicines/search_by_name/?${params.toString()}`);
   },
+
+  // Barcode lookup — resolve a UPC/EAN/NDC barcode to medicine details
+  barcodeLookup: async (barcode) => {
+    return await apiCall(`/medicines/barcode-lookup/?barcode=${encodeURIComponent(barcode)}`);
+  },
+
+  // External medicine search by name (OpenFDA)
+  searchExternal: async (query) => {
+    return await apiCall(`/medicines/medicine-search-external/?q=${encodeURIComponent(query)}`);
+  },
+
+  // Upload a photo for a medicine
+  uploadPhoto: async (medicineId, file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    const token = localStorage.getItem('access_token');
+    const url = `${API_BASE_URL}/medicines/${medicineId}/upload-photo/`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...(token && { 'Authorization': `Token ${token}` }),
+      },
+      credentials: 'include',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to upload photo');
+    }
+
+    return await response.json();
+  },
+
+  // Delete a medicine photo
+  deletePhoto: async (medicineId) => {
+    return await apiCall(`/medicines/${medicineId}/delete-photo/`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // Dose Management API
@@ -328,6 +370,48 @@ export const analyticsAPI = {
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
   },
+
+  // Get available PDF report types
+  getReportTypes: async () => {
+    return await apiCall('/analytics/reports/types/');
+  },
+
+  // Download PDF report
+  downloadPDFReport: async (reportType = 'full_report', days = 30) => {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(
+      `${API_BASE_URL}/analytics/reports/download/?type=${reportType}&days=${days}`,
+      {
+        headers: {
+          ...(token && { Authorization: `Token ${token}` }),
+        },
+        credentials: 'include',
+      }
+    );
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to generate report');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+
+    const disposition = response.headers.get('Content-Disposition');
+    let filename = `saluslogica_${reportType}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    if (disposition) {
+      const match = disposition.match(/filename="?(.+?)"?$/);
+      if (match) filename = match[1];
+    }
+
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
 };
 
 // Interaction Checker API
@@ -402,6 +486,37 @@ export const notificationAPI = {
     return await apiCall('/notifications/');
   },
 
+  // Get single notification
+  getById: async (id) => {
+    return await apiCall(`/notifications/${id}/`);
+  },
+
+  // Mark a single notification as read
+  markRead: async (id) => {
+    return await apiCall(`/notifications/${id}/mark_read/`, {
+      method: 'POST',
+    });
+  },
+
+  // Mark all notifications as read
+  markAllRead: async () => {
+    return await apiCall('/notifications/mark_all_read/', {
+      method: 'POST',
+    });
+  },
+
+  // Get unread count
+  getUnreadCount: async () => {
+    return await apiCall('/notifications/unread_count/');
+  },
+
+  // Delete a notification
+  deleteNotification: async (id) => {
+    return await apiCall(`/notifications/${id}/`, {
+      method: 'DELETE',
+    });
+  },
+
   // Get notification settings
   getSettings: async () => {
     return await apiCall('/notifications/settings/');
@@ -423,6 +538,35 @@ export const notificationAPI = {
   // Check for missed dose notifications
   checkMissedDoses: async () => {
     return await apiCall('/notifications/check-missed-doses/');
+  },
+
+  // FCM Device Management
+  registerDevice: async (registrationToken, deviceType = 'web', deviceName = '') => {
+    return await apiCall('/notifications/devices/register/', {
+      method: 'POST',
+      body: JSON.stringify({
+        registration_token: registrationToken,
+        device_type: deviceType,
+        device_name: deviceName,
+      }),
+    });
+  },
+
+  unregisterDevice: async (registrationToken) => {
+    return await apiCall('/notifications/devices/unregister/', {
+      method: 'POST',
+      body: JSON.stringify({ registration_token: registrationToken }),
+    });
+  },
+
+  listDevices: async () => {
+    return await apiCall('/notifications/devices/');
+  },
+
+  sendTestPush: async () => {
+    return await apiCall('/notifications/test-push/', {
+      method: 'POST',
+    });
   },
 };
 
@@ -546,6 +690,40 @@ export const dashboardAPI = {
   },
 };
 
+// Side Effect / Symptom Tracking API
+export const sideEffectAPI = {
+  // Get all side effects for the current patient
+  getAll: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.severity) params.append('severity', filters.severity);
+    if (filters.reaction_type) params.append('reaction_type', filters.reaction_type);
+    if (filters.is_resolved !== undefined) params.append('is_resolved', filters.is_resolved);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return await apiCall(`/side-effects/${query}`);
+  },
+
+  // Log a new side effect
+  create: async (data) => {
+    return await apiCall('/side-effects/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Get a single side effect by ID
+  getById: async (id) => {
+    return await apiCall(`/side-effects/${id}/`);
+  },
+
+  // Update a side effect (e.g., mark as resolved)
+  update: async (id, data) => {
+    return await apiCall(`/side-effects/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
 // Export all APIs for easy import
 export default {
   auth: authAPI,
@@ -558,4 +736,5 @@ export default {
   chatbot: chatbotAPI,
   profile: profileAPI,
   dashboard: dashboardAPI,
+  sideEffect: sideEffectAPI,
 };

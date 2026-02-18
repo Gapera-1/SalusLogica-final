@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Notification, NotificationSettings, NotificationTemplate
+from .models import Notification, NotificationSettings, NotificationTemplate, FCMDevice
 
 
 @admin.register(Notification)
@@ -22,4 +22,12 @@ class NotificationTemplateAdmin(admin.ModelAdmin):
     list_display = ('name', 'notification_type', 'is_active', 'created_at')
     list_filter = ('notification_type', 'is_active')
     search_fields = ('name', 'title_template')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(FCMDevice)
+class FCMDeviceAdmin(admin.ModelAdmin):
+    list_display = ('user', 'device_type', 'is_active', 'created_at', 'updated_at')
+    list_filter = ('device_type', 'is_active')
+    search_fields = ('user__username', 'device_name')
     readonly_fields = ('created_at', 'updated_at')

@@ -102,8 +102,33 @@ def send_alarm_notification(schedule):
         is_successful=True
     )
     
-    # TODO: Add push notification, email, or SMS integration here
-    # For now, we only create in-app notifications
+    # Send push notification via FCM
+    try:
+        from apps.notifications.fcm import send_push_to_user
+        push_count = send_push_to_user(
+            user=schedule.user,
+            title=title,
+            body=message,
+            data={
+                'type': 'dose_reminder',
+                'medicine_name': schedule.medicine.name,
+                'schedule_id': str(schedule.id),
+            },
+        )
+        if push_count > 0:
+            # Also record a push-type AlarmNotification
+            AlarmNotification.objects.create(
+                medication_schedule=schedule,
+                user=schedule.user,
+                notification_type='push',
+                title=title,
+                message=message,
+                sent_at=timezone.now(),
+                is_successful=True,
+            )
+            logger.info(f"FCM push sent to {push_count} device(s) for schedule {schedule.id}")
+    except Exception as e:
+        logger.error(f"FCM push failed for schedule {schedule.id}: {str(e)}")
 
 
 @shared_task

@@ -14,5 +14,8 @@ urlpatterns = [
     path('medicine-usage/', views.MedicineUsageStatsViewSet.as_view({'get': 'medicine_usage'}), name='medicine-usage'),
     path('export-center/', views.ExportRequestViewSet.as_view({'get': 'export_center'}), name='export-center'),
     path('create-export/', views.ExportRequestViewSet.as_view({'post': 'create_export'}), name='create-export'),
+    # PDF report endpoints
+    path('reports/download/', views.download_pdf_report, name='download-pdf-report'),
+    path('reports/types/', views.report_types, name='report-types'),
     path('', include(router.urls)),
 ]

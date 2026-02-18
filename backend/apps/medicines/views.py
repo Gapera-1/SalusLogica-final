@@ -1,7 +1,8 @@
 from rest_framework import viewsets, permissions, filters, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes as perm_classes, parser_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
@@ -219,3 +220,124 @@ class PatientProfileViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """Ensure user field is preserved on update"""
         serializer.save(user=self.request.user)
+
+
+# ── Barcode Lookup & Medicine Photo ──────────────────────────────────────────
+
+@api_view(['GET'])
+@perm_classes([IsAuthenticated])
+def barcode_lookup(request):
+    """
+    Look up medicine details by barcode (UPC/EAN/NDC).
+
+    Query Parameters:
+        barcode (str): The barcode number to look up.
+
+    Returns auto-fill fields: name, scientific_name, dosage, instructions, notes, etc.
+    """
+    barcode = request.query_params.get('barcode', '').strip()
+    if not barcode:
+        return Response(
+            {'error': 'Query parameter "barcode" is required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    from .barcode_lookup import lookup_by_barcode
+    result = lookup_by_barcode(barcode)
+
+    if not result:
+        return Response(
+            {'found': False, 'message': 'No medicine found for this barcode.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    return Response({'found': True, 'medicine': result})
+
+
+@api_view(['GET'])
+@perm_classes([IsAuthenticated])
+def medicine_search_external(request):
+    """
+    Search external drug databases by medicine name.
+
+    Query Parameters:
+        q (str): Medicine name to search for.
+
+    Returns up to 5 matches with auto-fill fields.
+    """
+    query = request.query_params.get('q', '').strip()
+    if not query:
+        return Response(
+            {'error': 'Query parameter "q" is required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    from .barcode_lookup import lookup_by_name
+    results = lookup_by_name(query)
+
+    return Response({
+        'query': query,
+        'count': len(results),
+        'results': results,
+    })
+
+
+@api_view(['POST'])
+@perm_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def upload_medicine_photo(request, pk):
+    """
+    Upload a photo for a specific medicine.
+
+    Accepts multipart form data with a 'photo' field.
+    """
+    medicine = get_object_or_404(Medicine, pk=pk, user=request.user)
+
+    photo = request.FILES.get('photo')
+    if not photo:
+        return Response(
+            {'error': 'No photo file provided.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Validate file type
+    allowed_types = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+    if photo.content_type not in allowed_types:
+        return Response(
+            {'error': f'Invalid file type. Allowed: {", ".join(allowed_types)}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Validate file size (max 10 MB)
+    if photo.size > 10 * 1024 * 1024:
+        return Response(
+            {'error': 'File too large. Maximum size is 10 MB.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Delete old photo if exists
+    if medicine.medicine_photo:
+        medicine.medicine_photo.delete(save=False)
+
+    medicine.medicine_photo = photo
+    medicine.save(update_fields=['medicine_photo', 'updated_at'])
+
+    serializer = MedicineSerializer(medicine, context={'request': request})
+    return Response({
+        'message': 'Photo uploaded successfully.',
+        'medicine_photo': request.build_absolute_uri(medicine.medicine_photo.url),
+    })
+
+
+@api_view(['DELETE'])
+@perm_classes([IsAuthenticated])
+def delete_medicine_photo(request, pk):
+    """Remove photo from a medicine."""
+    medicine = get_object_or_404(Medicine, pk=pk, user=request.user)
+
+    if medicine.medicine_photo:
+        medicine.medicine_photo.delete(save=False)
+        medicine.medicine_photo = None
+        medicine.save(update_fields=['medicine_photo', 'updated_at'])
+
+    return Response({'message': 'Photo removed.'}, status=status.HTTP_200_OK)
