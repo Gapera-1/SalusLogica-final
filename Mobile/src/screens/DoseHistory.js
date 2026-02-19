@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Card, Button, Avatar, DataTable } from 'react-native-paper';
+import { Picker } from '@react-native-picker/picker';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { doseAPI } from '../services/api';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 const DoseHistory = () => {
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [doseHistory, setDoseHistory] = useState([]);
@@ -36,8 +40,9 @@ const DoseHistory = () => {
       const data = await doseAPI.getHistory(filters);
       setDoseHistory(data || []);
     } catch (error) {
-      console.error('Failed to load dose history:', error);
-      Alert.alert(t('common.error'), t('common.failed'));
+      logError('DoseHistory.loadDoseHistory', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -73,73 +78,73 @@ const DoseHistory = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>{t('doseHistory.loadingHistory')}</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.text }}>{t('doseHistory.loadingHistory')}</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('doseHistory.title')}</Text>
-          <Text style={styles.subtitle}>{t('doseHistory.subtitle')}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('doseHistory.title')}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('doseHistory.subtitle')}</Text>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backText}>{t('doseHistory.backToMedicines')}</Text>
+            <Text style={[styles.backText, { color: colors.primary }]}>{t('doseHistory.backToMedicines')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Statistics */}
         <View style={styles.statsContainer}>
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={styles.statContent}>
-              <Text style={styles.statNumber}>{doseHistory.length}</Text>
-              <Text style={styles.statLabel}>{t('doseHistory.totalDoses')}</Text>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>{doseHistory.length}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('doseHistory.totalDoses')}</Text>
             </View>
           </Card>
 
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={styles.statContent}>
-              <Text style={styles.statNumber}>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>
                 {doseHistory.filter(d => d.status === 'Taken').length}
               </Text>
-              <Text style={styles.statLabel}>{t('doseHistory.takenDoses')}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('doseHistory.takenDoses')}</Text>
             </View>
           </Card>
 
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={styles.statContent}>
-              <Text style={styles.statNumber}>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>
                 {doseHistory.filter(d => d.status === 'Missed').length}
               </Text>
-              <Text style={styles.statLabel}>{t('doseHistory.missedDoses')}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('doseHistory.missedDoses')}</Text>
             </View>
           </Card>
 
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={styles.statContent}>
-              <Text style={styles.statNumber}>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>
                 {doseHistory.filter(d => d.status === 'Pending').length}
               </Text>
-              <Text style={styles.statLabel}>{t('doseHistory.pendingDoses')}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('doseHistory.pendingDoses')}</Text>
             </View>
           </Card>
         </View>
 
         {/* Filters */}
-        <Card style={styles.filterCard}>
-          <View style={styles.filterHeader}>
-            <Text style={styles.filterTitle}>{t('doseHistory.filters')}</Text>
+        <Card style={[styles.filterCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.filterHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.filterTitle, { color: colors.text }]}>{t('doseHistory.filters')}</Text>
           </View>
           
           <View style={styles.filterRow}>
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>{t('doseHistory.filterByMedicine')}</Text>
+              <Text style={[styles.filterLabel, { color: colors.text }]}>{t('doseHistory.filterByMedicine')}</Text>
               <Picker
                 selectedValue={filters.medicine}
                 onValueChange={(value) => handleFilterChange('medicine', value)}
@@ -152,7 +157,7 @@ const DoseHistory = () => {
             </View>
 
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>{t('doseHistory.filterByStatus')}</Text>
+              <Text style={[styles.filterLabel, { color: colors.text }]}>{t('doseHistory.filterByStatus')}</Text>
               <Picker
                 selectedValue={filters.status}
                 onValueChange={(value) => handleFilterChange('status', value)}
@@ -165,7 +170,7 @@ const DoseHistory = () => {
             </View>
 
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>{t('doseHistory.filterByDateRange')}</Text>
+              <Text style={[styles.filterLabel, { color: colors.text }]}>{t('doseHistory.filterByDateRange')}</Text>
               <Picker
                 selectedValue={filters.dateRange}
                 onValueChange={(value) => handleFilterChange('dateRange', value)}
@@ -180,29 +185,29 @@ const DoseHistory = () => {
         </Card>
 
         {/* Dose History List */}
-        <Card style={styles.listCard}>
-          <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>{t('doseHistory.doseHistory')}</Text>
+        <Card style={[styles.listCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.listHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.listTitle, { color: colors.text }]}>{t('doseHistory.doseHistory')}</Text>
           </View>
           
           {doseHistory.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>{t('doseHistory.noDoseHistory')}</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('doseHistory.noDoseHistory')}</Text>
             </View>
           ) : (
             doseHistory.map((dose, index) => (
               <TouchableOpacity
                 key={dose.id}
-                style={styles.doseItem}
+                style={[styles.doseItem, { borderBottomColor: colors.border }]}
                 onPress={() => handleMedicinePress(dose.medicine)}
               >
                 <View style={styles.doseContent}>
                   <View style={styles.doseInfo}>
-                    <Text style={styles.medicineName}>{dose.medicine}</Text>
-                    <Text style={styles.doseDetails}>
+                    <Text style={[styles.medicineName, { color: colors.text }]}>{dose.medicine}</Text>
+                    <Text style={[styles.doseDetails, { color: colors.textSecondary }]}>
                       {dose.dosage} • {dose.time}
                     </Text>
-                    <Text style={styles.doseDate}>{formatDate(dose.date)}</Text>
+                    <Text style={[styles.doseDate, { color: colors.textMuted }]}>{formatDate(dose.date)}</Text>
                   </View>
                   <View style={styles.doseStatus}>
                     <Text style={[styles.statusText, { color: getStatusColor(dose.status) }]}>

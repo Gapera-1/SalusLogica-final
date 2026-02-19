@@ -35,6 +35,17 @@
     "exportReports": "Exporter des rapports",
     "sideEffects": "Effets secondaires"
   },
+  "sync": {
+    "syncing": "Synchronisation...",
+    "syncComplete": "Données synchronisées avec succès",
+    "syncFailed": "Échec de la synchronisation. Utilisation des données en cache.",
+    "lastSync": "Dernière synchronisation",
+    "tapToSync": "Appuyez pour synchroniser",
+    "online": "En ligne",
+    "offline": "Hors ligne",
+    "offlineMessage": "Vous êtes hors ligne. Les données affichées peuvent ne pas être à jour.",
+    "autoSync": "Synchronisation automatique activée"
+  },
   "home": {
     "welcome": "Bienvenue à SalusLogica",
     "subtitle": "Votre rappel de médicament personnel",

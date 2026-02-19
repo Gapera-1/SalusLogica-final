@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Card, Button, Checkbox } from 'react-native-paper';
+import { Card, Button } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { medicineAPI, safetyAPI } from '../services/api';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 const SafetyCheck = () => {
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -55,8 +58,9 @@ const SafetyCheck = () => {
       
       setResults(response.data || response);
     } catch (error) {
-      console.error('Safety check failed:', error);
-      Alert.alert(t('common.error'), t('common.failed'));
+      logError('SafetyCheck.handleCheckSafety', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -82,25 +86,25 @@ const SafetyCheck = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>{t('common.loading')}</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.text }}>{t('common.loading')}</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('safetyCheck.title')}</Text>
-          <Text style={styles.subtitle}>{t('safetyCheck.clinicalValidation', { drug: 'Selected Medicines' })}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('safetyCheck.title')}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('safetyCheck.clinicalValidation', { drug: 'Selected Medicines' })}</Text>
         </View>
 
         {/* Population Selection */}
-        <Card style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.sectionTitle}>{t('safetyCheck.selectPopulation')}</Text>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
+          <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('safetyCheck.selectPopulation')}</Text>
           </View>
           <View style={styles.populationGrid}>
             {populations.map((population) => (
@@ -108,20 +112,21 @@ const SafetyCheck = () => {
                 key={population.value}
                 style={[
                   styles.populationOption,
-                  formData.selectedPopulation === population.value && styles.selectedPopulation
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  formData.selectedPopulation === population.value && { backgroundColor: colors.primary, borderColor: colors.primary }
                 ]}
                 onPress={() => setFormData(prev => ({ ...prev, selectedPopulation: population.value }))}
               >
-                <Text style={styles.populationText}>{population.label}</Text>
+                <Text style={[styles.populationText, { color: formData.selectedPopulation === population.value ? '#ffffff' : colors.text }]}>{population.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </Card>
 
         {/* Medicine Selection */}
-        <Card style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.sectionTitle}>{t('safetyCheck.selectMedicines')}</Text>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
+          <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('safetyCheck.selectMedicines')}</Text>
           </View>
           <View style={styles.medicineGrid}>
             {availableMedicines.map((medicine) => (
@@ -129,11 +134,12 @@ const SafetyCheck = () => {
                 key={medicine}
                 style={[
                   styles.medicineOption,
-                  formData.selectedMedicines.includes(medicine) && styles.selectedMedicine
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  formData.selectedMedicines.includes(medicine) && { backgroundColor: colors.primary, borderColor: colors.primary }
                 ]}
                 onPress={() => handleMedicineToggle(medicine)}
               >
-                <Text style={styles.medicineText}>{medicine}</Text>
+                <Text style={[styles.medicineText, { color: formData.selectedMedicines.includes(medicine) ? '#ffffff' : colors.text }]}>{medicine}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -146,6 +152,7 @@ const SafetyCheck = () => {
           loading={loading}
           disabled={formData.selectedMedicines.length < 2}
           style={styles.checkButton}
+          buttonColor={colors.primary}
           icon="shield-check"
         >
           {t('safetyCheck.checkSafety')}
@@ -153,26 +160,26 @@ const SafetyCheck = () => {
 
         {/* Results */}
         {results && (
-          <Card style={styles.resultsCard}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.sectionTitle}>{t('interactionChecker.interactionResults')}</Text>
+          <Card style={[styles.resultsCard, { backgroundColor: colors.surface }]}>
+            <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('interactionChecker.interactionResults')}</Text>
             </View>
             
             {/* Interactions */}
             {results.interactions && results.interactions.length > 0 && (
               <View style={styles.resultSection}>
-                <Text style={styles.resultTitle}>{t('safetyCheck.interactions')}</Text>
+                <Text style={[styles.resultTitle, { color: colors.text }]}>{t('safetyCheck.interactions')}</Text>
                 {results.interactions.map((interaction, index) => (
                   <View key={index} style={styles.interactionItem}>
-                    <Text style={styles.interactionMedicines}>
+                    <Text style={[styles.interactionMedicines, { color: colors.text }]}>
                       {interaction.medicines.join(' + ')}
                     </Text>
                     <View style={styles.interactionDetails}>
-                      <Text style={styles.severityLabel}>{t('interactionChecker.severity')}: </Text>
+                      <Text style={[styles.severityLabel, { color: colors.textSecondary }]}>{t('interactionChecker.severity')}: </Text>
                       <Text style={[styles.severityValue, { color: getSeverityColor(interaction.severity) }]}>
                         {interaction.severity}
                       </Text>
-                      <Text style={styles.description}>{interaction.description}</Text>
+                      <Text style={[styles.description, { color: colors.text }]}>{interaction.description}</Text>
                     </View>
                   </View>
                 ))}
@@ -182,7 +189,7 @@ const SafetyCheck = () => {
             {/* Contraindications */}
             {results.contraindications && results.contraindications.length > 0 && (
               <View style={styles.resultSection}>
-                <Text style={styles.resultTitle}>{t('safetyCheck.contraindications')}</Text>
+                <Text style={[styles.resultTitle, { color: colors.text }]}>{t('safetyCheck.contraindications')}</Text>
                 {results.contraindications.map((contraindication, index) => (
                   <View key={index} style={styles.contraindicationItem}>
                     <Text style={styles.contraindicationText}>{contraindication}</Text>
@@ -194,7 +201,7 @@ const SafetyCheck = () => {
             {/* Warnings */}
             {results.warnings && results.warnings.length > 0 && (
               <View style={styles.resultSection}>
-                <Text style={styles.resultTitle}>{t('safetyCheck.warnings')}</Text>
+                <Text style={[styles.resultTitle, { color: colors.text }]}>{t('safetyCheck.warnings')}</Text>
                 {results.warnings.map((warning, index) => (
                   <View key={index} style={styles.warningItem}>
                     <Text style={styles.warningText}>⚠️ {warning}</Text>
@@ -206,8 +213,8 @@ const SafetyCheck = () => {
             {/* Risk Assessment */}
             {results.riskAssessment && (
               <View style={styles.resultSection}>
-                <Text style={styles.resultTitle}>{t('interactionChecker.riskLevel')}</Text>
-                <View style={styles.riskContainer}>
+                <Text style={[styles.resultTitle, { color: colors.text }]}>{t('interactionChecker.riskLevel')}</Text>
+                <View style={[styles.riskContainer, { backgroundColor: colors.border }]}>
                   <Text style={[
                     styles.riskLevel,
                     { color: getRiskLevelColor(results.riskAssessment.level) }

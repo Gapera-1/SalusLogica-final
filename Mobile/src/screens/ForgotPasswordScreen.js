@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import { TextInput, Button, Card } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { authAPI } from '../services/api';
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -51,18 +53,18 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
   if (submitted) {
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.center}>
-        <Card style={styles.card}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.center}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <View style={styles.cardContent}>
-            <View style={styles.successHeader}>
+            <View style={[styles.successHeader, { backgroundColor: colors.primary }]}>
               <Text style={styles.successIcon}>📧</Text>
               <Text style={styles.successTitle}>{t('emailVerification.checkYourEmail')}</Text>
             </View>
 
-            <Text style={styles.successText}>
-              {t('emailVerification.verificationSentTo')} <Text style={styles.bold}>{email}</Text>
+            <Text style={[styles.successText, { color: colors.textSecondary }]}>
+              {t('emailVerification.verificationSentTo')} <Text style={[styles.bold, { color: colors.text }]}>{email}</Text>
             </Text>
-            <Text style={styles.successSubtext}>
+            <Text style={[styles.successSubtext, { color: colors.textMuted }]}>
               {t('emailVerification.clickLinkToVerify')}
             </Text>
 
@@ -74,6 +76,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                   setEmail('');
                 }}
                 style={styles.button}
+                buttonColor={colors.primary}
               >
                 {t('emailVerification.resendVerification')}
               </Button>
@@ -81,7 +84,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
               <Button
                 mode="outlined"
                 onPress={() => navigation.navigate('Login')}
-                style={styles.button}
+                style={[styles.button, { borderColor: colors.primary }]}
+                textColor={colors.primary}
               >
                 {t('emailVerification.goToLogin')}
               </Button>
@@ -95,22 +99,22 @@ const ForgotPasswordScreen = ({ navigation }) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView contentContainerStyle={styles.center}>
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <View style={styles.cardContent}>
             <View style={styles.header}>
               <Text style={styles.lockIcon}>🔒</Text>
-              <Text style={styles.title}>{t('forgotPassword.title')}</Text>
-              <Text style={styles.subtitle}>
+              <Text style={[styles.title, { color: colors.text }]}>{t('forgotPassword.title')}</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 {t('forgotPassword.subtitle')}
               </Text>
             </View>
 
             {error ? (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={[styles.errorContainer, { backgroundColor: colors.errorLight || '#fef2f2', borderColor: colors.error }]}>
+                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
               </View>
             ) : null}
 
@@ -124,9 +128,12 @@ const ForgotPasswordScreen = ({ navigation }) => {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface }]}
               mode="outlined"
-              left={<TextInput.Icon icon="email" />}
+              textColor={colors.text}
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
+              left={<TextInput.Icon icon="email" iconColor={colors.textSecondary} />}
             />
 
             <Button
@@ -135,6 +142,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
               loading={loading}
               disabled={loading || !email.trim()}
               style={styles.submitButton}
+              buttonColor={colors.primary}
               contentStyle={styles.submitButtonContent}
             >
               {loading ? t('forgotPassword.sending') : t('forgotPassword.sendLink')}
@@ -144,7 +152,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('Login')}
               style={styles.backLink}
             >
-              <Text style={styles.backLinkText}>← {t('forgotPassword.backToLogin')}</Text>
+              <Text style={[styles.backLinkText, { color: colors.primary }]}>← {t('forgotPassword.backToLogin')}</Text>
             </TouchableOpacity>
           </View>
         </Card>

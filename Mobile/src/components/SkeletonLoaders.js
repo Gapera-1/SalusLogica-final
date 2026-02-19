@@ -4,7 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 // Base Skeleton component with shimmer animation
 export const Skeleton = ({ width = '100%', height = 20, style, rounded = 4 }) => {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
   const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export const Skeleton = ({ width = '100%', height = 20, style, rounded = 4 }) =>
         {
           width,
           height,
-          backgroundColor: theme.colors.surface,
+          backgroundColor: colors.surface,
           borderRadius: rounded,
           opacity,
         },
@@ -47,10 +47,10 @@ export const Skeleton = ({ width = '100%', height = 20, style, rounded = 4 }) =>
 
 // Skeleton for Medicine Card
 export const SkeletonMedicineCard = () => {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
   
   return (
-    <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+    <View style={[styles.card, { backgroundColor: colors.surface }]}>
       <View style={styles.cardHeader}>
         <Skeleton width={60} height={60} rounded={30} />
         <View style={styles.cardHeaderText}>
@@ -73,12 +73,12 @@ export const SkeletonMedicineCard = () => {
 
 // Skeleton for Dashboard Stats
 export const SkeletonStats = () => {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
   
   return (
     <View style={styles.statsContainer}>
       {[1, 2, 3, 4].map((_, index) => (
-        <View key={index} style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
+        <View key={index} style={[styles.statCard, { backgroundColor: colors.surface }]}>
           <Skeleton width={40} height={40} rounded={20} />
           <Skeleton width="60%" height={20} style={{ marginTop: 12 }} />
           <Skeleton width="80%" height={16} style={{ marginTop: 8 }} />
@@ -90,10 +90,10 @@ export const SkeletonStats = () => {
 
 // Skeleton for List Items
 export const SkeletonListItem = () => {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
   
   return (
-    <View style={[styles.listItem, { backgroundColor: theme.colors.surface }]}>
+    <View style={[styles.listItem, { backgroundColor: colors.surface }]}>
       <Skeleton width={48} height={48} rounded={24} />
       <View style={styles.listItemText}>
         <Skeleton width="70%" height={18} />
@@ -106,7 +106,7 @@ export const SkeletonListItem = () => {
 
 // Skeleton for Profile Screen
 export const SkeletonProfile = () => {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
   
   return (
     <View style={styles.profileContainer}>
@@ -120,7 +120,7 @@ export const SkeletonProfile = () => {
       {/* Profile Info Cards */}
       <View style={styles.profileCards}>
         {[1, 2, 3, 4].map((_, index) => (
-          <View key={index} style={[styles.profileCard, { backgroundColor: theme.colors.surface }]}>
+          <View key={index} style={[styles.profileCard, { backgroundColor: colors.surface }]}>
             <Skeleton width="40%" height={16} />
             <Skeleton width="80%" height={20} style={{ marginTop: 8 }} />
           </View>
@@ -175,12 +175,12 @@ export const SkeletonMedicineList = () => {
 
 // Skeleton for Dose History Table
 export const SkeletonTable = ({ rows = 5 }) => {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
   
   return (
     <View style={styles.tableContainer}>
       {/* Table Header */}
-      <View style={[styles.tableHeader, { backgroundColor: theme.colors.surface }]}>
+      <View style={[styles.tableHeader, { backgroundColor: colors.surface }]}>
         <Skeleton width="30%" height={16} />
         <Skeleton width="25%" height={16} />
         <Skeleton width="25%" height={16} />
@@ -189,7 +189,7 @@ export const SkeletonTable = ({ rows = 5 }) => {
 
       {/* Table Rows */}
       {Array.from({ length: rows }).map((_, index) => (
-        <View key={index} style={[styles.tableRow, { backgroundColor: theme.colors.surface }]}>
+        <View key={index} style={[styles.tableRow, { backgroundColor: colors.surface }]}>
           <Skeleton width="30%" height={14} />
           <Skeleton width="25%" height={14} />
           <Skeleton width="25%" height={14} />

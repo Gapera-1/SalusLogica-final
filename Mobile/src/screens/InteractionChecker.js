@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Card, Button, Checkbox } from 'react-native-paper';
+import { Card, Button } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { medicineAPI, interactionAPI } from '../services/api';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 const InteractionChecker = () => {
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
   const [selectedMedicines, setSelectedMedicines] = useState([]);
@@ -24,7 +27,7 @@ const InteractionChecker = () => {
       const names = (medicines || []).map(m => m.name || m.medicine_name);
       setAvailableMedicines(names);
     } catch (error) {
-      console.error('Failed to load medicines:', error);
+      logError('InteractionChecker.loadMedicines', error);
     }
   };
 
@@ -49,8 +52,9 @@ const InteractionChecker = () => {
       const response = await interactionAPI.check(selectedMedicines);
       setResults(response.data || response);
     } catch (error) {
-      console.error('Interaction check failed:', error);
-      Alert.alert(t('common.error'), t('common.failed'));
+      logError('InteractionChecker.handleCheckInteractions', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -81,28 +85,28 @@ const InteractionChecker = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>{t('common.loading')}</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.text }}>{t('common.loading')}</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('interactionChecker.title')}</Text>
-          <Text style={styles.subtitle}>{t('interactionChecker.checkSafety')}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('interactionChecker.title')}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('interactionChecker.checkSafety')}</Text>
         </View>
 
         {/* Medicine Selection */}
-        <Card style={styles.card}>
-          <View style={styles.cardHeader}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
+          <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
             <View style={styles.headerRow}>
-              <Text style={styles.sectionTitle}>{t('interactionChecker.chooseToCheck')}</Text>
-              <TouchableOpacity onPress={clearSelection} style={styles.clearButton}>
-                <Text style={styles.clearText}>{t('common.clear')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('interactionChecker.chooseToCheck')}</Text>
+              <TouchableOpacity onPress={clearSelection} style={[styles.clearButton, { backgroundColor: colors.border }]}>
+                <Text style={[styles.clearText, { color: colors.text }]}>{t('common.clear')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -113,11 +117,12 @@ const InteractionChecker = () => {
                 key={medicine}
                 style={[
                   styles.medicineOption,
-                  selectedMedicines.includes(medicine) && styles.selectedMedicine
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  selectedMedicines.includes(medicine) && { backgroundColor: colors.primary, borderColor: colors.primary }
                 ]}
                 onPress={() => handleMedicineToggle(medicine)}
               >
-                <Text style={styles.medicineText}>{medicine}</Text>
+                <Text style={[styles.medicineText, { color: selectedMedicines.includes(medicine) ? '#ffffff' : colors.text }]}>{medicine}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -130,6 +135,7 @@ const InteractionChecker = () => {
           loading={loading}
           disabled={selectedMedicines.length < 2}
           style={styles.checkButton}
+          buttonColor={colors.primary}
           icon="shield-check"
         >
           {t('interactionChecker.checkInteractions')}
@@ -137,9 +143,9 @@ const InteractionChecker = () => {
 
         {/* Results */}
         {results && (
-          <Card style={styles.resultsCard}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.sectionTitle}>
+          <Card style={[styles.resultsCard, { backgroundColor: colors.surface }]}>
+            <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 {t('interactionChecker.interactionResults')} ({selectedMedicines.length} {t('interactionChecker.interaction')})
               </Text>
             </View>
@@ -147,8 +153,8 @@ const InteractionChecker = () => {
             {/* No Interactions */}
             {results.interactions && results.interactions.length === 0 && (
               <View style={styles.noInteractionsSection}>
-                <Text style={styles.noInteractionsText}>{t('interactionChecker.noInteractions')}</Text>
-                <Text style={styles.noInteractionsSubtext}>
+                <Text style={[styles.noInteractionsText, { color: colors.success }]}>{t('interactionChecker.noInteractions')}</Text>
+                <Text style={[styles.noInteractionsSubtext, { color: colors.textSecondary }]}>
                   {selectedMedicines.join(' + ')} {t('interactionChecker.noInteractions')}
                 </Text>
               </View>
@@ -157,24 +163,24 @@ const InteractionChecker = () => {
             {/* Interactions List */}
             {results.interactions && results.interactions.length > 0 && (
               <View style={styles.interactionsSection}>
-                <Text style={styles.sectionTitle}>{t('interactionChecker.interactions')}</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('interactionChecker.interactions')}</Text>
                 {results.interactions.map((interaction, index) => (
                   <View key={index} style={styles.interactionItem}>
                     <View style={styles.interactionHeader}>
-                      <Text style={styles.interactionMedicines}>
+                      <Text style={[styles.interactionMedicines, { color: colors.text }]}>
                         {interaction.medicines.join(' ↔ ')}
                       </Text>
                       <View style={styles.severityContainer}>
-                        <Text style={styles.severityLabel}>{t('interactionChecker.severity')}: </Text>
+                        <Text style={[styles.severityLabel, { color: colors.textSecondary }]}>{t('interactionChecker.severity')}: </Text>
                         <Text style={[styles.severityValue, { color: getSeverityColor(interaction.severity) }]}>
                           {interaction.severity}
                         </Text>
                       </View>
                     </View>
-                    <Text style={styles.interactionDescription}>{interaction.description}</Text>
-                    <View style={styles.recommendationContainer}>
-                      <Text style={styles.recommendationLabel}>{t('interactionChecker.recommendation')}: </Text>
-                      <Text style={styles.recommendationText}>{interaction.recommendation}</Text>
+                    <Text style={[styles.interactionDescription, { color: colors.text }]}>{interaction.description}</Text>
+                    <View style={[styles.recommendationContainer, { backgroundColor: colors.background }]}>
+                      <Text style={[styles.recommendationLabel, { color: colors.text }]}>{t('interactionChecker.recommendation')}: </Text>
+                      <Text style={[styles.recommendationText, { color: colors.text }]}>{interaction.recommendation}</Text>
                     </View>
                   </View>
                 ))}
@@ -184,9 +190,9 @@ const InteractionChecker = () => {
             {/* Overall Risk Assessment */}
             {results.overallRisk && (
               <View style={styles.riskSection}>
-                <Text style={styles.sectionTitle}>{t('interactionChecker.riskLevel')}</Text>
-                <View style={styles.overallRiskContainer}>
-                  <View style={styles.riskIndicator}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('interactionChecker.riskLevel')}</Text>
+                <View style={[styles.overallRiskContainer, { backgroundColor: colors.border }]}>
+                  <View style={[styles.riskIndicator, { backgroundColor: colors.surface }]}>
                     <Text style={[
                       styles.riskLevel,
                       { color: getRiskLevelColor(results.overallRisk.level) }
@@ -195,8 +201,8 @@ const InteractionChecker = () => {
                     </Text>
                   </View>
                   <View style={styles.riskDetails}>
-                    <Text style={styles.riskDescription}>{results.overallRisk.description}</Text>
-                    <Text style={styles.riskAdvice}>{results.overallRisk.advice}</Text>
+                    <Text style={[styles.riskDescription, { color: colors.text }]}>{results.overallRisk.description}</Text>
+                    <Text style={[styles.riskAdvice, { color: colors.textSecondary }]}>{results.overallRisk.advice}</Text>
                   </View>
                 </View>
               </View>

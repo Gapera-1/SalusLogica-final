@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Card, Button, Avatar, ProgressBar } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { analyticsAPI } from '../services/api';
 
 const AnalyticsDashboard = () => {
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState({
@@ -45,88 +47,88 @@ const AnalyticsDashboard = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>{t('common.loading')}</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.text }}>{t('common.loading')}</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('analytics.title')}</Text>
-          <Text style={styles.subtitle}>{t('analytics.subtitle')}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('analytics.title')}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('analytics.subtitle')}</Text>
         </View>
 
         {/* Stats Overview */}
         <View style={styles.statsContainer}>
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={styles.statContent}>
-              <Text style={styles.statNumber}>{analyticsData.dosesTaken}</Text>
-              <Text style={styles.statLabel}>{t('analytics.dosesTaken')}</Text>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>{analyticsData.dosesTaken}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('analytics.dosesTaken')}</Text>
             </View>
           </Card>
 
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={styles.statContent}>
-              <Text style={styles.statNumber}>{analyticsData.dosesMissed}</Text>
-              <Text style={styles.statLabel}>{t('analytics.dosesMissed')}</Text>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>{analyticsData.dosesMissed}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('analytics.dosesMissed')}</Text>
             </View>
           </Card>
 
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={styles.statContent}>
-              <Text style={styles.statNumber}>{analyticsData.dosesPending}</Text>
-              <Text style={styles.statLabel}>{t('analytics.dosesPending')}</Text>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>{analyticsData.dosesPending}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('analytics.dosesPending')}</Text>
             </View>
           </Card>
 
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={styles.statContent}>
-              <Text style={styles.statNumber}>{analyticsData.adherenceRate}%</Text>
-              <Text style={styles.statLabel}>{t('analytics.adherenceRate')}</Text>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>{analyticsData.adherenceRate}%</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('analytics.adherenceRate')}</Text>
             </View>
           </Card>
         </View>
 
         {/* Adherence Over Time Chart */}
-        <Card style={styles.chartCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.sectionTitle}>{t('analytics.adherenceOverTime')}</Text>
+        <Card style={[styles.chartCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('analytics.adherenceOverTime')}</Text>
             <TouchableOpacity 
-              style={styles.filterButton}
+              style={[styles.filterButton, { backgroundColor: colors.border }]}
               onPress={() => handleMedicineFilter('All Medicines')}
             >
-              <Text style={styles.filterText}>{t('analytics.allMedicines')}</Text>
+              <Text style={[styles.filterText, { color: colors.text }]}>{t('analytics.allMedicines')}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.chartContainer}>
-            <Text style={styles.chartPlaceholder}>
+            <Text style={[styles.chartPlaceholder, { color: colors.textSecondary }]}>
               📊 {t('analytics.adherenceOverTime')}
             </Text>
-            <Text style={styles.chartNote}>
+            <Text style={[styles.chartNote, { color: colors.textMuted }]}>
               {t('analytics.chartPlaceholder')}
             </Text>
           </View>
         </Card>
 
         {/* Daily Adherence */}
-        <Card style={styles.chartCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.sectionTitle}>{t('analytics.dailyAdherence')}</Text>
+        <Card style={[styles.chartCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('analytics.dailyAdherence')}</Text>
           </View>
           <View style={styles.adherenceList}>
             {[t('analytics.mon'), t('analytics.tue'), t('analytics.wed'), t('analytics.thu'), t('analytics.fri'), t('analytics.sat'), t('analytics.sun')].map((day, index) => (
               <View key={index} style={styles.adherenceItem}>
-                <Text style={styles.dayLabel}>{day}</Text>
+                <Text style={[styles.dayLabel, { color: colors.text }]}>{day}</Text>
                 <ProgressBar 
                   progress={0.8 + (index * 0.05)} 
-                  color="#0d9488" 
+                  color={colors.primary} 
                   style={styles.progressBar}
                 />
-                <Text style={styles.adherencePercent}>{Math.round((80 + index * 5))}%</Text>
+                <Text style={[styles.adherencePercent, { color: colors.primary }]}>{Math.round((80 + index * 5))}%</Text>
               </View>
             ))}
           </View>
@@ -134,11 +136,11 @@ const AnalyticsDashboard = () => {
 
         {/* Weekly/Monthly Tabs */}
         <View style={styles.tabContainer}>
-          <TouchableOpacity style={styles.tab}>
-            <Text style={styles.tabText}>{t('analytics.weeklyAdherence')}</Text>
+          <TouchableOpacity style={[styles.tab, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.tabText, { color: colors.text }]}>{t('analytics.weeklyAdherence')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tab}>
-            <Text style={styles.tabText}>{t('analytics.monthlyAdherence')}</Text>
+          <TouchableOpacity style={[styles.tab, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.tabText, { color: colors.text }]}>{t('analytics.monthlyAdherence')}</Text>
           </TouchableOpacity>
         </View>
       </View>

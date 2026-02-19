@@ -6,21 +6,36 @@ import {
   ScrollView, 
   TouchableOpacity, 
   RefreshControl,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { Card, Button, Avatar, Searchbar, Snackbar, IconButton } from 'react-native-paper';
 import { SkeletonMedicineList } from '../components/SkeletonLoaders';
+import SyncStatusBar, { OfflineBanner } from '../components/SyncStatusBar';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useDataSync } from '../contexts/DataSyncContext';
+import { useAlarm } from '../contexts/AlarmContext';
 import { medicineAPI } from '../services/api';
 import { medicinesStorage } from '../services/storage';
 import analytics from '../services/analytics';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 export default function MedicinesScreen() {
   const { t } = useLanguage();
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const { 
+    medicines: syncedMedicines, 
+    syncMedicines, 
+    isSyncing, 
+    isOnline,
+    addSyncListener 
+  } = useDataSync();
+  const { updateMedicinesFromSync } = useAlarm();
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,6 +46,33 @@ export default function MedicinesScreen() {
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
   
   const searchTimeoutRef = useRef(null);
+
+  // Update medicines when synced data changes
+  useEffect(() => {
+    if (syncedMedicines && syncedMedicines.length > 0) {
+      setMedicines(syncedMedicines);
+      if (!searchQuery.trim()) {
+        setFilteredMedicines(syncedMedicines);
+      }
+      setLoading(false);
+    }
+  }, [syncedMedicines]);
+
+  // Listen for sync events and update alarm schedules
+  useEffect(() => {
+    const unsubscribe = addSyncListener(async (data) => {
+      if (data.medicines) {
+        setMedicines(data.medicines);
+        if (!searchQuery.trim()) {
+          setFilteredMedicines(data.medicines);
+        }
+        // Update alarm schedules with new medicines
+        await updateMedicinesFromSync(data.medicines);
+        showSnackbar(t('sync.syncComplete') || 'Data synced from server');
+      }
+    });
+    return unsubscribe;
+  }, [addSyncListener, updateMedicinesFromSync, searchQuery, t]);
 
   // Reload when screen comes into focus
   useFocusEffect(
@@ -78,7 +120,7 @@ export default function MedicinesScreen() {
           analytics.trackEmptySearchResults(searchQuery);
         }
       } catch (error) {
-        console.error('Search error:', error);
+        logError('MedicinesScreen.search', error);
         // Fallback to local filtering on search error
         const filtered = medicines.filter(medicine =>
           medicine.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -110,26 +152,31 @@ export default function MedicinesScreen() {
       setMedicines(data || []);
       setFilteredMedicines(data || []);
     } catch (error) {
-      console.error('Error loading medicines:', error);
+      logError('MedicinesScreen.loadMedicines', error);
+      const errorMessage = getErrorMessage(error, t);
       
       // Try to load from cache on error
       const cached = await medicinesStorage.getMedicines();
       if (cached && cached.length > 0) {
         setMedicines(cached);
         setFilteredMedicines(cached);
-        showSnackbar(t('common.loadedFromCache'));
+        showSnackbar(t('common.loadedFromCache') || 'Loaded from cache');
       } else {
-        showSnackbar(t('medicines.loadError'), 'error');
+        showSnackbar(errorMessage);
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // Pull to refresh handler
+  // Pull to refresh handler - uses sync context
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadMedicines();
+    if (isOnline) {
+      await syncMedicines();
+    } else {
+      await loadMedicines();
+    }
     setRefreshing(false);
   };
 
@@ -154,8 +201,9 @@ export default function MedicinesScreen() {
               showSnackbar(t('medicines.deleteSuccess'));
               loadMedicines();
             } catch (error) {
-              console.error('Error deleting medicine:', error);
-              showSnackbar(t('medicines.deleteError'));
+              logError('MedicinesScreen.deleteMedicine', error);
+              const errorMessage = getErrorMessage(error, t);
+              showSnackbar(errorMessage);
             }
           },
         },
@@ -193,26 +241,32 @@ export default function MedicinesScreen() {
   };
 
   const getStockColor = (stock) => {
-    if (stock <= 10) return '#ef4444'; // Red
-    if (stock <= 20) return '#f59e0b'; // Yellow
-    return '#10b981'; // Green
+    if (stock <= 10) return colors.error;
+    if (stock <= 20) return colors.warning;
+    return colors.success;
   };
 
   if (loading && medicines.length === 0) {
     return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
         <SkeletonMedicineList />
       </ScrollView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Offline Banner */}
+      <OfflineBanner />
+
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>{t('medicines.title')}</Text>
-        <Text style={styles.subtitle}>{t('medicines.subtitle')}</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('medicines.title')}</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('medicines.subtitle')}</Text>
       </View>
+
+      {/* Sync Status Bar */}
+      <SyncStatusBar />
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -220,12 +274,15 @@ export default function MedicinesScreen() {
           placeholder={t('medicines.searchMedicines')}
           onChangeText={setSearchQuery}
           value={searchQuery}
-          style={styles.searchBar}
+          style={[styles.searchBar, { backgroundColor: colors.surface }]}
+          iconColor={colors.textSecondary}
+          inputStyle={{ color: colors.text }}
+          placeholderTextColor={colors.textSecondary}
         />
         {searching && (
           <View style={styles.searchingIndicator}>
-            <ActivityIndicator size="small" color="#0d9488" />
-            <Text style={styles.searchingText}>{t('medicines.searching')}</Text>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[styles.searchingText, { color: colors.textSecondary }]}>{t('medicines.searching')}</Text>
           </View>
         )}
       </View>
@@ -234,30 +291,35 @@ export default function MedicinesScreen() {
       <ScrollView 
         style={styles.scrollView}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
         }
       >
         {filteredMedicines.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               {searchQuery ? t('medicines.noMedicines') : t('medicines.noMedicines')}
             </Text>
           </View>
         ) : (
           filteredMedicines.map((medicine, index) => (
-            <Card key={medicine.id} style={styles.medicineCard}>
+            <Card key={medicine.id} style={[styles.medicineCard, { backgroundColor: colors.surface }]}>
               <TouchableOpacity onPress={() => handleMedicinePress(medicine, index)}>
                 <View style={styles.medicineContent}>
                   <View style={styles.medicineInfo}>
-                    <Text style={styles.medicineName}>{medicine.name}</Text>
+                    <Text style={[styles.medicineName, { color: colors.text }]}>{medicine.name}</Text>
                     {medicine.scientific_name && (
-                      <Text style={styles.medicineScientific}>{medicine.scientific_name}</Text>
+                      <Text style={[styles.medicineScientific, { color: colors.textSecondary }]}>{medicine.scientific_name}</Text>
                     )}
-                    <Text style={styles.medicineDetails}>
+                    <Text style={[styles.medicineDetails, { color: colors.textSecondary }]}>
                       {medicine.dosage} • {medicine.frequency || t('addMedicine.asNeeded')}
                     </Text>
                     {medicine.prescribed_for && (
-                      <Text style={styles.medicineProvider}>
+                      <Text style={[styles.medicineProvider, { color: colors.textSecondary }]}>
                         {t('medicines.prescribedFor')}: {medicine.prescribed_for}
                       </Text>
                     )}
@@ -265,7 +327,7 @@ export default function MedicinesScreen() {
                   <View style={styles.medicineActions}>
                     {medicine.stock != null && (
                       <View style={styles.stockContainer}>
-                        <Text style={styles.stockLabel}>{t('medicines.stock')}: </Text>
+                        <Text style={[styles.stockLabel, { color: colors.textSecondary }]}>{t('medicines.stock')}: </Text>
                         <Text style={[styles.stockValue, { color: getStockColor(medicine.stock) }]}>
                           {medicine.stock}
                         </Text>
@@ -274,7 +336,7 @@ export default function MedicinesScreen() {
                     <IconButton
                       icon="delete"
                       size={20}
-                      iconColor="#ef4444"
+                      iconColor={colors.error}
                       onPress={() => handleDeleteMedicine(medicine)}
                     />
                   </View>
@@ -286,11 +348,11 @@ export default function MedicinesScreen() {
       </ScrollView>
 
       {/* Add Medicine Button */}
-      <View style={styles.addButtonContainer}>
+      <View style={[styles.addButtonContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         <Button
           mode="contained"
           onPress={handleAddMedicine}
-          style={styles.addButton}
+          style={[styles.addButton, { backgroundColor: colors.primary }]}
           icon="plus"
         >
           {t('medicines.addMedicine')}
@@ -302,6 +364,7 @@ export default function MedicinesScreen() {
         visible={snackbar.visible}
         onDismiss={() => setSnackbar({ visible: false, message: '' })}
         duration={3000}
+        style={{ backgroundColor: colors.surface }}
       >
         {snackbar.message}
       </Snackbar>
@@ -312,18 +375,15 @@ export default function MedicinesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6b7280',
   },
   header: {
     padding: 16,
@@ -332,12 +392,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6b7280',
   },
   searchContainer: {
     marginHorizontal: 16,
@@ -345,6 +403,7 @@ const styles = StyleSheet.create({
   },
   searchBar: {
     marginBottom: 4,
+    elevation: 0,
   },
   searchingIndicator: {
     flexDirection: 'row',
@@ -355,7 +414,6 @@ const styles = StyleSheet.create({
   searchingText: {
     marginLeft: 8,
     fontSize: 12,
-    color: '#6b7280',
   },
   scrollView: {
     flex: 1,
@@ -368,7 +426,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#6b7280',
     textAlign: 'center',
   },
   medicineCard: {
@@ -385,23 +442,19 @@ const styles = StyleSheet.create({
   medicineName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 4,
   },
   medicineScientific: {
     fontSize: 14,
-    color: '#6b7280',
     fontStyle: 'italic',
     marginBottom: 8,
   },
   medicineDetails: {
     fontSize: 14,
-    color: '#374151',
     marginBottom: 4,
   },
   medicineProvider: {
     fontSize: 12,
-    color: '#6b7280',
   },
   medicineActions: {
     alignItems: 'flex-end',
@@ -413,7 +466,6 @@ const styles = StyleSheet.create({
   },
   stockLabel: {
     fontSize: 12,
-    color: '#6b7280',
   },
   stockValue: {
     fontSize: 14,
@@ -422,11 +474,8 @@ const styles = StyleSheet.create({
   addButtonContainer: {
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    backgroundColor: '#ffffff',
   },
   addButton: {
     margin: 0,
-    backgroundColor: '#0d9488',
   },
 });

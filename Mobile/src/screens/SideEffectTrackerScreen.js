@@ -11,8 +11,10 @@ import {
 import { Card, Button, TextInput, Snackbar } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { sideEffectAPI, medicineAPI } from '../services/api';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 const SEVERITY_OPTIONS = [
   { value: 'mild', color: '#dcfce7', textColor: '#166534' },
@@ -33,6 +35,7 @@ const OUTCOME_OPTIONS = ['recovered', 'recovering', 'not_recovered', 'unknown'];
 
 const SideEffectTrackerScreen = () => {
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation();
   const [sideEffects, setSideEffects] = useState([]);
   const [medicines, setMedicines] = useState([]);
@@ -69,8 +72,9 @@ const SideEffectTrackerScreen = () => {
       const data = await sideEffectAPI.getAll(filters);
       setSideEffects(Array.isArray(data) ? data : data.results || []);
     } catch (err) {
-      console.error('Failed to fetch side effects:', err);
-      showSnackbar(t('sideEffects.fetchError'), 'error');
+      logError('SideEffectTrackerScreen.fetchSideEffects', err);
+      const errorMessage = getErrorMessage(err, t);
+      showSnackbar(errorMessage, 'error');
     }
   }, [filterSeverity, t]);
 
@@ -79,7 +83,7 @@ const SideEffectTrackerScreen = () => {
       const data = await medicineAPI.getAll();
       setMedicines(Array.isArray(data) ? data : data.results || []);
     } catch (err) {
-      console.error('Failed to fetch medicines:', err);
+      logError('SideEffectTrackerScreen.fetchMedicines', err);
     }
   }, []);
 
@@ -105,8 +109,9 @@ const SideEffectTrackerScreen = () => {
       setShowForm(false);
       fetchSideEffects();
     } catch (err) {
-      console.error('Failed to submit side effect:', err);
-      showSnackbar(t('sideEffects.reportError'), 'error');
+      logError('SideEffectTrackerScreen.handleSubmit', err);
+      const errorMessage = getErrorMessage(err, t);
+      showSnackbar(errorMessage, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -118,7 +123,9 @@ const SideEffectTrackerScreen = () => {
       showSnackbar(t('sideEffects.resolved'));
       fetchSideEffects();
     } catch (err) {
-      showSnackbar(t('sideEffects.resolveError'), 'error');
+      logError('SideEffectTrackerScreen.handleResolve', err);
+      const errorMessage = getErrorMessage(err, t);
+      showSnackbar(errorMessage, 'error');
     }
   };
 
@@ -129,23 +136,23 @@ const SideEffectTrackerScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>{t('common.loading')}</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.text }}>{t('common.loading')}</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Text style={styles.backText}>← {t('common.cancel')}</Text>
+              <Text style={[styles.backText, { color: colors.primary }]}>← {t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>{t('sideEffects.title')}</Text>
-            <Text style={styles.subtitle}>{t('sideEffects.subtitle')}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t('sideEffects.title')}</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('sideEffects.subtitle')}</Text>
           </View>
 
           {/* Add Button */}
@@ -153,6 +160,7 @@ const SideEffectTrackerScreen = () => {
             mode="contained"
             onPress={() => setShowForm(true)}
             style={styles.addButton}
+            buttonColor={colors.primary}
             icon="plus"
           >
             {t('sideEffects.reportNew')}
@@ -160,13 +168,13 @@ const SideEffectTrackerScreen = () => {
 
           {/* Severity Filter */}
           <View style={styles.filterRow}>
-            <Text style={styles.filterLabel}>{t('sideEffects.filterBySeverity')}</Text>
+            <Text style={[styles.filterLabel, { color: colors.text }]}>{t('sideEffects.filterBySeverity')}</Text>
             <View style={styles.filterChips}>
               <TouchableOpacity
-                style={[styles.chip, !filterSeverity && styles.chipActive]}
+                style={[styles.chip, { backgroundColor: colors.background, borderColor: colors.border }, !filterSeverity && { backgroundColor: colors.primary, borderColor: colors.primary }]}
                 onPress={() => setFilterSeverity('')}
               >
-                <Text style={[styles.chipText, !filterSeverity && styles.chipTextActive]}>
+                <Text style={[styles.chipText, { color: colors.textSecondary }, !filterSeverity && styles.chipTextActive]}>
                   {t('sideEffects.all')}
                 </Text>
               </TouchableOpacity>
@@ -196,7 +204,7 @@ const SideEffectTrackerScreen = () => {
           {sideEffects.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>📋</Text>
-              <Text style={styles.emptyText}>{t('sideEffects.noRecords')}</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('sideEffects.noRecords')}</Text>
             </View>
           ) : (
             sideEffects.map((item) => {
@@ -207,7 +215,7 @@ const SideEffectTrackerScreen = () => {
                   key={item.id}
                   onPress={() => setExpandedId(isExpanded ? null : item.id)}
                 >
-                  <Card style={[styles.itemCard, { borderLeftColor: severity.textColor }]}>
+                  <Card style={[styles.itemCard, { borderLeftColor: severity.textColor, backgroundColor: colors.surface }]}>
                     <View style={styles.itemContent}>
                       <View style={styles.itemHeader}>
                         <View style={[styles.severityBadge, { backgroundColor: severity.color }]}>
@@ -215,31 +223,31 @@ const SideEffectTrackerScreen = () => {
                             {t(`sideEffects.${item.severity}`)}
                           </Text>
                         </View>
-                        <Text style={styles.itemDate}>
+                        <Text style={[styles.itemDate, { color: colors.textMuted }]}>
                           {item.onset_time ? new Date(item.onset_time).toLocaleDateString() : ''}
                         </Text>
                       </View>
-                      <Text style={styles.itemSymptoms} numberOfLines={isExpanded ? undefined : 2}>
+                      <Text style={[styles.itemSymptoms, { color: colors.text }]} numberOfLines={isExpanded ? undefined : 2}>
                         {item.symptoms}
                       </Text>
                       {item.medication_name && (
-                        <Text style={styles.itemMedicine}>💊 {item.medication_name}</Text>
+                        <Text style={[styles.itemMedicine, { color: colors.textSecondary }]}>💊 {item.medication_name}</Text>
                       )}
                       {isExpanded && (
-                        <View style={styles.expandedContent}>
+                        <View style={[styles.expandedContent, { borderTopColor: colors.border }]}>
                           {item.treatment_given ? (
-                            <Text style={styles.detailText}>
+                            <Text style={[styles.detailText, { color: colors.textSecondary }]}>
                               {t('sideEffects.treatmentGiven')}: {item.treatment_given}
                             </Text>
                           ) : null}
-                          <Text style={styles.detailText}>
+                          <Text style={[styles.detailText, { color: colors.textSecondary }]}>
                             {t('sideEffects.outcome')}: {t(`sideEffects.${item.outcome || 'unknown'}`)}
                           </Text>
                           {!item.is_resolved && (
                             <Button
                               mode="outlined"
                               onPress={() => handleResolve(item.id)}
-                              style={styles.resolveButton}
+                              style={[styles.resolveButton, { borderColor: colors.primary }]}
                               compact
                             >
                               {t('sideEffects.markResolved')}
@@ -263,24 +271,25 @@ const SideEffectTrackerScreen = () => {
 
       {/* New Side Effect Form Modal */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet">
-        <ScrollView style={styles.modalContainer}>
+        <ScrollView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('sideEffects.reportNew')}</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('sideEffects.reportNew')}</Text>
               <TouchableOpacity onPress={() => setShowForm(false)}>
-                <Text style={styles.closeText}>✕</Text>
+                <Text style={[styles.closeText, { color: colors.textSecondary }]}>✕</Text>
               </TouchableOpacity>
             </View>
 
             {/* Reaction Type */}
-            <Text style={styles.fieldLabel}>{t('sideEffects.reactionType')}</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('sideEffects.reactionType')}</Text>
             <View style={styles.reactionRow}>
               {REACTION_TYPES.map((rt) => (
                 <TouchableOpacity
                   key={rt.value}
                   style={[
                     styles.reactionChip,
-                    form.reaction_type === rt.value && styles.reactionChipActive,
+                    { backgroundColor: colors.background, borderColor: colors.border },
+                    form.reaction_type === rt.value && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
                   ]}
                   onPress={() => setForm((p) => ({ ...p, reaction_type: rt.value }))}
                 >
@@ -288,7 +297,8 @@ const SideEffectTrackerScreen = () => {
                   <Text
                     style={[
                       styles.reactionText,
-                      form.reaction_type === rt.value && styles.reactionTextActive,
+                      { color: colors.textSecondary },
+                      form.reaction_type === rt.value && { color: colors.primary, fontWeight: '600' },
                     ]}
                   >
                     {t(`sideEffects.${rt.value}`)}
@@ -298,7 +308,7 @@ const SideEffectTrackerScreen = () => {
             </View>
 
             {/* Severity */}
-            <Text style={styles.fieldLabel}>{t('sideEffects.severity')}</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('sideEffects.severity')}</Text>
             <View style={styles.severityRow}>
               {SEVERITY_OPTIONS.map((sev) => (
                 <TouchableOpacity
@@ -322,8 +332,8 @@ const SideEffectTrackerScreen = () => {
             </View>
 
             {/* Medicine Picker */}
-            <Text style={styles.fieldLabel}>{t('sideEffects.medicine')}</Text>
-            <View style={styles.pickerContainer}>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('sideEffects.medicine')}</Text>
+            <View style={[styles.pickerContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
               <Picker
                 selectedValue={form.medication_name}
                 onValueChange={(value) => {
@@ -378,8 +388,8 @@ const SideEffectTrackerScreen = () => {
             />
 
             {/* Outcome */}
-            <Text style={styles.fieldLabel}>{t('sideEffects.outcome')}</Text>
-            <View style={styles.pickerContainer}>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('sideEffects.outcome')}</Text>
+            <View style={[styles.pickerContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
               <Picker
                 selectedValue={form.outcome}
                 onValueChange={(value) => setForm((p) => ({ ...p, outcome: value }))}
@@ -406,6 +416,7 @@ const SideEffectTrackerScreen = () => {
                 loading={submitting}
                 disabled={submitting}
                 style={styles.submitButton}
+                buttonColor={colors.primary}
               >
                 {submitting ? t('sideEffects.submitting') : t('sideEffects.submit')}
               </Button>
@@ -418,7 +429,7 @@ const SideEffectTrackerScreen = () => {
         visible={snackbar.visible}
         onDismiss={() => setSnackbar({ visible: false, message: '', type: 'success' })}
         duration={3000}
-        style={snackbar.type === 'error' ? styles.snackbarError : styles.snackbarSuccess}
+        style={{ backgroundColor: snackbar.type === 'error' ? colors.error : colors.success }}
       >
         {snackbar.message}
       </Snackbar>

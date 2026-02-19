@@ -12,11 +12,14 @@ import { TextInput, Button, Text, Snackbar } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { authAPI } from '../services/api';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 export default function SignupScreen({ navigation }) {
   const { signUp, isLoading: authLoading } = useAuth();
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -118,11 +121,12 @@ export default function SignupScreen({ navigation }) {
           }, 1500);
         }
       } else {
-        showSnackbar(result.error || t('auth.failedToCreateAccount') || 'Signup failed', 'error');
+        showSnackbar(result.error || t('errors.registrationFailed') || 'Signup failed', 'error');
       }
     } catch (error) {
-      console.error('Signup error:', error);
-      showSnackbar(error.message || t('common.error') || 'An error occurred', 'error');
+      logError('SignupScreen.handleSignup', error);
+      const errorMessage = getErrorMessage(error, t);
+      showSnackbar(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -139,7 +143,9 @@ export default function SignupScreen({ navigation }) {
       await authAPI.resendVerification(registeredEmail);
       showSnackbar(t('emailVerification.resentSuccess'), 'success');
     } catch (error) {
-      showSnackbar(error.message || t('emailVerification.resentFailedShort'), 'error');
+      logError('SignupScreen.handleResendVerification', error);
+      const errorMessage = getErrorMessage(error, t);
+      showSnackbar(errorMessage, 'error');
     } finally {
       setResendLoading(false);
     }
@@ -150,17 +156,17 @@ export default function SignupScreen({ navigation }) {
   // Show "Check Your Email" screen after successful registration
   if (registeredEmail) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.verificationCard}>
+          <View style={[styles.verificationCard, { backgroundColor: colors.surface }]}>
             <Text style={styles.verificationIcon}>📧</Text>
-            <Text style={styles.verificationTitle}>{t('emailVerification.checkYourEmail')}</Text>
-            <Text style={styles.verificationMessage}>
+            <Text style={[styles.verificationTitle, { color: colors.text }]}>{t('emailVerification.checkYourEmail')}</Text>
+            <Text style={[styles.verificationMessage, { color: colors.textSecondary }]}>
               {t('emailVerification.verificationSentTo')}{' '}
-              <Text style={{ fontWeight: 'bold' }}>{registeredEmail}</Text>.{' '}
+              <Text style={{ fontWeight: 'bold', color: colors.text }}>{registeredEmail}</Text>.{' '}
               {t('emailVerification.clickLinkToVerify')}
             </Text>
-            <Text style={styles.verificationSubtext}>
+            <Text style={[styles.verificationSubtext, { color: colors.textMuted }]}>
               {t('emailVerification.didntReceive')}
             </Text>
 
@@ -169,7 +175,8 @@ export default function SignupScreen({ navigation }) {
               onPress={handleResendVerification}
               loading={resendLoading}
               disabled={resendLoading}
-              style={styles.resendVerificationButton}
+              style={[styles.resendVerificationButton, { borderColor: colors.primary }]}
+              textColor={colors.primary}
             >
               {resendLoading ? t('emailVerification.sending') : t('emailVerification.resendVerification')}
             </Button>
@@ -177,7 +184,7 @@ export default function SignupScreen({ navigation }) {
             <Button
               mode="contained"
               onPress={() => navigation.navigate('Login')}
-              style={styles.goToLoginButton}
+              style={[styles.goToLoginButton, { backgroundColor: colors.primary }]}
             >
               {t('emailVerification.goToLogin')}
             </Button>
@@ -190,7 +197,7 @@ export default function SignupScreen({ navigation }) {
           duration={3000}
           style={[
             styles.snackbar,
-            snackbar.type === 'error' && styles.snackbarError,
+            { backgroundColor: snackbar.type === 'error' ? colors.error : colors.success },
           ]}
         >
           {snackbar.message}
@@ -202,9 +209,9 @@ export default function SignupScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
       
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -212,16 +219,16 @@ export default function SignupScreen({ navigation }) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.appName}>SalusLogica</Text>
-          <Text style={styles.title}>{t('signup.title') || 'Create Account'}</Text>
+          <Text style={[styles.appName, { color: colors.primary }]}>SalusLogica</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('signup.title') || 'Create Account'}</Text>
         </View>
 
         {/* Form */}
-        <View style={styles.form}>
+        <View style={[styles.form, { backgroundColor: colors.surface, borderRadius: 16, padding: 20 }]}>
           {/* Name Fields */}
           <View style={styles.row}>
             <View style={styles.halfWidth}>
-              <Text style={styles.label}>{t('signup.firstName') || 'First Name'}</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>{t('signup.firstName') || 'First Name'}</Text>
               <TextInput
                 mode="outlined"
                 placeholder={t('auth.firstNamePlaceholder')}
@@ -232,17 +239,18 @@ export default function SignupScreen({ navigation }) {
                 }}
                 disabled={isFormLoading}
                 error={!!errors.firstName}
-                style={styles.input}
-                outlineColor="#d1d5db"
-                activeOutlineColor="#0d9488"
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                outlineColor={colors.border}
+                activeOutlineColor={colors.primary}
               />
               {errors.firstName && (
-                <Text style={styles.errorText}>{errors.firstName}</Text>
+                <Text style={[styles.errorText, { color: colors.error }]}>{errors.firstName}</Text>
               )}
             </View>
 
             <View style={styles.halfWidth}>
-              <Text style={styles.label}>{t('signup.lastName') || 'Last Name'}</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>{t('signup.lastName') || 'Last Name'}</Text>
               <TextInput
                 mode="outlined"
                 placeholder={t('auth.lastNamePlaceholder')}
@@ -253,19 +261,20 @@ export default function SignupScreen({ navigation }) {
                 }}
                 disabled={isFormLoading}
                 error={!!errors.lastName}
-                style={styles.input}
-                outlineColor="#d1d5db"
-                activeOutlineColor="#0d9488"
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                outlineColor={colors.border}
+                activeOutlineColor={colors.primary}
               />
               {errors.lastName && (
-                <Text style={styles.errorText}>{errors.lastName}</Text>
+                <Text style={[styles.errorText, { color: colors.error }]}>{errors.lastName}</Text>
               )}
             </View>
           </View>
 
           {/* Email */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('signup.email') || 'Email'}</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('signup.email') || 'Email'}</Text>
             <TextInput
               mode="outlined"
               placeholder={t('auth.emailPlaceholder')}
@@ -278,18 +287,19 @@ export default function SignupScreen({ navigation }) {
               keyboardType="email-address"
               autoCapitalize="none"
               error={!!errors.email}
-              style={styles.input}
-              outlineColor="#d1d5db"
-              activeOutlineColor="#0d9488"
+              style={[styles.input, { backgroundColor: colors.surface }]}
+              textColor={colors.text}
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
             />
             {errors.email && (
-              <Text style={styles.errorText}>{errors.email}</Text>
+              <Text style={[styles.errorText, { color: colors.error }]}>{errors.email}</Text>
             )}
           </View>
 
           {/* Username */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('signup.username') || 'Username'}</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('signup.username') || 'Username'}</Text>
             <TextInput
               mode="outlined"
               placeholder={t('auth.usernamePlaceholder')}
@@ -301,19 +311,20 @@ export default function SignupScreen({ navigation }) {
               disabled={isFormLoading}
               autoCapitalize="none"
               error={!!errors.username}
-              style={styles.input}
-              outlineColor="#d1d5db"
-              activeOutlineColor="#0d9488"
+              style={[styles.input, { backgroundColor: colors.surface }]}
+              textColor={colors.text}
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
             />
             {errors.username && (
-              <Text style={styles.errorText}>{errors.username}</Text>
+              <Text style={[styles.errorText, { color: colors.error }]}>{errors.username}</Text>
             )}
           </View>
 
           {/* Password Fields */}
           <View style={styles.row}>
             <View style={styles.halfWidth}>
-              <Text style={styles.label}>{t('signup.password') || 'Password'}</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>{t('signup.password') || 'Password'}</Text>
               <TextInput
                 mode="outlined"
                 placeholder="••••••••"
@@ -325,23 +336,25 @@ export default function SignupScreen({ navigation }) {
                 disabled={isFormLoading}
                 secureTextEntry={secureTextEntry}
                 error={!!errors.password}
-                style={styles.input}
-                outlineColor="#d1d5db"
-                activeOutlineColor="#0d9488"
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                outlineColor={colors.border}
+                activeOutlineColor={colors.primary}
                 right={
                   <TextInput.Icon
                     icon={secureTextEntry ? 'eye-off' : 'eye'}
                     onPress={() => setSecureTextEntry(!secureTextEntry)}
+                    iconColor={colors.textSecondary}
                   />
                 }
               />
               {errors.password && (
-                <Text style={styles.errorText}>{errors.password}</Text>
+                <Text style={[styles.errorText, { color: colors.error }]}>{errors.password}</Text>
               )}
             </View>
 
             <View style={styles.halfWidth}>
-              <Text style={styles.label}>{t('signup.confirmPassword') || 'Confirm'}</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>{t('signup.confirmPassword') || 'Confirm'}</Text>
               <TextInput
                 mode="outlined"
                 placeholder="••••••••"
@@ -353,30 +366,32 @@ export default function SignupScreen({ navigation }) {
                 disabled={isFormLoading}
                 secureTextEntry={secureConfirmEntry}
                 error={!!errors.confirmPassword}
-                style={styles.input}
-                outlineColor="#d1d5db"
-                activeOutlineColor="#0d9488"
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                outlineColor={colors.border}
+                activeOutlineColor={colors.primary}
                 right={
                   <TextInput.Icon
                     icon={secureConfirmEntry ? 'eye-off' : 'eye'}
                     onPress={() => setSecureConfirmEntry(!secureConfirmEntry)}
+                    iconColor={colors.textSecondary}
                   />
                 }
               />
               {errors.confirmPassword && (
-                <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+                <Text style={[styles.errorText, { color: colors.error }]}>{errors.confirmPassword}</Text>
               )}
             </View>
           </View>
 
           {/* Role Selection */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('signup.role') || 'Role'}</Text>
-            <View style={styles.pickerContainer}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('signup.role') || 'Role'}</Text>
+            <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Picker
                 selectedValue={role}
                 onValueChange={setRole}
-                style={styles.picker}
+                style={[styles.picker, { color: colors.text }]}
                 enabled={!isFormLoading}
               >
                 {roles.map((roleItem) => (
@@ -392,7 +407,7 @@ export default function SignupScreen({ navigation }) {
             onPress={handleSignup}
             disabled={isFormLoading}
             loading={isFormLoading}
-            style={styles.signupButton}
+            style={[styles.signupButton, { backgroundColor: colors.primary }]}
             contentStyle={styles.signupButtonContent}
             labelStyle={styles.signupButtonLabel}
           >
@@ -403,11 +418,11 @@ export default function SignupScreen({ navigation }) {
 
           {/* Login Link */}
           <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>
+            <Text style={[styles.loginText, { color: colors.textSecondary }]}>
               {t('signup.alreadyHave') || 'Already have an account?'}{' '}
             </Text>
             <TouchableOpacity onPress={handleLogin} disabled={isFormLoading}>
-              <Text style={styles.loginLink}>
+              <Text style={[styles.loginLink, { color: colors.primary }]}>
                 {t('signup.login') || 'Sign in'}
               </Text>
             </TouchableOpacity>
@@ -422,7 +437,7 @@ export default function SignupScreen({ navigation }) {
         duration={3000}
         style={[
           styles.snackbar,
-          snackbar.type === 'error' && styles.snackbarError,
+          { backgroundColor: snackbar.type === 'error' ? colors.error : colors.success },
         ]}
       >
         {snackbar.message}

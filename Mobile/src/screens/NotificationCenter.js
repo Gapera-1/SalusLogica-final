@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Card, Button, Avatar, Checkbox, Switch } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { notificationAPI, fcmDeviceAPI } from '../services/api';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 const NotificationCenter = () => {
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
@@ -23,8 +26,9 @@ const NotificationCenter = () => {
       const data = await notificationAPI.getNotifications();
       setNotifications(data || []);
     } catch (error) {
-      console.error('Failed to load notifications:', error);
-      Alert.alert(t('common.error'), t('common.failed'));
+      logError('NotificationCenter.loadNotifications', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -50,8 +54,9 @@ const NotificationCenter = () => {
         )
       );
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
-      Alert.alert(t('common.error'), t('common.failed'));
+      logError('NotificationCenter.handleMarkAsRead', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     }
   };
 
@@ -62,8 +67,9 @@ const NotificationCenter = () => {
         prev.map(n => ({ ...n, read: true }))
       );
     } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
-      Alert.alert(t('common.error'), t('common.failed'));
+      logError('NotificationCenter.handleMarkAllAsRead', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     }
   };
 
@@ -72,8 +78,9 @@ const NotificationCenter = () => {
       await notificationAPI.delete(notificationId);
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
     } catch (error) {
-      console.error('Failed to delete notification:', error);
-      Alert.alert(t('common.error'), t('common.failed'));
+      logError('NotificationCenter.handleDelete', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     }
   };
 
@@ -93,8 +100,9 @@ const NotificationCenter = () => {
         Alert.alert(t('common.success'), t('notifications.pushEnabled'));
       }
     } catch (error) {
-      console.error('Push toggle error:', error);
-      Alert.alert(t('common.error'), t('notifications.pushToggleError'));
+      logError('NotificationCenter.handleTogglePush', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setPushLoading(false);
     }
@@ -105,8 +113,9 @@ const NotificationCenter = () => {
       const result = await fcmDeviceAPI.sendTestPush();
       Alert.alert(t('common.success'), t('notifications.testPushSent'));
     } catch (error) {
-      console.error('Test push error:', error);
-      Alert.alert(t('common.error'), t('notifications.testPushError'));
+      logError('NotificationCenter.handleTestPush', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     }
   };
 
@@ -148,44 +157,44 @@ const NotificationCenter = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>{t('common.loading')}</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.text }}>{t('common.loading')}</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('navigation.notifications')}</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: colors.text }]}>{t('navigation.notifications')}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {filteredNotifications.length} {t('notifications.notifications')}
           </Text>
         </View>
 
         {/* Push Notification Settings */}
-        <Card style={styles.pushCard}>
+        <Card style={[styles.pushCard, { backgroundColor: colors.surface }]}>
           <View style={styles.pushContent}>
             <View style={styles.pushHeader}>
               <Text style={styles.pushIcon}>🔔</Text>
               <View style={styles.pushInfo}>
-                <Text style={styles.pushTitle}>{t('notifications.pushNotifications')}</Text>
-                <Text style={styles.pushDesc}>{t('notifications.pushDescription')}</Text>
+                <Text style={[styles.pushTitle, { color: colors.text }]}>{t('notifications.pushNotifications')}</Text>
+                <Text style={[styles.pushDesc, { color: colors.textSecondary }]}>{t('notifications.pushDescription')}</Text>
               </View>
               <Switch
                 value={pushEnabled}
                 onValueChange={handleTogglePush}
                 disabled={pushLoading}
-                color="#0d9488"
+                color={colors.primary}
               />
             </View>
             {pushEnabled && (
               <Button
                 mode="outlined"
                 onPress={handleTestPush}
-                style={styles.testPushButton}
+                style={[styles.testPushButton, { borderColor: colors.primary }]}
                 compact
               >
                 {t('notifications.sendTestPush')}
@@ -195,17 +204,17 @@ const NotificationCenter = () => {
         </Card>
 
         {/* Filter Tabs */}
-        <View style={styles.filterContainer}>
+        <View style={[styles.filterContainer, { backgroundColor: colors.surface }]}>
           {['all', 'unread', 'reminder', 'refill', 'appointment', 'safety'].map((filterOption) => (
             <TouchableOpacity
               key={filterOption}
               style={[
                 styles.filterTab,
-                filter === filterOption && styles.activeFilter
+                filter === filterOption && { backgroundColor: colors.primary }
               ]}
               onPress={() => handleFilterChange(filterOption)}
             >
-              <Text style={styles.filterText}>
+              <Text style={[styles.filterText, { color: filter === filterOption ? '#ffffff' : colors.text }]}>
                 {filterOption === 'all' && t('notifications.all')}
                 {filterOption === 'unread' && t('notifications.unread')}
                 {filterOption === 'reminder' && t('notifications.reminders')}
@@ -220,7 +229,7 @@ const NotificationCenter = () => {
         {/* Notifications List */}
         {filteredNotifications.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>{t('notifications.noNotifications')}</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('notifications.noNotifications')}</Text>
           </View>
         ) : (
           filteredNotifications.map((notification) => (
@@ -228,26 +237,26 @@ const NotificationCenter = () => {
               key={notification.id}
               style={[
                 styles.notificationItem,
-                { backgroundColor: getNotificationColor(notification.type, notification.read) }
+                { backgroundColor: notification.read ? colors.border : getNotificationColor(notification.type, notification.read) }
               ]}
               onPress={() => handleNotificationPress(notification)}
             >
               <View style={styles.notificationContent}>
                 <View style={styles.notificationHeader}>
-                  <View style={styles.iconContainer}>
+                  <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
                     <Text style={styles.notificationIcon}>
                       {getNotificationIcon(notification.type)}
                     </Text>
                   </View>
                   <View style={styles.notificationInfo}>
-                    <Text style={styles.notificationTitle}>{notification.title}</Text>
-                    <Text style={styles.notificationTime}>{notification.time}</Text>
+                    <Text style={[styles.notificationTitle, { color: colors.text }]}>{notification.title}</Text>
+                    <Text style={[styles.notificationTime, { color: colors.textSecondary }]}>{notification.time}</Text>
                   </View>
                   {!notification.read && (
-                    <View style={styles.unreadIndicator} />
+                    <View style={[styles.unreadIndicator, { backgroundColor: colors.error }]} />
                   )}
                 </View>
-                <Text style={styles.notificationMessage}>{notification.message}</Text>
+                <Text style={[styles.notificationMessage, { color: colors.text }]}>{notification.message}</Text>
               </View>
               
               {notification.type === 'reminder' && (
@@ -268,7 +277,7 @@ const NotificationCenter = () => {
 
         {/* Action Buttons */}
         {notifications.some(n => !n.read) && (
-          <View style={styles.actionContainer}>
+          <View style={[styles.actionContainer, { backgroundColor: colors.background }]}>
             <Button
               mode="outlined"
               onPress={handleMarkAllAsRead}

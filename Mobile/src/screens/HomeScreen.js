@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 
 const HomeScreen = () => {
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation();
 
   const handleGetStarted = () => {
@@ -20,50 +22,50 @@ const HomeScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Logo and Welcome Section */}
         <View style={styles.header}>
-          <Text style={styles.appName}>{t('common.appName')}</Text>
-          <Text style={styles.welcome}>{t('home.welcome')}</Text>
-          <Text style={styles.subtitle}>{t('home.subtitle')}</Text>
-          <Text style={styles.description}>{t('home.description')}</Text>
+          <Text style={[styles.appName, { color: colors.primary }]}>{t('common.appName')}</Text>
+          <Text style={[styles.welcome, { color: colors.text }]}>{t('home.welcome')}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('home.subtitle')}</Text>
+          <Text style={[styles.description, { color: colors.textSecondary }]}>{t('home.description')}</Text>
         </View>
 
         {/* Features Section */}
         <View style={styles.featuresSection}>
-          <Text style={styles.featuresTitle}>{t('home.features.title')}</Text>
-          <Text style={styles.featuresSubtitle}>{t('home.features.subtitle')}</Text>
+          <Text style={[styles.featuresTitle, { color: colors.text }]}>{t('home.features.title')}</Text>
+          <Text style={[styles.featuresSubtitle, { color: colors.textSecondary }]}>{t('home.features.subtitle')}</Text>
           
           <View style={styles.featureGrid}>
-            <View style={styles.featureItem}>
-              <Text style={styles.featureTitle}>{t('home.features.medicineManagement.title')}</Text>
-              <Text style={styles.featureDescription}>{t('home.features.medicineManagement.description')}</Text>
+            <View style={[styles.featureItem, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>{t('home.features.medicineManagement.title')}</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>{t('home.features.medicineManagement.description')}</Text>
             </View>
             
-            <View style={styles.featureItem}>
-              <Text style={styles.featureTitle}>{t('home.features.smartReminders.title')}</Text>
-              <Text style={styles.featureDescription}>{t('home.features.smartReminders.description')}</Text>
+            <View style={[styles.featureItem, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>{t('home.features.smartReminders.title')}</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>{t('home.features.smartReminders.description')}</Text>
             </View>
             
-            <View style={styles.featureItem}>
-              <Text style={styles.featureTitle}>{t('home.features.doseTracking.title')}</Text>
-              <Text style={styles.featureDescription}>{t('home.features.doseTracking.description')}</Text>
+            <View style={[styles.featureItem, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>{t('home.features.doseTracking.title')}</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>{t('home.features.doseTracking.description')}</Text>
             </View>
             
-            <View style={styles.featureItem}>
-              <Text style={styles.featureTitle}>{t('home.features.patientProfiles.title')}</Text>
-              <Text style={styles.featureDescription}>{t('home.features.patientProfiles.description')}</Text>
+            <View style={[styles.featureItem, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>{t('home.features.patientProfiles.title')}</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>{t('home.features.patientProfiles.description')}</Text>
             </View>
           </View>
         </View>
 
         {/* CTA Section */}
         <View style={styles.ctaSection}>
-          <Text style={styles.ctaTitle}>{t('home.cta.title')}</Text>
-          <Text style={styles.ctaSubtitle}>{t('home.cta.subtitle')}</Text>
+          <Text style={[styles.ctaTitle, { color: colors.text }]}>{t('home.cta.title')}</Text>
+          <Text style={[styles.ctaSubtitle, { color: colors.textSecondary }]}>{t('home.cta.subtitle')}</Text>
           
-          <TouchableOpacity style={styles.getStartedButton} onPress={handleGetStarted}>
+          <TouchableOpacity style={[styles.getStartedButton, { backgroundColor: colors.primary }]} onPress={handleGetStarted}>
             <Text style={styles.getStartedText}>{t('home.getStarted')}</Text>
           </TouchableOpacity>
         </View>
@@ -71,14 +73,14 @@ const HomeScreen = () => {
         {/* Auth Buttons */}
         <View style={styles.authSection}>
           <TouchableOpacity 
-            style={[styles.authButton, styles.loginButton]} 
+            style={[styles.authButton, styles.loginButton, { backgroundColor: colors.surface, borderColor: colors.primary }]} 
             onPress={handleLogin}
           >
-            <Text style={styles.loginButtonText}>{t('home.login')}</Text>
+            <Text style={[styles.loginButtonText, { color: colors.primary }]}>{t('home.login')}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.authButton, styles.signupButton]} 
+            style={[styles.authButton, styles.signupButton, { backgroundColor: colors.primary }]} 
             onPress={handleSignup}
           >
             <Text style={styles.signupButtonText}>{t('home.signup')}</Text>

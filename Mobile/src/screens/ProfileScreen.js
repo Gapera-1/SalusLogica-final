@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { Card, Button, TextInput, Avatar, Switch } from 'react-native-paper';
+import { Picker } from '@react-native-picker/picker';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { userAPI, authAPI } from '../services/api';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 const ProfileScreen = () => {
   const { t, language, setLanguage, languages } = useLanguage();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark, toggleTheme, colors } = useTheme();
   const { user, signOut, updateProfile: updateAuthProfile } = useAuth();
   const navigation = useNavigation();
   const [formData, setFormData] = useState({
@@ -62,7 +64,7 @@ const ProfileScreen = () => {
         }
       }
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      logError('ProfileScreen.loadProfile', error);
       // Fall back to AuthContext user data
       if (user) {
         setFormData(prev => ({
@@ -141,8 +143,9 @@ const ProfileScreen = () => {
           const result = await userAPI.uploadAvatar(formData);
           Alert.alert(t('common.success'), t('profile.avatarUploaded'));
         } catch (error) {
-          console.error('Avatar upload error:', error);
-          Alert.alert(t('common.error'), t('profile.avatarFailed'));
+          logError('ProfileScreen.uploadAvatar', error);
+          const errorMessage = getErrorMessage(error, t);
+          Alert.alert(t('common.error'), errorMessage);
           setAvatarUri(null); // Revert on error
         } finally {
           setLoading(false);
@@ -167,8 +170,9 @@ const ProfileScreen = () => {
               setAvatarUri(null);
               Alert.alert(t('common.success'), t('profile.avatarRemoved'));
             } catch (error) {
-              console.error('Remove avatar error:', error);
-              Alert.alert(t('common.error'), t('profile.avatarFailed'));
+              logError('ProfileScreen.removeAvatar', error);
+              const errorMessage = getErrorMessage(error, t);
+              Alert.alert(t('common.error'), errorMessage);
             } finally {
               setLoading(false);
             }
@@ -205,8 +209,9 @@ const ProfileScreen = () => {
       Alert.alert(t('common.success'), t('profile.profileUpdated'));
       setEditing(false);
     } catch (error) {
-      console.error('Save profile error:', error);
-      Alert.alert(t('common.error'), error.message || t('profile.profileUpdateFailed'));
+      logError('ProfileScreen.saveProfile', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -262,8 +267,9 @@ const ProfileScreen = () => {
               Alert.alert(t('profile.accountDeleted'), t('profile.accountDeletedMessage'));
               await signOut();
             } catch (error) {
-              console.error('Delete account error:', error);
-              Alert.alert(t('common.error'), error.message || t('profile.deleteAccountFailed'));
+              logError('ProfileScreen.deleteAccount', error);
+              const errorMessage = getErrorMessage(error, t);
+              Alert.alert(t('common.error'), errorMessage);
             } finally {
               setDeleteLoading(false);
               setDeletePassword('');
@@ -275,10 +281,10 @@ const ProfileScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Header with Avatar */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.surface }]}>
           <TouchableOpacity onPress={handleSelectAvatar} activeOpacity={0.7}>
             {avatarUri ? (
               <Image
@@ -289,36 +295,36 @@ const ProfileScreen = () => {
               <Avatar.Text 
                 size={80} 
                 label={formData.username.substring(0, 2).toUpperCase()} 
-                style={styles.avatar}
+                style={[styles.avatar, { backgroundColor: colors.primary }]}
               />
             )}
-            <View style={styles.cameraIconContainer}>
+            <View style={[styles.cameraIconContainer, { backgroundColor: colors.primary }]}>
               <Text style={styles.cameraIcon}>📷</Text>
             </View>
           </TouchableOpacity>
           
           {avatarUri && (
             <TouchableOpacity onPress={handleRemoveAvatar} style={styles.removeAvatarButton}>
-              <Text style={styles.removeAvatarText}>{t('profile.removePhoto')}</Text>
+              <Text style={[styles.removeAvatarText, { color: colors.error }]}>{t('profile.removePhoto')}</Text>
             </TouchableOpacity>
           )}
           
-          <Text style={styles.username}>{formData.username}</Text>
+          <Text style={[styles.username, { color: colors.text }]}>{formData.username}</Text>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>{t('profile.logout')}</Text>
+            <Text style={[styles.logoutText, { color: colors.error }]}>{t('profile.logout')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Profile Form */}
         <View style={styles.sections}>
           {/* Personal Information */}
-          <Card style={styles.card}>
+          <Card style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.cardContent}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t('profile.personalInfo')}</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('profile.personalInfo')}</Text>
                 {!editing && (
-                  <TouchableOpacity onPress={handleEditProfile} style={styles.editButton}>
-                    <Text style={styles.editText}>{t('profile.editProfile')}</Text>
+                  <TouchableOpacity onPress={handleEditProfile} style={[styles.editButton, { backgroundColor: colors.primaryLight }]}>
+                    <Text style={[styles.editText, { color: colors.primary }]}>{t('profile.edit')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -329,12 +335,13 @@ const ProfileScreen = () => {
                 onChangeText={(value) => handleInputChange('username', value)}
                 disabled={!editing}
                 style={styles.input}
+                textColor={colors.text}
               />
 
               <View style={styles.row}>
                 <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>{t('profile.ageCategory')}</Text>
-                  <View style={styles.pickerContainer}>
+                  <Text style={[styles.label, { color: colors.text }]}>{t('profile.ageCategory')}</Text>
+                  <View style={[styles.pickerContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                     <Picker
                       selectedValue={formData.ageCategory}
                       onValueChange={(value) => handleInputChange('ageCategory', value)}
@@ -349,12 +356,12 @@ const ProfileScreen = () => {
                 </View>
 
                 <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>{t('profile.gender')}</Text>
-                  <View style={styles.pickerContainer}>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>{t('profile.gender')}</Text>
+                  <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <Picker
                       selectedValue={formData.gender}
                       onValueChange={(value) => handleInputChange('gender', value)}
-                      style={styles.picker}
+                      style={[styles.picker, { color: colors.text }]}
                       enabled={editing}
                     >
                       {genders.map((gender) => (
@@ -373,7 +380,10 @@ const ProfileScreen = () => {
                     onChangeText={(value) => handleInputChange('weight', value)}
                     keyboardType="numeric"
                     disabled={!editing}
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    textColor={colors.text}
+                    activeOutlineColor={colors.primary}
+                    outlineColor={colors.border}
                   />
                 </View>
 
@@ -384,7 +394,10 @@ const ProfileScreen = () => {
                     onChangeText={(value) => handleInputChange('height', value)}
                     keyboardType="numeric"
                     disabled={!editing}
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    textColor={colors.text}
+                    activeOutlineColor={colors.primary}
+                    outlineColor={colors.border}
                   />
                 </View>
               </View>
@@ -395,15 +408,18 @@ const ProfileScreen = () => {
                 onChangeText={(value) => handleInputChange('phone', value)}
                 keyboardType="phone-pad"
                 disabled={!editing}
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                activeOutlineColor={colors.primary}
+                outlineColor={colors.border}
               />
             </View>
           </Card>
 
           {/* Medical Information */}
-          <Card style={styles.card}>
+          <Card style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.cardContent}>
-              <Text style={styles.sectionTitle}>{t('profile.medicalInfo')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('profile.medicalInfo')}</Text>
 
               <TextInput
                 label={t('profile.medicalConditions')}
@@ -412,7 +428,10 @@ const ProfileScreen = () => {
                 multiline
                 numberOfLines={3}
                 disabled={!editing}
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                activeOutlineColor={colors.primary}
+                outlineColor={colors.border}
               />
 
               <TextInput
@@ -422,23 +441,26 @@ const ProfileScreen = () => {
                 multiline
                 numberOfLines={2}
                 disabled={!editing}
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                activeOutlineColor={colors.primary}
+                outlineColor={colors.border}
               />
             </View>
           </Card>
 
           {/* Preferences */}
-          <Card style={styles.card}>
+          <Card style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.cardContent}>
-              <Text style={styles.sectionTitle}>{t('profile.preferences')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('profile.preferences')}</Text>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>{t('profile.timezone')}</Text>
-                <View style={styles.pickerContainer}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>{t('profile.timezone')}</Text>
+                <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Picker
                     selectedValue={formData.timezone}
                     onValueChange={(value) => handleInputChange('timezone', value)}
-                    style={styles.picker}
+                    style={[styles.picker, { color: colors.text }]}
                     enabled={editing}
                   >
                     {timezones.map((tz) => (
@@ -449,12 +471,12 @@ const ProfileScreen = () => {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>{t('profile.preferredLanguage')}</Text>
-                <View style={styles.pickerContainer}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>{t('profile.preferredLanguage')}</Text>
+                <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Picker
                     selectedValue={formData.preferredLanguage}
                     onValueChange={(value) => handleInputChange('preferredLanguage', value)}
-                    style={styles.picker}
+                    style={[styles.picker, { color: colors.text }]}
                     enabled={editing}
                   >
                     {languageOptions.map((lang) => (
@@ -464,17 +486,17 @@ const ProfileScreen = () => {
                 </View>
 
               {/* Dark Mode Toggle */}
-              <View style={styles.themeToggleContainer}>
+              <View style={[styles.themeToggleContainer, { borderTopColor: colors.border }]}>
                 <View style={styles.themeToggleText}>
-                  <Text style={styles.label}>{t('profile.darkMode') || 'Dark Mode'}</Text>
-                  <Text style={styles.themeToggleSubtext}>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>{t('profile.darkMode') || 'Dark Mode'}</Text>
+                  <Text style={[styles.themeToggleSubtext, { color: colors.textMuted }]}>
                     {isDark ? t('profile.darkModeEnabled') || 'Dark theme enabled' : t('profile.lightModeEnabled') || 'Light theme enabled'}
                   </Text>
                 </View>
                 <Switch
                   value={isDark}
                   onValueChange={toggleTheme}
-                  color="#14b8a6"
+                  color={colors.primary}
                 />
               </View>
               </View>
@@ -487,7 +509,8 @@ const ProfileScreen = () => {
               <Button
                 mode="outlined"
                 onPress={handleCancelEdit}
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { borderColor: colors.border }]}
+                textColor={colors.text}
                 disabled={loading}
               >
                 {t('common.cancel')}
@@ -496,6 +519,7 @@ const ProfileScreen = () => {
                 mode="contained"
                 onPress={handleSaveProfile}
                 style={styles.saveButton}
+                buttonColor={colors.primary}
                 loading={loading}
                 disabled={loading}
               >
@@ -505,22 +529,22 @@ const ProfileScreen = () => {
           )}
 
           {/* Danger Zone - Delete Account */}
-          <Card style={[styles.card, styles.dangerCard]}>
+          <Card style={[styles.card, styles.dangerCard, { backgroundColor: colors.surface }]}>
             <View style={styles.cardContent}>
-              <Text style={[styles.sectionTitle, { color: '#dc2626' }]}>{t('profile.dangerZone')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.error }]}>{t('profile.dangerZone')}</Text>
               
               {!showDeleteSection ? (
                 <Button
                   mode="outlined"
                   onPress={() => setShowDeleteSection(true)}
-                  style={styles.deleteToggleButton}
-                  textColor="#dc2626"
+                  style={[styles.deleteToggleButton, { borderColor: colors.error }]}
+                  textColor={colors.error}
                 >
                   {t('profile.deleteAccount')}
                 </Button>
               ) : (
                 <View style={styles.deleteSection}>
-                  <Text style={styles.deleteWarning}>
+                  <Text style={[styles.deleteWarning, { color: colors.error }]}>
                     {t('profile.deleteAccountWarning')}
                   </Text>
                   <TextInput
@@ -528,7 +552,10 @@ const ProfileScreen = () => {
                     value={deletePassword}
                     onChangeText={setDeletePassword}
                     secureTextEntry
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    textColor={colors.text}
+                    activeOutlineColor={colors.error}
+                    outlineColor={colors.border}
                   />
                   <View style={styles.buttonContainer}>
                     <Button
@@ -537,7 +564,8 @@ const ProfileScreen = () => {
                         setShowDeleteSection(false);
                         setDeletePassword('');
                       }}
-                      style={styles.cancelButton}
+                      style={[styles.cancelButton, { borderColor: colors.border }]}
+                      textColor={colors.text}
                       disabled={deleteLoading}
                     >
                       {t('common.cancel')}
@@ -546,7 +574,7 @@ const ProfileScreen = () => {
                       mode="contained"
                       onPress={handleDeleteAccount}
                       style={styles.deleteButton}
-                      buttonColor="#dc2626"
+                      buttonColor={colors.error}
                       loading={deleteLoading}
                       disabled={deleteLoading || !deletePassword.trim()}
                     >

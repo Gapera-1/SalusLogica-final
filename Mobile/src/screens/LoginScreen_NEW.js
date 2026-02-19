@@ -70,7 +70,6 @@ export default function LoginScreen({ navigation }) {
 
       if (result.success) {
         // Auto-detect and store timezone on first login
-        const device = Platform.OS;
         const detectedTz = await getDeviceTimezone();
         if (detectedTz) {
           await timezoneStorage.setTimezone(detectedTz);

@@ -35,6 +35,17 @@
     "exportReports": "Kohereza raporo",
     "sideEffects": "Ingaruka z'umuti"
   },
+  "sync": {
+    "syncing": "Guhuzanya amakuru...",
+    "syncComplete": "Amakuru yahujwe neza",
+    "syncFailed": "Guhuzanya birananiranye. Turimo gukoresha amakuru yabitswe.",
+    "lastSync": "Guhuzanya kwa nyuma",
+    "tapToSync": "Kanda hano guhuzanya",
+    "online": "Uri ku murongo",
+    "offline": "Nturi ku murongo",
+    "offlineMessage": "Nturi ku murongo. Amakuru agaragara ntashobora kuba mashya.",
+    "autoSync": "Guhuzanya kwiyongera byatizwe"
+  },
   "home": {
     "welcome": "Murakaze kuri SalusLogica",
     "subtitle": "Ubuyobozi bw'umuti bwawe bworoshye",

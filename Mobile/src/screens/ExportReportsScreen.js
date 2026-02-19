@@ -11,11 +11,14 @@ import {
 } from 'react-native';
 import { Card, Button, ActivityIndicator } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { exportReportAPI } from '../services/api';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 const ExportReportsScreen = () => {
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation();
   const [generating, setGenerating] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState(30);
@@ -92,42 +95,45 @@ const ExportReportsScreen = () => {
 
       Alert.alert(t('common.success'), t('exportReports.downloadSuccess'));
     } catch (error) {
-      console.error('PDF download error:', error);
-      Alert.alert(t('common.error'), error.message || t('exportReports.downloadError'));
+      logError('ExportReportsScreen.handleDownload', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setGenerating(null);
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>← {t('common.cancel')}</Text>
+            <Text style={[styles.backText, { color: colors.primary }]}>← {t('common.cancel')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>{t('exportReports.title')}</Text>
-          <Text style={styles.subtitle}>{t('exportReports.subtitle')}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('exportReports.title')}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('exportReports.subtitle')}</Text>
         </View>
 
         {/* Period Selector */}
-        <Card style={styles.periodCard}>
+        <Card style={[styles.periodCard, { backgroundColor: colors.surface }]}>
           <View style={styles.periodContent}>
-            <Text style={styles.sectionTitle}>{t('exportReports.timePeriod')}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('exportReports.timePeriod')}</Text>
             <View style={styles.periodRow}>
               {periodOptions.map((period) => (
                 <TouchableOpacity
                   key={period.value}
                   style={[
                     styles.periodChip,
-                    selectedPeriod === period.value && styles.periodChipActive,
+                    { backgroundColor: colors.background, borderColor: colors.border },
+                    selectedPeriod === period.value && { backgroundColor: colors.primary, borderColor: colors.primary },
                   ]}
                   onPress={() => setSelectedPeriod(period.value)}
                 >
                   <Text
                     style={[
                       styles.periodChipText,
+                      { color: colors.textSecondary },
                       selectedPeriod === period.value && styles.periodChipTextActive,
                     ]}
                   >
@@ -140,18 +146,18 @@ const ExportReportsScreen = () => {
         </Card>
 
         {/* Report Cards */}
-        <Text style={styles.sectionTitle}>{t('exportReports.availableReports')}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('exportReports.availableReports')}</Text>
         {reportTypes.map((report) => (
-          <Card key={report.type} style={[styles.reportCard, { borderLeftColor: report.color }]}>
+          <Card key={report.type} style={[styles.reportCard, { borderLeftColor: report.color, backgroundColor: colors.surface }]}>
             <View style={styles.reportContent}>
               <View style={[styles.iconCircle, { backgroundColor: report.bgColor }]}>
                 <Text style={styles.reportIcon}>{report.icon}</Text>
               </View>
               <View style={styles.reportInfo}>
-                <Text style={styles.reportName}>
+                <Text style={[styles.reportName, { color: colors.text }]}>
                   {t(`exportReports.${report.type}`)}
                 </Text>
-                <Text style={styles.reportDesc}>
+                <Text style={[styles.reportDesc, { color: colors.textSecondary }]}>
                   {t(`exportReports.${report.type}Desc`)}
                 </Text>
               </View>
@@ -173,9 +179,9 @@ const ExportReportsScreen = () => {
         ))}
 
         {/* Info Note */}
-        <View style={styles.infoBox}>
+        <View style={[styles.infoBox, { backgroundColor: colors.info + '20' }]}>
           <Text style={styles.infoIcon}>ℹ️</Text>
-          <Text style={styles.infoText}>{t('exportReports.infoNote')}</Text>
+          <Text style={[styles.infoText, { color: colors.text }]}>{t('exportReports.infoNote')}</Text>
         </View>
       </View>
     </ScrollView>

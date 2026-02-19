@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Card, Button } from 'react-native-paper';
+import { Picker } from '@react-native-picker/picker';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { medicineAPI, safetyAPI } from '../services/api';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 const FoodAdvice = () => {
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState('');
@@ -24,7 +28,7 @@ const FoodAdvice = () => {
       const names = (medicines || []).map(m => m.name || m.medicine_name);
       setAvailableMedicines(names);
     } catch (error) {
-      console.error('Failed to load medicines:', error);
+      logError('FoodAdvice.loadMedicines', error);
     }
   };
 
@@ -37,8 +41,9 @@ const FoodAdvice = () => {
       setResults(response.data || response);
       setSelectedMedicine(medicine);
     } catch (error) {
-      console.error('Failed to get food advice:', error);
-      Alert.alert(t('common.error'), t('common.failed'));
+      logError('FoodAdvice.handleMedicineSelect', error);
+      const errorMessage = getErrorMessage(error, t);
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -64,25 +69,25 @@ const FoodAdvice = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>{t('common.loading')}</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.text }}>{t('common.loading')}</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('foodAdvice.title')}</Text>
-          <Text style={styles.subtitle}>{t('foodAdvice.foodRecommendations', { drug: selectedMedicine || t('foodAdvice.selectMedicine') })}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('foodAdvice.title')}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('foodAdvice.foodRecommendations', { drug: selectedMedicine || t('foodAdvice.selectMedicine') })}</Text>
         </View>
 
         {/* Medicine Selection */}
-        <Card style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.sectionTitle}>{t('foodAdvice.selectMedicine')}</Text>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
+          <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('foodAdvice.selectMedicine')}</Text>
           </View>
           <Picker
             selectedValue={selectedMedicine}
@@ -98,33 +103,33 @@ const FoodAdvice = () => {
 
         {/* Results */}
         {results && (
-          <Card style={styles.resultsCard}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.sectionTitle}>{t('foodAdvice.foodInteractions')}</Text>
+          <Card style={[styles.resultsCard, { backgroundColor: colors.surface }]}>
+            <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('foodAdvice.foodInteractions')}</Text>
             </View>
             
             {/* Main Interaction */}
             <View style={styles.interactionSection}>
               <View style={styles.interactionHeader}>
-                <Text style={getInteractionIcon(results.mainInteraction)}>
-                  {results.mainInteraction}
+                <Text style={{fontSize: 28}}>
+                  {getFoodInteractionIcon(results.mainInteraction)}
                 </Text>
-                <Text style={styles.interactionText}>
+                <Text style={[styles.interactionText, { color: colors.text }]}>
                   {t(`foodAdvice.${results.mainInteraction.toLowerCase().replace(' ', '')}`)}
                 </Text>
               </View>
-              <Text style={styles.interactionDescription}>
+              <Text style={[styles.interactionDescription, { color: colors.text }]}>
                 {results.mainInteractionDescription}
               </Text>
             </View>
 
             {/* Detailed Recommendations */}
             <View style={styles.recommendationsSection}>
-              <Text style={styles.recommendationsTitle}>{t('foodAdvice.recommendations')}</Text>
+              <Text style={[styles.recommendationsTitle, { color: colors.text }]}>{t('foodAdvice.recommendations')}</Text>
               
               {results.recommendations && results.recommendations.map((recommendation, index) => (
                 <View key={index} style={styles.recommendationItem}>
-                  <Text style={styles.recommendationText}>{recommendation}</Text>
+                  <Text style={[styles.recommendationText, { color: colors.text }]}>{recommendation}</Text>
                 </View>
               ))}
             </View>
@@ -145,28 +150,28 @@ const FoodAdvice = () => {
 
             {/* Timing Recommendations */}
             <View style={styles.timingSection}>
-              <Text style={styles.timingTitle}>{t('foodAdvice.timingRecommendations')}</Text>
+              <Text style={[styles.timingTitle, { color: colors.text }]}>{t('foodAdvice.timingRecommendations')}</Text>
               
               <View style={styles.timingOptions}>
-                <View style={styles.timingOption}>
+                <View style={[styles.timingOption, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={[styles.timingText, { color: getInteractionColor('with_food') }]}>
                     🍽️ {t('foodAdvice.withFood')}
                   </Text>
-                  <Text style={styles.timingDescription}>{results.timing?.withFood || t('foodAdvice.takeWithMeal')}</Text>
+                  <Text style={[styles.timingDescription, { color: colors.textSecondary }]}>{results.timing?.withFood || t('foodAdvice.takeWithMeal')}</Text>
                 </View>
 
-                <View style={styles.timingOption}>
+                <View style={[styles.timingOption, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={[styles.timingText, { color: getInteractionColor('without_food') }]}>
                     🚫 {t('foodAdvice.withoutFood')}
                   </Text>
-                  <Text style={styles.timingDescription}>{results.timing?.withoutFood || t('foodAdvice.takeOnEmptyStomach')}</Text>
+                  <Text style={[styles.timingDescription, { color: colors.textSecondary }]}>{results.timing?.withoutFood || t('foodAdvice.takeOnEmptyStomach')}</Text>
                 </View>
 
-                <View style={styles.timingOption}>
+                <View style={[styles.timingOption, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={[styles.timingText, { color: getInteractionColor('anytime') }]}>
                     ⏰ {t('foodAdvice.anytime')}
                   </Text>
-                  <Text style={styles.timingDescription}>{results.timing?.anytime || t('foodAdvice.noTimingRestrictions')}</Text>
+                  <Text style={[styles.timingDescription, { color: colors.textSecondary }]}>{results.timing?.anytime || t('foodAdvice.noTimingRestrictions')}</Text>
                 </View>
               </View>
             </View>

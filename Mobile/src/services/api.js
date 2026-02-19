@@ -1,7 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // ============ API CONFIGURATION ============
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://10.0.2.2:8000/api'; // Use 10.0.2.2 for Android emulator
+// For web: use localhost, for Android emulator: use 10.0.2.2, for iOS simulator/physical devices: use your computer's IP
+const getBaseUrl = () => {
+  console.log('[API] Platform.OS:', Platform.OS);
+  if (Platform.OS === 'web') {
+    return 'http://localhost:8000/api';
+  } else if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:8000/api'; // Android emulator
+  } else {
+    return 'http://localhost:8000/api'; // iOS simulator
+  }
+};
+const API_BASE_URL = process.env.REACT_APP_API_URL || getBaseUrl();
+console.log('[API] Using API_BASE_URL:', API_BASE_URL);
 
 /**
  * Helper function for unified API calls
@@ -79,14 +92,26 @@ const apiCall = async (endpoint, options = {}) => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error(`API Error Response:`, errorData);
-      const error = new Error(
-        errorData.error ||
-        errorData.message || 
-        errorData.non_field_errors?.[0] || 
-        errorData.detail || 
-        `HTTP error! status: ${response.status}`
-      );
+      console.error(`API Error Response:`, JSON.stringify(errorData, null, 2));
+      
+      // Handle the structured error response from backend
+      // Backend format: { success: false, error: { message, type, fields: { non_field_errors: [...] } } }
+      let errorMessage = 'Request failed';
+      if (errorData.error?.fields?.non_field_errors?.[0]) {
+        errorMessage = errorData.error.fields.non_field_errors[0];
+      } else if (errorData.error?.message) {
+        errorMessage = errorData.error.message;
+      } else if (typeof errorData.error === 'string') {
+        errorMessage = errorData.error;
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (errorData.non_field_errors?.[0]) {
+        errorMessage = errorData.non_field_errors[0];
+      } else if (errorData.detail) {
+        errorMessage = errorData.detail;
+      }
+      
+      const error = new Error(errorMessage);
       error.response = { data: errorData, status: response.status };
       throw error;
     }
@@ -623,6 +648,37 @@ export const dashboardAPI = {
   },
 };
 
+// ============ SAFETY API ============
+export const safetyAPI = {
+  safetyCheck: async (medicine, population) => {
+    return await apiCall('/safety/check/', {
+      method: 'POST',
+      body: JSON.stringify({ medicine, population }),
+    });
+  },
+
+  foodAdvice: async (medicineId) => {
+    if (medicineId) {
+      return await apiCall(`/medicines/${medicineId}/food-advice/`);
+    }
+    return await apiCall('/safety/food-advice/');
+  },
+
+  contraindications: async (medicineName) => {
+    return await apiCall(`/safety/contraindications/?medicine=${encodeURIComponent(medicineName)}`);
+  },
+};
+
+// ============ INTERACTION API ============
+export const interactionAPI = {
+  check: async (medicines) => {
+    return await apiCall('/interactions/check/', {
+      method: 'POST',
+      body: JSON.stringify({ medicines }),
+    });
+  },
+};
+
 export default {
   authAPI,
   medicineAPI,
@@ -636,4 +692,6 @@ export default {
   sideEffectAPI,
   exportReportAPI,
   dashboardAPI,
+  safetyAPI,
+  interactionAPI,
 };

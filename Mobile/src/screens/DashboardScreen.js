@@ -9,16 +9,30 @@ import {
 } from 'react-native';
 import { Card, Button, Avatar, Snackbar } from 'react-native-paper';
 import { SkeletonDashboard } from '../components/SkeletonLoaders';
+import SyncStatusBar, { OfflineBanner } from '../components/SyncStatusBar';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useDataSync } from '../contexts/DataSyncContext';
+import { useAlarm } from '../contexts/AlarmContext';
 import { medicineAPI, doseAPI, alarmAPI } from '../services/api';
-import { medicinesStorage, doseLogsStorage } from '../services/storage';
+import { medicinesStorage } from '../services/storage';
+import { logError } from '../utils/errorHandler';
 
 export default function DashboardScreen() {
   const { t } = useLanguage();
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const { 
+    medicines: syncedMedicines, 
+    syncAll, 
+    isSyncing, 
+    isOnline,
+    addSyncListener 
+  } = useDataSync();
+  const { updateMedicinesFromSync } = useAlarm();
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -26,6 +40,26 @@ export default function DashboardScreen() {
   const [upcomingDoses, setUpcomingDoses] = useState([]);
   const [adherenceRate, setAdherenceRate] = useState(0);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
+
+  // Update medicines when synced data changes
+  useEffect(() => {
+    if (syncedMedicines && syncedMedicines.length > 0) {
+      setMedicines(syncedMedicines);
+    }
+  }, [syncedMedicines]);
+
+  // Listen for sync events and update alarm schedules
+  useEffect(() => {
+    const unsubscribe = addSyncListener(async (data) => {
+      if (data.medicines) {
+        setMedicines(data.medicines);
+        // Update alarm schedules with new medicines
+        await updateMedicinesFromSync(data.medicines);
+        showSnackbar(t('sync.syncComplete') || 'Data synced');
+      }
+    });
+    return unsubscribe;
+  }, [addSyncListener, updateMedicinesFromSync, t]);
 
   // Reload data when screen comes into focus
   useFocusEffect(
@@ -52,7 +86,7 @@ export default function DashboardScreen() {
       setUpcomingDoses(dosesData);
       setAdherenceRate(adherence);
     } catch (error) {
-      console.error('Error loading dashboard:', error);
+      logError('DashboardScreen.loadDashboardData', error);
       // Try to load from cache on error
       const cached = await medicinesStorage.getMedicines();
       if (cached) {
@@ -126,9 +160,12 @@ export default function DashboardScreen() {
     }
   };
 
-  // Pull to refresh handler
+  // Pull to refresh handler - uses sync context
   const onRefresh = async () => {
     setRefreshing(true);
+    if (isOnline) {
+      await syncAll();
+    }
     await loadDashboardData();
     setRefreshing(false);
   };
@@ -165,7 +202,7 @@ export default function DashboardScreen() {
 
   if (loading) {
     return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
         <SkeletonDashboard />
       </ScrollView>
     );
@@ -175,19 +212,30 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView 
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl 
+          refreshing={refreshing} 
+          onRefresh={onRefresh}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+        />
       }
     >
+      {/* Offline Banner */}
+      <OfflineBanner />
+
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('dashboard.title')}</Text>
-          <Text style={styles.welcome}>
+          <Text style={[styles.title, { color: colors.text }]}>{t('dashboard.title')}</Text>
+          <Text style={[styles.welcome, { color: colors.textSecondary }]}>
             {t('dashboard.welcomeBack').replace('%(patient)s', user?.first_name || user?.username || 'User')}
           </Text>
         </View>
+
+        {/* Sync Status */}
+        <SyncStatusBar />
 
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
@@ -196,10 +244,10 @@ export default function DashboardScreen() {
             onPress={handleViewAllMedicines}
             activeOpacity={0.7}
           >
-            <Card style={styles.statCardInner}>
+            <Card style={[styles.statCardInner, { backgroundColor: colors.surface }]}>
               <View style={styles.statContent}>
-                <Text style={styles.statNumber}>{activeMedicines.length}</Text>
-                <Text style={styles.statLabel}>{t('dashboard.totalMedicines')}</Text>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>{activeMedicines.length}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('dashboard.totalMedicines')}</Text>
               </View>
             </Card>
           </TouchableOpacity>
@@ -208,10 +256,10 @@ export default function DashboardScreen() {
             style={styles.statCard}
             activeOpacity={0.7}
           >
-            <Card style={styles.statCardInner}>
+            <Card style={[styles.statCardInner, { backgroundColor: colors.surface }]}>
               <View style={styles.statContent}>
-                <Text style={styles.statNumber}>{upcomingDoses.length}</Text>
-                <Text style={styles.statLabel}>{t('dashboard.pending')}</Text>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>{upcomingDoses.length}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('dashboard.pending')}</Text>
               </View>
             </Card>
           </TouchableOpacity>
@@ -221,10 +269,10 @@ export default function DashboardScreen() {
             onPress={handleViewAnalytics}
             activeOpacity={0.7}
           >
-            <Card style={styles.statCardInner}>
+            <Card style={[styles.statCardInner, { backgroundColor: colors.surface }]}>
               <View style={styles.statContent}>
-                <Text style={styles.statNumber}>{adherenceRate}%</Text>
-                <Text style={styles.statLabel}>{t('dashboard.adherenceRate')}</Text>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>{adherenceRate}%</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('dashboard.adherenceRate')}</Text>
               </View>
             </Card>
           </TouchableOpacity>
@@ -232,25 +280,25 @@ export default function DashboardScreen() {
 
         {/* Upcoming Doses */}
         {upcomingDoses.length > 0 && (
-          <Card style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('dashboard.upcomingReminders')}</Text>
+          <Card style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+            <View style={[styles.sectionHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.upcomingReminders')}</Text>
             </View>
             {upcomingDoses.map((dose) => (
               <TouchableOpacity
                 key={dose.id}
-                style={styles.medicineItem}
+                style={[styles.medicineItem, { borderBottomColor: colors.border }]}
                 onPress={() => handleMedicinePress(dose.medicine)}
               >
                 <View style={styles.medicineInfo}>
-                  <Text style={styles.medicineName}>
+                  <Text style={[styles.medicineName, { color: colors.text }]}>
                     {dose.medicine_name || dose.medicine?.name}
                   </Text>
-                  <Text style={styles.medicineDetails}>
+                  <Text style={[styles.medicineDetails, { color: colors.textSecondary }]}>
                     {dose.dosage || dose.medicine?.dosage} • {formatTime(dose.alarm_time)}
                   </Text>
                 </View>
-                <Avatar.Icon size={24} icon="chevron-right" style={styles.iconBackground} />
+                <Avatar.Icon size={24} icon="chevron-right" style={styles.iconBackground} color={colors.textSecondary} />
               </TouchableOpacity>
             ))}
           </Card>
@@ -258,26 +306,26 @@ export default function DashboardScreen() {
 
         {/* Active Medicines */}
         {activeMedicines.length > 0 && (
-          <Card style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('medicines.title')}</Text>
+          <Card style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+            <View style={[styles.sectionHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('medicines.title')}</Text>
               <TouchableOpacity onPress={handleViewAllMedicines}>
-                <Text style={styles.viewAllText}>{t('common.viewAll') || 'View All'}</Text>
+                <Text style={[styles.viewAllText, { color: colors.primary }]}>{t('common.viewAll') || 'View All'}</Text>
               </TouchableOpacity>
             </View>
             {activeMedicines.slice(0, 3).map((medicine) => (
               <TouchableOpacity
                 key={medicine.id}
-                style={styles.medicineItem}
+                style={[styles.medicineItem, { borderBottomColor: colors.border }]}
                 onPress={() => handleMedicinePress(medicine)}
               >
                 <View style={styles.medicineInfo}>
-                  <Text style={styles.medicineName}>{medicine.name}</Text>
-                  <Text style={styles.medicineDetails}>
+                  <Text style={[styles.medicineName, { color: colors.text }]}>{medicine.name}</Text>
+                  <Text style={[styles.medicineDetails, { color: colors.textSecondary }]}>
                     {medicine.dosage} • {medicine.frequency || t('addMedicine.asNeeded')}
                   </Text>
                 </View>
-                <Avatar.Icon size={24} icon="chevron-right" style={styles.iconBackground} />
+                <Avatar.Icon size={24} icon="chevron-right" style={styles.iconBackground} color={colors.textSecondary} />
               </TouchableOpacity>
             ))}
           </Card>
@@ -285,13 +333,13 @@ export default function DashboardScreen() {
 
         {/* Empty State */}
         {activeMedicines.length === 0 && (
-          <Card style={styles.emptyCard}>
+          <Card style={[styles.emptyCard, { backgroundColor: colors.surface }]}>
             <View style={styles.emptyContent}>
-              <Avatar.Icon size={64} icon="pill" style={styles.emptyIcon} />
-              <Text style={styles.emptyTitle}>
+              <Avatar.Icon size={64} icon="pill" style={[styles.emptyIcon, { backgroundColor: colors.primaryLight || colors.primary + '20' }]} color={colors.primary} />
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>
                 {t('medicines.noMedicines') || 'No Medicines'}
               </Text>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 {t('medicines.addFirstMedicine') || 'Add your first medicine to get started'}
               </Text>
             </View>
@@ -302,7 +350,7 @@ export default function DashboardScreen() {
         <Button
           mode="contained"
           onPress={handleAddMedicine}
-          style={styles.addButton}
+          style={[styles.addButton, { backgroundColor: colors.primary }]}
           icon="plus"
         >
           {t('medicines.addMedicine')}
@@ -314,6 +362,7 @@ export default function DashboardScreen() {
         visible={snackbar.visible}
         onDismiss={() => setSnackbar({ visible: false, message: '' })}
         duration={3000}
+        style={{ backgroundColor: colors.surface }}
       >
         {snackbar.message}
       </Snackbar>
@@ -324,7 +373,6 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   content: {
     padding: 16,
@@ -333,12 +381,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6b7280',
   },
   header: {
     marginBottom: 24,
@@ -347,12 +393,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 8,
   },
   welcome: {
     fontSize: 16,
-    color: '#6b7280',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -371,12 +415,10 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#0d9488',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#6b7280',
     textAlign: 'center',
   },
   sectionCard: {
@@ -385,7 +427,6 @@ const styles = StyleSheet.create({
   sectionHeader: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -393,11 +434,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
   },
   viewAllText: {
     fontSize: 14,
-    color: '#0d9488',
     fontWeight: '500',
   },
   medicineItem: {
@@ -405,7 +444,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   medicineInfo: {
     flex: 1,
@@ -413,12 +451,10 @@ const styles = StyleSheet.create({
   medicineName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1f2937',
     marginBottom: 4,
   },
   medicineDetails: {
     fontSize: 14,
-    color: '#6b7280',
   },
   iconBackground: {
     backgroundColor: 'transparent',
@@ -431,24 +467,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyIcon: {
-    backgroundColor: '#e0e7ff',
     marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
     fontSize: 14,
-    color: '#6b7280',
     textAlign: 'center',
   },
   addButton: {
     marginVertical: 16,
-    backgroundColor: '#0d9488',
   },
 });
 

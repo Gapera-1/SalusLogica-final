@@ -51,10 +51,16 @@ const RouteHistoryTracker = ({ isAuthenticated }) => {
   const location = useLocation();
 
   useEffect(() => {
-    if (isAuthenticated && location.pathname !== "/") {
+    // Only save routes for authenticated users; do NOT clear on
+    // unauthenticated — logout handler already handles that.
+    // Clearing here would wipe the saved route before the user
+    // can re-login and be returned to their previous page.
+    if (
+      isAuthenticated &&
+      location.pathname !== "/" &&
+      location.pathname !== "/login"
+    ) {
       localStorage.setItem("lastVisitedRoute", location.pathname);
-    } else if (!isAuthenticated) {
-      localStorage.removeItem("lastVisitedRoute");
     }
   }, [location.pathname, isAuthenticated]);
 
@@ -100,11 +106,13 @@ function App() {
           setUser(currentUser);
           setIsAuthenticated(true);
 
-          // Smart redirect based on role
-          if (currentUser.user_type === "pharmacy_admin") {
-            setLastRoute(savedRoute || "/pharmacy-admin/dashboard");
+          // Restore the route the user was on before refresh
+          if (savedRoute && savedRoute !== "/") {
+            setLastRoute(savedRoute);
+          } else if (currentUser.user_type === "pharmacy_admin") {
+            setLastRoute("/pharmacy-admin/dashboard");
           } else {
-            setLastRoute(savedRoute || "/dashboard");
+            setLastRoute("/dashboard");
           }
         } else {
           setIsAuthenticated(false);
@@ -112,7 +120,11 @@ function App() {
         }
       } catch (error) {
         console.error("Auth error:", error);
-        localStorage.clear();
+        // Only clear auth tokens, preserve lastVisitedRoute so a
+        // re-login can restore the page the user was on.
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("user");
         setIsAuthenticated(false);
         setUser(null);
       } finally {
@@ -130,9 +142,13 @@ function App() {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      localStorage.clear();
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("lastVisitedRoute");
       setIsAuthenticated(false);
       setUser(null);
+      setLastRoute(null);
     }
   };
 

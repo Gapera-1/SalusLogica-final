@@ -10,12 +10,15 @@ import {
 } from 'react-native';
 import { TextInput, Button, Text, Snackbar } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { authAPI } from '../services/api';
 import { timezoneStorage } from '../services/storage';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 export default function LoginScreen({ navigation }) {
   const { signIn, isLoading: authLoading } = useAuth();
+  const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   
   const [email, setEmail] = useState('');
@@ -93,11 +96,12 @@ export default function LoginScreen({ navigation }) {
         if (errorMsg.toLowerCase().includes('verify') || errorMsg.toLowerCase().includes('verification')) {
           setNeedsVerification(true);
         }
-        showSnackbar(errorMsg || t('login.invalidCredentials') || 'Login failed', 'error');
+        showSnackbar(errorMsg || t('errors.loginFailed') || 'Login failed', 'error');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      showSnackbar(error.message || t('common.error') || 'An error occurred', 'error');
+      logError('LoginScreen.handleLogin', error);
+      const errorMessage = getErrorMessage(error, t);
+      showSnackbar(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -114,7 +118,9 @@ export default function LoginScreen({ navigation }) {
       await authAPI.resendVerification(email);
       showSnackbar(t('emailVerification.verificationSent'), 'success');
     } catch (error) {
-      showSnackbar(error.message || t('emailVerification.resentFailed'), 'error');
+      logError('LoginScreen.handleResendVerification', error);
+      const errorMessage = getErrorMessage(error, t);
+      showSnackbar(errorMessage, 'error');
     } finally {
       setResendLoading(false);
     }
@@ -129,9 +135,9 @@ export default function LoginScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
       
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -139,18 +145,18 @@ export default function LoginScreen({ navigation }) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.appName}>SalusLogica</Text>
-          <Text style={styles.title}>{t('login.title') || 'Sign In'}</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.appName, { color: colors.primary }]}>SalusLogica</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('login.title') || 'Sign In'}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {t('login.signInToYourAccount') || 'Sign in to your account'}
           </Text>
         </View>
 
         {/* Form */}
-        <View style={styles.form}>
+        <View style={[styles.form, { backgroundColor: colors.surface }]}>
           {/* Email Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('login.email') || 'Email'}</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('login.email') || 'Email'}</Text>
             <TextInput
               mode="outlined"
               placeholder={t('login.enterUsername') || 'Enter your email'}
@@ -164,17 +170,18 @@ export default function LoginScreen({ navigation }) {
               autoCapitalize="none"
               error={!!errors.email}
               style={styles.input}
-              outlineColor="#d1d5db"
-              activeOutlineColor="#0d9488"
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
+              textColor={colors.text}
             />
             {errors.email && (
-              <Text style={styles.errorText}>{errors.email}</Text>
+              <Text style={[styles.errorText, { color: colors.error }]}>{errors.email}</Text>
             )}
           </View>
 
           {/* Password Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('login.password') || 'Password'}</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('login.password') || 'Password'}</Text>
             <TextInput
               mode="outlined"
               placeholder={t('login.enterPassword') || 'Enter your password'}
@@ -187,17 +194,19 @@ export default function LoginScreen({ navigation }) {
               secureTextEntry={secureTextEntry}
               error={!!errors.password}
               style={styles.input}
-              outlineColor="#d1d5db"
-              activeOutlineColor="#0d9488"
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
+              textColor={colors.text}
               right={
                 <TextInput.Icon
                   icon={secureTextEntry ? 'eye-off' : 'eye'}
                   onPress={() => setSecureTextEntry(!secureTextEntry)}
+                  color={colors.textSecondary}
                 />
               }
             />
             {errors.password && (
-              <Text style={styles.errorText}>{errors.password}</Text>
+              <Text style={[styles.errorText, { color: colors.error }]}>{errors.password}</Text>
             )}
           </View>
 
@@ -207,7 +216,7 @@ export default function LoginScreen({ navigation }) {
             onPress={handleLogin}
             disabled={isFormLoading}
             loading={isFormLoading}
-            style={styles.loginButton}
+            style={[styles.loginButton, { backgroundColor: colors.primary }]}
             contentStyle={styles.loginButtonContent}
             labelStyle={styles.loginButtonLabel}
           >
@@ -218,8 +227,8 @@ export default function LoginScreen({ navigation }) {
 
           {/* Email Verification Resend */}
           {needsVerification && (
-            <View style={styles.verificationContainer}>
-              <Text style={styles.verificationText}>
+            <View style={[styles.verificationContainer, { backgroundColor: colors.warningLight || '#fef3c7' }]}>
+              <Text style={[styles.verificationText, { color: colors.warning }]}>
                 {t('emailVerification.notVerifiedMessage')}
               </Text>
               <Button
@@ -227,7 +236,8 @@ export default function LoginScreen({ navigation }) {
                 onPress={handleResendVerification}
                 loading={resendLoading}
                 disabled={resendLoading}
-                style={styles.resendButton}
+                style={[styles.resendButton, { borderColor: colors.primary }]}
+                textColor={colors.primary}
                 compact
               >
                 {resendLoading ? t('emailVerification.sending') : t('emailVerification.resendVerification')}
@@ -241,18 +251,18 @@ export default function LoginScreen({ navigation }) {
             disabled={isFormLoading}
             style={styles.forgotPasswordContainer}
           >
-            <Text style={styles.forgotPasswordText}>
+            <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
               {t('login.forgotPassword') || 'Forgot your password?'}
             </Text>
           </TouchableOpacity>
 
           {/* Signup Link */}
           <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>
+            <Text style={[styles.signupText, { color: colors.textSecondary }]}>
               {t('login.noAccount') || "Don't have an account?"}{' '}
             </Text>
             <TouchableOpacity onPress={handleSignup} disabled={isFormLoading}>
-              <Text style={styles.signupLink}>
+              <Text style={[styles.signupLink, { color: colors.primary }]}>
                 {t('login.createNewAccount') || 'Sign up'}
               </Text>
             </TouchableOpacity>
@@ -267,7 +277,7 @@ export default function LoginScreen({ navigation }) {
         duration={3000}
         style={[
           styles.snackbar,
-          snackbar.type === 'error' && styles.snackbarError,
+          { backgroundColor: snackbar.type === 'error' ? colors.error : colors.success },
         ]}
       >
         {snackbar.message}

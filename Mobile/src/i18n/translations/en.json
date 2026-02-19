@@ -15,7 +15,50 @@
     "error": "Error",
     "success": "Success",
     "failed": "Failed",
-    "tryAgain": "Try Again"
+    "tryAgain": "Try Again",
+    "min": "min",
+    "minutes": "minutes"
+  },
+  "errors": {
+    "unknown": "An unexpected error occurred. Please try again.",
+    "networkError": "Unable to connect to server. Please check your internet connection.",
+    "timeout": "Request timed out. Please try again.",
+    "unauthorized": "Session expired. Please login again.",
+    "forbidden": "You do not have permission to perform this action.",
+    "notFound": "The requested resource was not found.",
+    "tooManyRequests": "Too many requests. Please wait a moment and try again.",
+    "serverError": "Server error. Please try again later.",
+    "validationError": "Please check your input and try again.",
+    "loginFailed": "Login failed. Please check your credentials.",
+    "registrationFailed": "Registration failed. Please try again.",
+    "saveFailed": "Failed to save. Please try again.",
+    "deleteFailed": "Failed to delete. Please try again.",
+    "loadFailed": "Failed to load data. Please try again."
+  },
+  "fields": {
+    "email": "Email",
+    "password": "Password",
+    "username": "Username",
+    "first_name": "First Name",
+    "last_name": "Last Name",
+    "phone_number": "Phone Number",
+    "date_of_birth": "Date of Birth",
+    "medicine_name": "Medicine Name",
+    "dosage": "Dosage",
+    "frequency": "Frequency",
+    "start_date": "Start Date",
+    "end_date": "End Date"
+  },
+  "sync": {
+    "syncing": "Syncing...",
+    "syncComplete": "Data synced successfully",
+    "syncFailed": "Sync failed. Using cached data.",
+    "lastSync": "Last synced",
+    "tapToSync": "Tap to sync",
+    "online": "Online",
+    "offline": "Offline",
+    "offlineMessage": "You're offline. Data shown may not be up to date.",
+    "autoSync": "Auto-sync enabled"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -33,7 +76,13 @@
     "alarms": "Alarms",
     "profileMenu": "Profile Menu",
     "exportReports": "Export Reports",
-    "sideEffects": "Side Effects"
+    "sideEffects": "Side Effects",
+    "contraIndications": "Contraindications",
+    "more": "More"
+  },
+  "more": {
+    "title": "More",
+    "subtitle": "Access all features"
   },
   "home": {
     "welcome": "Welcome to SalusLogica",
@@ -528,5 +577,22 @@
     "testPushError": "Failed to send test push",
     "deleteSuccess": "Notification deleted",
     "deleteError": "Failed to delete notification"
+  },
+  "alarms": {
+    "medicineReminder": "Medicine Reminder",
+    "timeToTake": "It's time to take:",
+    "markAsTaken": "Mark as Taken",
+    "snooze": "Snooze",
+    "dismiss": "Dismiss",
+    "snoozeFor": "Snooze for:",
+    "doseAmount": "Amount",
+    "noMedicinesScheduled": "No medicines scheduled",
+    "repeatAnnouncement": "Repeat Announcement",
+    "takenSuccess": "Dose marked as taken",
+    "snoozedSuccess": "Alarm snoozed",
+    "dismissedSuccess": "Alarm dismissed",
+    "activeAlarms": "Active Alarms",
+    "noActiveAlarms": "No active alarms",
+    "offlineMode": "Offline Mode - Actions will sync when online"
   }
 }

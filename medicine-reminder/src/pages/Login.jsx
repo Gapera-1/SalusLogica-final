@@ -73,8 +73,11 @@ const Login = ({ setIsAuthenticated, setUser }) => {
       setIsAuthenticated(true);
       setUser(response.user);
       
-      // Redirect based on user type
-      if (response.user.user_type === 'pharmacy_admin') {
+      // Redirect to saved route or default based on user type
+      const savedRoute = localStorage.getItem("lastVisitedRoute");
+      if (savedRoute && savedRoute !== "/" && savedRoute !== "/login") {
+        navigate(savedRoute);
+      } else if (response.user.user_type === 'pharmacy_admin') {
         navigate("/pharmacy-admin/dashboard");
       } else {
         navigate("/dashboard");

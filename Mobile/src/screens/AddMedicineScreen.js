@@ -3,11 +3,14 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image, 
 import { Card, Button, TextInput, Snackbar } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { medicineAPI } from '../services/api';
+import { getErrorMessage, logError } from '../utils/errorHandler';
 
 export default function AddMedicineScreen({ route }) {
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation();
   const { medicine } = route?.params || {}; // For edit mode
   
@@ -263,11 +266,9 @@ export default function AddMedicineScreen({ route }) {
         navigation.goBack();
       }, 1500);
     } catch (error) {
-      console.error('Error saving medicine:', error);
-      showSnackbar(
-        error.message || t('addMedicine.error'),
-        'error'
-      );
+      logError('AddMedicineScreen.handleSave', error);
+      const errorMessage = getErrorMessage(error, t);
+      showSnackbar(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -294,14 +295,14 @@ export default function AddMedicineScreen({ route }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>
+          <Text style={[styles.title, { color: colors.text }]}>
             {isEditMode ? t('common.edit') + ' ' + t('medicines.title') : t('addMedicine.title')}
           </Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {isEditMode ? t('addMedicine.editSubtitle') : t('addMedicine.subtitle')}
           </Text>
         </View>
@@ -309,9 +310,9 @@ export default function AddMedicineScreen({ route }) {
         {/* Form */}
         <View style={styles.form}>
           {/* Barcode Scanner Toolbar */}
-          <Card style={styles.scannerCard}>
+          <Card style={[styles.scannerCard, { backgroundColor: colors.primaryLight }]}>
             <View style={styles.scannerContent}>
-              <Text style={styles.scannerLabel}>📷 {t('scanner.quickFill')}</Text>
+              <Text style={[styles.scannerLabel, { color: colors.primary }]}>📷 {t('scanner.quickFill')}</Text>
               <View style={styles.scannerButtons}>
                 <Button
                   mode="contained"
@@ -333,7 +334,7 @@ export default function AddMedicineScreen({ route }) {
                   }}
                   loading={barcodeLookupLoading}
                   disabled={barcodeLookupLoading}
-                  style={styles.scanButton}
+                  style={[styles.scanButton, { backgroundColor: colors.primary }]}
                   compact
                   icon="barcode-scan"
                 >
@@ -341,11 +342,11 @@ export default function AddMedicineScreen({ route }) {
                 </Button>
               </View>
               {barcodeResult && (
-                <Text style={styles.scanSuccess}>✓ {t('scanner.autoFillSuccess')}</Text>
+                <Text style={[styles.scanSuccess, { color: colors.primary }]}>✓ {t('scanner.autoFillSuccess')}</Text>
               )}
             </View>
           </Card>
-          <Card style={styles.card}>
+          <Card style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.cardContent}>
               <TextInput
                 label={t('addMedicine.medicineName')}
@@ -355,9 +356,12 @@ export default function AddMedicineScreen({ route }) {
                 disabled={loading}
                 error={!!errors.name}
                 mode="outlined"
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                outlineColor={colors.border}
+                activeOutlineColor={colors.primary}
               />
-              {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+              {errors.name && <Text style={[styles.errorText, { color: colors.error }]}>{errors.name}</Text>}
 
               <TextInput
                 label={t('medicines.scientificName')}
@@ -366,7 +370,10 @@ export default function AddMedicineScreen({ route }) {
                 onChangeText={(value) => handleInputChange('scientific_name', value)}
                 disabled={loading}
                 mode="outlined"
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                outlineColor={colors.border}
+                activeOutlineColor={colors.primary}
               />
 
               <View style={styles.row}>
@@ -379,9 +386,12 @@ export default function AddMedicineScreen({ route }) {
                     disabled={loading}
                     error={!!errors.dosage}
                     mode="outlined"
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    textColor={colors.text}
+                    outlineColor={colors.border}
+                    activeOutlineColor={colors.primary}
                   />
-                  {errors.dosage && <Text style={styles.errorText}>{errors.dosage}</Text>}
+                  {errors.dosage && <Text style={[styles.errorText, { color: colors.error }]}>{errors.dosage}</Text>}
                 </View>
 
                 <View style={styles.halfWidth}>
@@ -394,9 +404,12 @@ export default function AddMedicineScreen({ route }) {
                     keyboardType="numeric"
                     error={!!errors.stock}
                     mode="outlined"
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    textColor={colors.text}
+                    outlineColor={colors.border}
+                    activeOutlineColor={colors.primary}
                   />
-                  {errors.stock && <Text style={styles.errorText}>{errors.stock}</Text>}
+                  {errors.stock && <Text style={[styles.errorText, { color: colors.error }]}>{errors.stock}</Text>}
                 </View>
               </View>
 
@@ -417,9 +430,9 @@ export default function AddMedicineScreen({ route }) {
 
               <View style={styles.inputGroup}>
                 <View style={styles.timeHeader}>
-                  <Text style={styles.label}>{t('addMedicine.times')}</Text>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>{t('addMedicine.times')}</Text>
                   <TouchableOpacity onPress={addTimeSlot} style={styles.addTimeButton}>
-                    <Text style={styles.addTimeText}>+ {t('addMedicine.addTimeSlot')}</Text>
+                    <Text style={[styles.addTimeText, { color: colors.primary }]}>+ {t('addMedicine.addTimeSlot')}</Text>
                   </TouchableOpacity>
                 </View>
                 {formData.times.map((time, index) => (
@@ -431,12 +444,15 @@ export default function AddMedicineScreen({ route }) {
                         newTimes[index] = value;
                         handleInputChange('times', newTimes);
                       }}
-                      style={[styles.input, styles.timeInput]}
+                      style={[styles.input, styles.timeInput, { backgroundColor: colors.surface }]}
+                      textColor={colors.text}
+                      outlineColor={colors.border}
+                      activeOutlineColor={colors.primary}
                     />
                     {formData.times.length > 1 && (
                       <TouchableOpacity
                         onPress={() => removeTimeSlot(index)}
-                        style={styles.removeTimeButton}
+                        style={[styles.removeTimeButton, { backgroundColor: colors.error }]}
                       >
                         <Text style={styles.removeTimeText}>×</Text>
                       </TouchableOpacity>
@@ -452,7 +468,10 @@ export default function AddMedicineScreen({ route }) {
                 onChangeText={(value) => handleInputChange('prescribed_for', value)}
                 disabled={loading}
                 mode="outlined"
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                outlineColor={colors.border}
+                activeOutlineColor={colors.primary}
               />
 
               <TextInput
@@ -462,7 +481,10 @@ export default function AddMedicineScreen({ route }) {
                 onChangeText={(value) => handleInputChange('doctor', value)}
                 disabled={loading}
                 mode="outlined"
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                outlineColor={colors.border}
+                activeOutlineColor={colors.primary}
               />
 
               <TextInput
@@ -474,13 +496,16 @@ export default function AddMedicineScreen({ route }) {
                 multiline
                 numberOfLines={3}
                 mode="outlined"
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                outlineColor={colors.border}
+                activeOutlineColor={colors.primary}
               />
 
               {/* Medicine Photo Section */}
-              <View style={styles.photoSection}>
-                <Text style={styles.photoLabel}>{t('medicinePhoto.label')}</Text>
-                <Text style={styles.photoHint}>{t('medicinePhoto.hint')}</Text>
+              <View style={[styles.photoSection, { borderTopColor: colors.border }]}>
+                <Text style={[styles.photoLabel, { color: colors.text }]}>{t('medicinePhoto.label')}</Text>
+                <Text style={[styles.photoHint, { color: colors.textMuted }]}>{t('medicinePhoto.hint')}</Text>
                 
                 {medicinePhoto ? (
                   <View style={styles.photoPreview}>
@@ -495,18 +520,18 @@ export default function AddMedicineScreen({ route }) {
                 ) : (
                   <View style={styles.photoButtons}>
                     <TouchableOpacity
-                      style={styles.photoButton}
+                      style={[styles.photoButton, { backgroundColor: colors.background, borderColor: colors.border }]}
                       onPress={() => handlePickPhoto(true)}
                     >
                       <Text style={styles.photoButtonIcon}>📷</Text>
-                      <Text style={styles.photoButtonText}>{t('medicinePhoto.takePhoto')}</Text>
+                      <Text style={[styles.photoButtonText, { color: colors.textSecondary }]}>{t('medicinePhoto.takePhoto')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.photoButton}
+                      style={[styles.photoButton, { backgroundColor: colors.background, borderColor: colors.border }]}
                       onPress={() => handlePickPhoto(false)}
                     >
                       <Text style={styles.photoButtonIcon}>🖼️</Text>
-                      <Text style={styles.photoButtonText}>{t('medicinePhoto.fromGallery')}</Text>
+                      <Text style={[styles.photoButtonText, { color: colors.textSecondary }]}>{t('medicinePhoto.fromGallery')}</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -519,7 +544,8 @@ export default function AddMedicineScreen({ route }) {
             <Button
               mode="outlined"
               onPress={handleCancel}
-              style={styles.cancelButton}
+              style={[styles.cancelButton, { borderColor: colors.border }]}
+              textColor={colors.text}
               disabled={loading}
             >
               {t('addMedicine.cancel')}
@@ -528,6 +554,7 @@ export default function AddMedicineScreen({ route }) {
               mode="contained"
               onPress={handleSubmit}
               style={styles.submitButton}
+              buttonColor={colors.primary}
               loading={loading}
               disabled={loading}
             >
@@ -544,7 +571,7 @@ export default function AddMedicineScreen({ route }) {
         duration={3000}
         style={[
           styles.snackbar,
-          snackbar.type === 'error' && styles.snackbarError,
+          { backgroundColor: snackbar.type === 'error' ? colors.error : colors.success },
         ]}
       >
         {snackbar.message}
