@@ -120,13 +120,32 @@ function App() {
         }
       } catch (error) {
         console.error("Auth error:", error);
-        // Only clear auth tokens, preserve lastVisitedRoute so a
-        // re-login can restore the page the user was on.
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("user");
-        setIsAuthenticated(false);
-        setUser(null);
+        // Only clear tokens on actual auth failure (401), not throttling (429) or network errors
+        if (error.status === 401) {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          localStorage.removeItem("user");
+          setIsAuthenticated(false);
+          setUser(null);
+        } else if (localStorage.getItem("access_token")) {
+          // For other errors (throttling, network), keep user logged in if token exists
+          const savedUser = localStorage.getItem("user");
+          if (savedUser) {
+            try {
+              setUser(JSON.parse(savedUser));
+              setIsAuthenticated(true);
+            } catch {
+              setIsAuthenticated(false);
+              setUser(null);
+            }
+          } else {
+            // Token exists but no cached user - still consider authenticated
+            setIsAuthenticated(true);
+          }
+        } else {
+          setIsAuthenticated(false);
+          setUser(null);
+        }
       } finally {
         setLoading(false);
       }

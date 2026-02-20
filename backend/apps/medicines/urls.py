@@ -27,6 +27,8 @@ urlpatterns = [
     # Barcode / Photo endpoints
     path('barcode-lookup/', views.barcode_lookup, name='barcode-lookup'),
     path('medicine-search-external/', views.medicine_search_external, name='medicine-search-external'),
+    path('rwanda-registry-search/', views.rwanda_registry_search, name='rwanda-registry-search'),
+    path('rwanda-registry-stats/', views.rwanda_registry_stats, name='rwanda-registry-stats'),
     path('<int:pk>/upload-photo/', views.upload_medicine_photo, name='upload-medicine-photo'),
     path('<int:pk>/delete-photo/', views.delete_medicine_photo, name='delete-medicine-photo'),
 ]

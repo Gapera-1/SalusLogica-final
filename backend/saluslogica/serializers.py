@@ -138,7 +138,7 @@ class PatientPharmacyAssociationSerializer(serializers.ModelSerializer):
 
 
 class AdverseReactionSerializer(serializers.ModelSerializer):
-    """Serializer for adverse reactions"""
+    """Serializer for adverse reactions with full drug information from Rwanda FDA registry"""
     
     patient_username = serializers.CharField(source='patient.username', read_only=True)
     pharmacy_name = serializers.CharField(
@@ -146,6 +146,7 @@ class AdverseReactionSerializer(serializers.ModelSerializer):
         read_only=True, 
         allow_null=True
     )
+    drug_info = serializers.SerializerMethodField()
     
     class Meta:
         model = AdverseReaction
@@ -155,9 +156,57 @@ class AdverseReactionSerializer(serializers.ModelSerializer):
             'medication_batch', 'symptoms', 'onset_time', 'duration',
             'treatment_given', 'outcome', 'reported_date', 'reported_by',
             'requires_follow_up', 'follow_up_date', 'follow_up_notes',
-            'is_resolved', 'resolved_date'
+            'is_resolved', 'resolved_date', 'drug_info'
         ]
         read_only_fields = ['reported_date']
+    
+    def get_drug_info(self, obj):
+        """
+        Get detailed drug information from Rwanda FDA registry.
+        Searches by medication name (brand name or generic name).
+        """
+        from apps.medicines.barcode_lookup import (
+            search_rwanda_registry, 
+            search_rwanda_registry_by_generic
+        )
+        
+        medication_name = obj.medication_name
+        if not medication_name:
+            return None
+        
+        # First try to find by brand name
+        drug = search_rwanda_registry(medication_name)
+        
+        # If not found by brand name, try generic name search
+        if not drug:
+            generic_matches = search_rwanda_registry_by_generic(medication_name)
+            if generic_matches:
+                drug = generic_matches[0]
+        
+        if drug:
+            return {
+                'registration_number': drug.get('registration_number', ''),
+                'brand_name': drug.get('brand_name', ''),
+                'generic_name': drug.get('generic_name', ''),
+                'strength': drug.get('strength', ''),
+                'form': drug.get('form', ''),
+                'manufacturer': drug.get('manufacturer', ''),
+                'country_of_origin': drug.get('country', ''),
+                'is_registered_in_rwanda': True,
+                'source': 'rwanda_fda_registry'
+            }
+        
+        # Return partial info if not found in registry
+        return {
+            'brand_name': medication_name,
+            'generic_name': '',
+            'strength': obj.medication_dosage or '',
+            'form': '',
+            'manufacturer': '',
+            'country_of_origin': '',
+            'is_registered_in_rwanda': False,
+            'source': 'user_reported'
+        }
 
 
 class AdverseReactionCreateSerializer(serializers.ModelSerializer):

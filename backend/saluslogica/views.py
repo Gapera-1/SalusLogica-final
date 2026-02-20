@@ -436,3 +436,128 @@ def test_pharmacy_setup(request):
             'success': False,
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def drug_info_lookup(request):
+    """
+    Look up comprehensive drug information for pharmacy admins.
+    
+    Combines data from:
+    - Rwanda FDA registry (manufacturer, strength, form, country, registration)
+    - OpenFDA (contraindications, warnings, interactions, dosage info)
+    
+    Query Parameters:
+        q (str): Drug name to search for (brand or generic)
+    
+    Returns comprehensive drug information including Rwanda registration details.
+    """
+    query = request.query_params.get('q', '').strip()
+    
+    if not query:
+        return Response({
+            'error': 'Query parameter "q" is required.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check if user is pharmacy admin
+    try:
+        pharmacy_admin = PharmacyAdmin.objects.get(user=request.user)
+    except PharmacyAdmin.DoesNotExist:
+        return Response({
+            'error': 'Only pharmacy admins can access this endpoint.'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    from apps.medicines.barcode_lookup import (
+        search_rwanda_registry,
+        search_rwanda_registry_by_generic,
+        lookup_by_name
+    )
+    
+    result = {
+        'query': query,
+        'rwanda_registry': None,
+        'openfda': None,
+        'combined': {}
+    }
+    
+    # Search Rwanda FDA registry
+    rwanda_drug = search_rwanda_registry(query)
+    if not rwanda_drug:
+        # Try generic name search
+        generic_matches = search_rwanda_registry_by_generic(query)
+        if generic_matches:
+            rwanda_drug = generic_matches[0]
+    
+    if rwanda_drug:
+        result['rwanda_registry'] = {
+            'found': True,
+            'registration_number': rwanda_drug.get('registration_number', ''),
+            'brand_name': rwanda_drug.get('brand_name', ''),
+            'generic_name': rwanda_drug.get('generic_name', ''),
+            'strength': rwanda_drug.get('strength', ''),
+            'form': rwanda_drug.get('form', ''),
+            'manufacturer': rwanda_drug.get('manufacturer', ''),
+            'country_of_origin': rwanda_drug.get('country', ''),
+            'is_registered_in_rwanda': True
+        }
+        
+        # Use generic name from Rwanda registry to search OpenFDA
+        generic_name = rwanda_drug.get('generic_name', '')
+        if generic_name:
+            openfda_results = lookup_by_name(generic_name)
+            if openfda_results:
+                openfda_data = openfda_results[0]
+                result['openfda'] = {
+                    'found': True,
+                    'name': openfda_data.get('name', ''),
+                    'scientific_name': openfda_data.get('scientific_name', ''),
+                    'dosage': openfda_data.get('dosage', ''),
+                    'instructions': openfda_data.get('instructions', ''),
+                    'warnings': openfda_data.get('notes', ''),
+                    'route': openfda_data.get('route', ''),
+                    'manufacturer': openfda_data.get('manufacturer', ''),
+                    'ndc': openfda_data.get('ndc', '')
+                }
+    else:
+        # No Rwanda registry match, try OpenFDA directly
+        openfda_results = lookup_by_name(query)
+        if openfda_results:
+            openfda_data = openfda_results[0]
+            result['openfda'] = {
+                'found': True,
+                'name': openfda_data.get('name', ''),
+                'scientific_name': openfda_data.get('scientific_name', ''),
+                'dosage': openfda_data.get('dosage', ''),
+                'instructions': openfda_data.get('instructions', ''),
+                'warnings': openfda_data.get('notes', ''),
+                'route': openfda_data.get('route', ''),
+                'manufacturer': openfda_data.get('manufacturer', ''),
+                'ndc': openfda_data.get('ndc', '')
+            }
+        
+        result['rwanda_registry'] = {
+            'found': False,
+            'message': 'Drug not found in Rwanda FDA registry'
+        }
+    
+    # Combine data for easy access
+    rwanda = result['rwanda_registry'] or {}
+    openfda = result['openfda'] or {}
+    
+    result['combined'] = {
+        'brand_name': rwanda.get('brand_name') or openfda.get('name') or query,
+        'generic_name': rwanda.get('generic_name') or openfda.get('scientific_name') or '',
+        'strength': rwanda.get('strength') or openfda.get('dosage') or '',
+        'form': rwanda.get('form') or '',
+        'manufacturer': rwanda.get('manufacturer') or openfda.get('manufacturer') or '',
+        'country_of_origin': rwanda.get('country_of_origin') or '',
+        'registration_number': rwanda.get('registration_number') or '',
+        'is_registered_in_rwanda': rwanda.get('is_registered_in_rwanda', False),
+        'route': openfda.get('route') or '',
+        'instructions': openfda.get('instructions') or '',
+        'warnings': openfda.get('warnings') or '',
+        'ndc': openfda.get('ndc') or ''
+    }
+    
+    return Response(result)

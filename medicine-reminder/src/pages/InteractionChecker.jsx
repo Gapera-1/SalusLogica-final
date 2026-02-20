@@ -1,33 +1,44 @@
 import React, { useState, useEffect } from "react";
 import BaseLayout from "../components/BaseLayout";
 import { useLanguage } from "../i18n";
+import { medicineAPI, interactionAPI } from "../services/api";
 
 const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
   const { t } = useLanguage();
-  const [medicines, setMedicines] = useState([
-    { id: 1, name: "Aspirin", dosage: "100mg", category: "NSAID" },
-    { id: 2, name: "Metformin", dosage: "500mg", category: "Antidiabetic" },
-    { id: 3, name: "Lisinopril", dosage: "10mg", category: "ACE Inhibitor" },
-    { id: 4, name: "Atorvastatin", dosage: "20mg", category: "Statin" },
-    { id: 5, name: "Vitamin D", dosage: "1000 IU", category: "Supplement" },
-    { id: 6, name: "Warfarin", dosage: "5mg", category: "Anticoagulant" },
-    { id: 7, name: "Ibuprofen", dosage: "400mg", category: "NSAID" },
-    { id: 8, name: "Amoxicillin", dosage: "500mg", category: "Antibiotic" }
-  ]);
+  const [medicines, setMedicines] = useState([]);
   
   const [selectedMedicines, setSelectedMedicines] = useState([]);
   const [checking, setChecking] = useState(false);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulate loading medicines
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    loadMedicines();
   }, []);
+
+  const loadMedicines = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await medicineAPI.getAll();
+      
+      // Handle different response formats
+      if (data.results && Array.isArray(data.results)) {
+        setMedicines(data.results);
+      } else if (Array.isArray(data)) {
+        setMedicines(data);
+      } else {
+        setMedicines([]);
+      }
+    } catch (err) {
+      console.error("Failed to load medicines:", err);
+      setError("Failed to load medicines. Please try again.");
+      setMedicines([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleMedicineToggle = (medicineId) => {
     setSelectedMedicines(prev => 
@@ -49,80 +60,54 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
     }
 
     setChecking(true);
+    setError(null);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock interaction results
-    const mockResults = {
-      overallRisk: getOverallRisk(selectedMedicines),
-      interactions: getMockInteractions(selectedMedicines),
-      allergies: [],
-      contraindications: []
-    };
-    
-    setResults(mockResults);
-    setChecking(false);
+    try {
+      const response = await interactionAPI.check(selectedMedicines);
+      
+      // Parse API response - adapt to backend response format
+      const interactions = response.interactions || [];
+      const overallRisk = calculateOverallRisk(interactions);
+      
+      setResults({
+        overallRisk,
+        interactions: interactions.map((int, idx) => ({
+          id: idx + 1,
+          medicines: [int.medicine1 || int.drug1, int.medicine2 || int.drug2].filter(Boolean),
+          severity: (int.severity || 'MINOR').toUpperCase(),
+          description: int.description || '',
+          recommendation: int.recommendation || int.management || '',
+          mechanism: int.mechanism || ''
+        })),
+        allergies: response.allergies || [],
+        contraindications: response.contraindications || []
+      });
+    } catch (err) {
+      console.error("Failed to check interactions:", err);
+      setError("Failed to check interactions. Please try again.");
+    } finally {
+      setChecking(false);
+    }
   };
 
-  const getOverallRisk = (selectedIds) => {
-    const selectedMedNames = selectedIds.map(id => 
-      medicines.find(m => m.id === id)?.name
-    );
-    
-    // Mock risk assessment logic
-    if (selectedMedNames.includes("Warfarin") && selectedMedNames.includes("Aspirin")) {
-      return { level: "HIGH", message: "High risk of bleeding", color: "risk-high" };
-    } else if (selectedMedNames.includes("Ibuprofen") && selectedMedNames.includes("Aspirin")) {
-      return { level: "MODERATE", message: "Moderate risk of stomach irritation", color: "risk-moderate" };
-    } else if (selectedMedNames.includes("Metformin") && selectedMedNames.includes("Ibuprofen")) {
-      return { level: "CAUTION", message: "Use with caution - monitor kidney function", color: "risk-caution" };
-    } else {
+  const calculateOverallRisk = (interactions) => {
+    if (!interactions || interactions.length === 0) {
       return { level: "SAFE", message: "No significant interactions detected", color: "risk-safe" };
     }
-  };
-
-  const getMockInteractions = (selectedIds) => {
-    const selectedMedNames = selectedIds.map(id => 
-      medicines.find(m => m.id === id)?.name
-    );
     
-    const interactions = [];
+    const severities = interactions.map(i => (i.severity || '').toUpperCase());
     
-    if (selectedMedNames.includes("Warfarin") && selectedMedNames.includes("Aspirin")) {
-      interactions.push({
-        id: 1,
-        medicines: ["Warfarin", "Aspirin"],
-        severity: "MAJOR",
-        description: "Increased risk of bleeding when used together",
-        recommendation: "Consider alternative pain reliever or adjust warfarin dosage",
-        mechanism: "Both medications affect blood clotting"
-      });
+    if (severities.includes('CONTRAINDICATED') || severities.includes('CRITICAL')) {
+      return { level: "CONTRAINDICATED", message: "Contraindicated combination - avoid use", color: "risk-contraindicated" };
+    } else if (severities.includes('MAJOR') || severities.includes('HIGH')) {
+      return { level: "HIGH", message: "High risk - consult healthcare provider", color: "risk-high" };
+    } else if (severities.includes('MODERATE') || severities.includes('MEDIUM')) {
+      return { level: "MODERATE", message: "Moderate risk - use with caution", color: "risk-moderate" };
+    } else if (severities.includes('MINOR') || severities.includes('LOW')) {
+      return { level: "CAUTION", message: "Minor interaction - monitor for side effects", color: "risk-caution" };
     }
     
-    if (selectedMedNames.includes("Ibuprofen") && selectedMedNames.includes("Aspirin")) {
-      interactions.push({
-        id: 2,
-        medicines: ["Ibuprofen", "Aspirin"],
-        severity: "MODERATE",
-        description: "Increased risk of gastrointestinal side effects",
-        recommendation: "Take with food and monitor for stomach pain",
-        mechanism: "Both can irritate stomach lining"
-      });
-    }
-    
-    if (selectedMedNames.includes("Metformin") && selectedMedNames.includes("Ibuprofen")) {
-      interactions.push({
-        id: 3,
-        medicines: ["Metformin", "Ibuprofen"],
-        severity: "MINOR",
-        description: "Potential impact on kidney function",
-        recommendation: "Monitor kidney function tests regularly",
-        mechanism: "Ibuprofen may affect kidney clearance of metformin"
-      });
-    }
-    
-    return interactions;
+    return { level: "SAFE", message: "No significant interactions detected", color: "risk-safe" };
   };
 
   const getRiskColor = (riskLevel) => {
@@ -178,6 +163,25 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
           </p>
         </div>
 
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            <i className="fas fa-exclamation-circle mr-2"></i>
+            {error}
+          </div>
+        )}
+
+        {medicines.length === 0 && !loading && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+            <div className="flex items-center">
+              <i className="fas fa-info-circle text-yellow-500 text-2xl mr-3"></i>
+              <div>
+                <h4 className="text-lg font-medium text-yellow-800">No Medicines Found</h4>
+                <p className="text-sm text-yellow-600">Add some medicines to your profile first to check for interactions.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Medicine Selection */}
           <div className="lg:col-span-2">
@@ -204,7 +208,7 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
                         />
                         <div className="ml-3">
                           <div className="text-sm font-medium text-gray-900">{medicine.name}</div>
-                          <div className="text-xs text-gray-500">{medicine.dosage} • {medicine.category}</div>
+                          <div className="text-xs text-gray-500">{medicine.dosage}{medicine.frequency ? ` • ${medicine.frequency}` : ''}</div>
                         </div>
                       </label>
                     ))}

@@ -1,0 +1,50 @@
+# Production overrides for Docker Compose
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+version: '3.8'
+
+services:
+  backend:
+    restart: always
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn saluslogica.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2 --timeout 120"
+    environment:
+      - DEBUG=0
+    # Don't expose ports directly in production - use nginx
+    ports: []
+
+  celery-worker:
+    restart: always
+    command: celery -A saluslogica worker --loglevel=warning --concurrency=4
+
+  celery-beat:
+    restart: always
+    command: celery -A saluslogica beat --loglevel=warning
+
+  flower:
+    restart: always
+    # Don't expose in production unless needed
+    ports: []
+
+  frontend:
+    restart: always
+    ports: []
+
+  # Nginx Reverse Proxy for Production
+  nginx:
+    image: nginx:alpine
+    container_name: saluslogica-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+    depends_on:
+      - backend
+      - frontend

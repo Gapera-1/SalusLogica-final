@@ -1,71 +1,35 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import BaseLayout from "../components/BaseLayout";
+import { notificationAPI } from "../services/api";
 
 const Notifications = ({ setIsAuthenticated, setUser, user }) => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Mock data - replace with API calls
-    setTimeout(() => {
-      setNotifications([
-        { 
-          id: 1, 
-          type: "reminder", 
-          title: "Medicine Reminder", 
-          message: "Time to take Aspirin (100mg)", 
-          time: "2:00 PM", 
-          date: "Today",
-          read: false,
-          priority: "high"
-        },
-        { 
-          id: 2, 
-          type: "refill", 
-          title: "Low Stock Alert", 
-          message: "Vitamin D running low. Only 5 tablets left.", 
-          time: "10:00 AM", 
-          date: "Today",
-          read: false,
-          priority: "medium"
-        },
-        { 
-          id: 3, 
-          type: "appointment", 
-          title: "Appointment Reminder", 
-          message: "Doctor appointment tomorrow at 10:00 AM", 
-          time: "Yesterday", 
-          date: "Feb 10",
-          read: true,
-          priority: "high"
-        },
-        { 
-          id: 4, 
-          type: "system", 
-          title: "Profile Updated", 
-          message: "Your profile has been successfully updated", 
-          time: "2 days ago", 
-          date: "Feb 9",
-          read: true,
-          priority: "low"
-        },
-        { 
-          id: 5, 
-          type: "reminder", 
-          title: "Missed Dose", 
-          message: "You missed your morning dose of Omega-3", 
-          time: "3 days ago", 
-          date: "Feb 8",
-          read: true,
-          priority: "high"
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
+    loadNotifications();
   }, []);
+
+  const loadNotifications = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await notificationAPI.getCenter();
+      const notificationData = response.results || response || [];
+      setNotifications(notificationData);
+      
+    } catch (err) {
+      console.error("Error loading notifications:", err);
+      setError(err.message || "Failed to load notifications. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredNotifications = notifications.filter(notification => {
     if (filter === "all") return true;
@@ -74,23 +38,44 @@ const Notifications = ({ setIsAuthenticated, setUser, user }) => {
     return true;
   });
 
-  const markAsRead = (id) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
+  const markAsRead = async (id) => {
+    try {
+      await notificationAPI.markRead(id);
+      setNotifications(notifications.map(n => 
+        n.id === id ? { ...n, read: true } : n
+      ));
+    } catch (err) {
+      console.error("Error marking notification as read:", err);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      await notificationAPI.markAllRead();
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+    } catch (err) {
+      console.error("Error marking all as read:", err);
+    }
   };
 
-  const deleteNotification = (id) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+  const deleteNotification = async (id) => {
+    try {
+      await notificationAPI.deleteNotification(id);
+      setNotifications(notifications.filter(n => n.id !== id));
+    } catch (err) {
+      console.error("Error deleting notification:", err);
+    }
   };
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = async () => {
     if (window.confirm("Are you sure you want to clear all notifications?")) {
-      setNotifications([]);
+      try {
+        // Delete all notifications sequentially
+        await Promise.all(notifications.map(n => notificationAPI.deleteNotification(n.id)));
+        setNotifications([]);
+      } catch (err) {
+        console.error("Error clearing notifications:", err);
+      }
     }
   };
 
@@ -121,6 +106,26 @@ const Notifications = ({ setIsAuthenticated, setUser, user }) => {
           <p className="text-white mt-4">Loading notifications...</p>
         </div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-500 bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center border border-red-300 border-opacity-30">
+            <div className="text-4xl mb-3">⚠️</div>
+            <h3 className="text-white text-lg font-medium mb-2">Failed to Load Notifications</h3>
+            <p className="text-red-200 mb-4">{error}</p>
+            <button
+              onClick={loadNotifications}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-300"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </BaseLayout>
     );
   }
 

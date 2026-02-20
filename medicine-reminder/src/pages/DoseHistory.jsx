@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import BaseLayout from "../components/BaseLayout";
 import { SkeletonTable } from "../components/SkeletonLoaders";
 import { useLanguage } from "../i18n";
+import { medicineAPI, doseAPI } from "../services/api";
 
 const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [doseHistory, setDoseHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
   const [medicines, setMedicines] = useState([]);
@@ -32,69 +34,31 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
   }, [doseHistory, filters]);
 
   const loadData = async () => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock data
-    const mockMedicines = [
-      { id: 1, name: "Aspirin" },
-      { id: 2, name: "Metformin" },
-      { id: 3, name: "Lisinopril" },
-      { id: 4, name: "Atorvastatin" },
-      { id: 5, name: "Vitamin D" }
-    ];
-
-    const mockHistory = generateMockDoseHistory(mockMedicines);
-    
-    setMedicines(mockMedicines);
-    setDoseHistory(mockHistory);
-    calculateStatistics(mockHistory);
-    setLoading(false);
-  };
-
-  const generateMockDoseHistory = (medicines) => {
-    const history = [];
-    const statuses = ["TAKEN", "MISSED", "PENDING"];
-    const today = new Date();
-    
-    for (let i = 0; i < 90; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
+    try {
+      setLoading(true);
+      setError(null);
       
-      medicines.forEach(medicine => {
-        // Generate 2-3 doses per day per medicine
-        const dosesPerDay = Math.floor(Math.random() * 2) + 2;
-        for (let j = 0; j < dosesPerDay; j++) {
-          const hour = 8 + (j * 6); // 8 AM, 2 PM, 8 PM
-          const doseTime = new Date(date);
-          doseTime.setHours(hour, 0, 0, 0);
-          
-          // Future doses are pending
-          let status;
-          if (doseTime > today) {
-            status = "PENDING";
-          } else {
-            // Random status for past doses (70% taken, 20% missed, 10% pending)
-            const rand = Math.random();
-            if (rand < 0.7) status = "TAKEN";
-            else if (rand < 0.9) status = "MISSED";
-            else status = "PENDING";
-          }
-          
-          history.push({
-            id: history.length + 1,
-            medicine_id: medicine.id,
-            medicine_name: medicine.name,
-            scheduled_time: doseTime.toISOString(),
-            status: status,
-            dose_time: `${hour.toString().padStart(2, '0')}:00`,
-            notes: status === "MISSED" ? "Forgot to take" : status === "TAKEN" ? "Taken on time" : ""
-          });
-        }
-      });
+      // Load medicines and dose history in parallel
+      const [medicinesResponse, historyResponse] = await Promise.all([
+        medicineAPI.getAll(),
+        doseAPI.getHistory()
+      ]);
+      
+      // Extract medicines array from response
+      const medicinesList = medicinesResponse.results || medicinesResponse || [];
+      setMedicines(medicinesList.map(m => ({ id: m.id, name: m.name })));
+      
+      // Extract history array from response
+      const historyData = historyResponse.results || historyResponse || [];
+      setDoseHistory(historyData);
+      calculateStatistics(historyData);
+      
+    } catch (err) {
+      console.error("Error loading dose history:", err);
+      setError(err.message || "Failed to load dose history. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    
-    return history.sort((a, b) => new Date(b.scheduled_time) - new Date(a.scheduled_time));
   };
 
   const calculateStatistics = (history) => {
@@ -177,6 +141,29 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
     return (
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
         <SkeletonTable rows={10} />
+      </BaseLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+              <i className="fas fa-exclamation-circle text-red-600 text-3xl mb-3"></i>
+              <h3 className="text-lg font-medium text-red-800 mb-2">{t("common.error")}</h3>
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={loadData}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+              >
+                <i className="fas fa-redo mr-2"></i>
+                {t("common.retry")}
+              </button>
+            </div>
+          </div>
+        </div>
       </BaseLayout>
     );
   }

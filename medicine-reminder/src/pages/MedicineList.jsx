@@ -48,55 +48,9 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
         setError(null);
       } catch (error) {
         console.error("Failed to load medicines:", error);
-        setError(`${error.message} - ${t('medicines.demoData')}`);
-        // Fallback to mock data if API fails
-        console.log('Using fallback mock data');
-        setMedicines([
-          { 
-            id: 1, 
-            name: "Aspirin", 
-            dosage: "100mg", 
-            frequency: "Once daily", 
-            nextDose: "2:00 PM",
-            stock: 15,
-            prescribedFor: "Headaches",
-            startDate: "2024-01-15",
-            doctor: "Dr. Smith"
-          },
-          { 
-            id: 2, 
-            name: "Vitamin D", 
-            dosage: "1000IU", 
-            frequency: "Once daily", 
-            nextDose: "8:00 AM",
-            stock: 30,
-            prescribedFor: "Vitamin deficiency",
-            startDate: "2024-01-01",
-            doctor: "Dr. Johnson"
-          },
-          { 
-            id: 3, 
-            name: "Omega-3", 
-            dosage: "500mg", 
-            frequency: "Twice daily", 
-            nextDose: "12:00 PM",
-            stock: 45,
-            prescribedFor: "Heart health",
-            startDate: "2024-01-10",
-            doctor: "Dr. Williams"
-          },
-          { 
-            id: 4, 
-            name: "Lisinopril", 
-            dosage: "10mg", 
-            frequency: "Once daily", 
-            nextDose: "9:00 AM",
-            stock: 20,
-            prescribedFor: "Blood pressure",
-            startDate: "2023-12-01",
-            doctor: "Dr. Brown"
-          }
-        ]);
+        setError(error.message || t('medicines.loadError'));
+        // Clear medicines on error - no mock data fallback
+        setMedicines([]);
       } finally {
         setLoading(false);
       }

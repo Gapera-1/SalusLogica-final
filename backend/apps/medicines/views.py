@@ -282,6 +282,57 @@ def medicine_search_external(request):
     })
 
 
+@api_view(['GET'])
+@perm_classes([IsAuthenticated])
+def rwanda_registry_search(request):
+    """
+    Search Rwanda FDA registered drugs database directly.
+
+    Query Parameters:
+        q (str): Medicine name to search for (brand or generic).
+        type (str): Search type - 'brand' (default) or 'generic'.
+
+    Returns matching drugs from Rwanda FDA registry.
+    """
+    query = request.query_params.get('q', '').strip()
+    search_type = request.query_params.get('type', 'brand').lower()
+    
+    if not query:
+        return Response(
+            {'error': 'Query parameter "q" is required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    from .barcode_lookup import search_rwanda_registry, search_rwanda_registry_by_generic
+
+    if search_type == 'generic':
+        results = search_rwanda_registry_by_generic(query)
+    else:
+        # Search by brand name, return as list for consistency
+        result = search_rwanda_registry(query)
+        results = [result] if result else []
+
+    return Response({
+        'query': query,
+        'search_type': search_type,
+        'count': len(results),
+        'results': results,
+    })
+
+
+@api_view(['GET'])
+@perm_classes([IsAuthenticated])
+def rwanda_registry_stats(request):
+    """
+    Get statistics about the Rwanda FDA registered drugs database.
+
+    Returns count of drugs, unique generic names, manufacturers, and countries.
+    """
+    from .barcode_lookup import get_rwanda_registry_stats
+    stats = get_rwanda_registry_stats()
+    return Response(stats)
+
+
 @api_view(['POST'])
 @perm_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])

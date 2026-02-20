@@ -38,11 +38,8 @@ def create_medication_schedules(sender, instance, created, **kwargs):
             MedicationSchedule.objects.filter(medicine=instance).delete()
         
         # Get user's timezone for proper time conversion
-        try:
-            user_profile = instance.user.userprofile
-            user_tz_str = user_profile.timezone or 'UTC'
-        except:
-            user_tz_str = 'UTC'
+        # Timezone is stored on User model, not UserProfile
+        user_tz_str = instance.user.timezone or 'UTC'
         
         # Convert timezone string to pytz object
         try:

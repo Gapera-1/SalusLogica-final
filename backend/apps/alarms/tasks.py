@@ -171,6 +171,7 @@ def generate_daily_schedules():
     """
     from apps.medicines.models import Medicine
     from datetime import datetime, time
+    import pytz
     
     today = timezone.now().date()
     generated_count = 0
@@ -184,29 +185,41 @@ def generate_daily_schedules():
     
     for medicine in active_medicines:
         try:
+            # Get user's timezone
+            user_tz_str = medicine.user.timezone or 'UTC'
+            try:
+                user_tz = pytz.timezone(user_tz_str)
+            except pytz.exceptions.UnknownTimeZoneError:
+                user_tz = pytz.UTC
+                user_tz_str = 'UTC'
+            
             # Generate schedules for each time in medicine.times
             for time_str in medicine.times:
                 hour, minute = map(int, time_str.split(':'))
-                scheduled_datetime = timezone.make_aware(
-                    datetime.combine(today, time(hour, minute))
-                )
+                
+                # Create naive datetime and localize to user's timezone
+                naive_local = datetime.combine(today, time(hour, minute))
+                local_datetime = user_tz.localize(naive_local)
+                
+                # Convert to UTC for storage
+                utc_scheduled_time = local_datetime.astimezone(pytz.UTC)
                 
                 # Only create if the time is in the future
-                if scheduled_datetime > timezone.now():
+                if utc_scheduled_time > timezone.now():
                     # Check if schedule already exists
                     existing_schedule = MedicationSchedule.objects.filter(
                         medicine=medicine,
                         user=medicine.user,
-                        scheduled_time=scheduled_datetime
+                        scheduled_time=utc_scheduled_time
                     ).first()
                     
                     if not existing_schedule:
                         MedicationSchedule.objects.create(
                             medicine=medicine,
                             user=medicine.user,
-                            scheduled_time=scheduled_datetime,
-                            local_time=scheduled_datetime,
-                            timezone=medicine.user.timezone or 'UTC'
+                            scheduled_time=utc_scheduled_time,  # UTC
+                            local_time=local_datetime,          # User's local time
+                            timezone=user_tz_str
                         )
                         generated_count += 1
                         

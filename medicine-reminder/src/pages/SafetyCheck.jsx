@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BaseLayout from '../components/BaseLayout';
 import { safetyAPI, medicineAPI } from '../services/api';
+import { useLanguage } from '../i18n';
 
-const SafetyCheck = () => {
+const SafetyCheck = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [medicines, setMedicines] = useState([]);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
   const [safetyReport, setSafetyReport] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(false);
   const [populationType, setPopulationType] = useState('young');
   const [error, setError] = useState(null);
 
@@ -18,18 +21,23 @@ const SafetyCheck = () => {
 
   const loadMedicines = async () => {
     try {
+      setLoading(true);
       const response = await medicineAPI.getAll();
-      setMedicines(response.data || []);
+      const medicineList = response.results || response || [];
+      setMedicines(medicineList);
+      setError(null);
     } catch (err) {
       console.error('Failed to load medicines:', err);
-      setError('Failed to load medicines.');
+      setError('Failed to load medicines. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const runSafetyCheck = async () => {
     if (!selectedMedicine) return;
 
-    setLoading(true);
+    setChecking(true);
     setError(null);
     setSafetyReport(null);
 
@@ -38,12 +46,12 @@ const SafetyCheck = () => {
         selectedMedicine.id,
         populationType
       );
-      setSafetyReport(response.data);
+      setSafetyReport(response);
     } catch (err) {
       console.error('Safety check failed:', err);
-      setError('Failed to run safety check.');
+      setError(err.message || 'Failed to run safety check. Please complete your patient profile.');
     } finally {
-      setLoading(false);
+      setChecking(false);
     }
   };
 
@@ -81,8 +89,21 @@ const SafetyCheck = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="bg-white rounded-lg shadow-lg p-6 text-center">
+            <div className="animate-spin h-10 w-10 border-4 border-teal-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading your medicines...</p>
+          </div>
+        </div>
+      </BaseLayout>
+    );
+  }
+
   return (
-    <BaseLayout>
+    <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
       <div className="max-w-4xl mx-auto p-6">
 
         {/* Header */}
@@ -91,7 +112,7 @@ const SafetyCheck = () => {
             🛡️ Safety Check Dashboard
           </h1>
           <p className="text-gray-600 mb-6">
-            Clinical safety validation based on selected patient population.
+            Clinical safety validation based on your patient profile and medicines.
           </p>
 
           {/* Population Type */}
@@ -102,47 +123,60 @@ const SafetyCheck = () => {
             <select
               value={populationType}
               onChange={(e) => setPopulationType(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
             >
-              <option value="young">Young (18-35)</option>
+              <option value="young">Young Adult (18-35)</option>
               <option value="pregnant">Pregnant</option>
               <option value="elderly">Elderly (65+)</option>
-              <option value="extreme">Extreme Age</option>
+              <option value="child">Child (2-12)</option>
+              <option value="infant_toddler">Infant/Toddler (0-2)</option>
             </select>
           </div>
 
           {/* Medicine Selection */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Medicine
+              Select Medicine to Check
             </label>
-            <select
-              value={selectedMedicine?.id || ''}
-              onChange={(e) => {
-                const medicine = medicines.find(
-                  (m) => String(m.id) === e.target.value
-                );
-                setSelectedMedicine(medicine || null);
-              }}
-              className="w-full px-4 py-2 border rounded-lg"
-            >
-              <option value="">Choose a medicine...</option>
-              {medicines.map((medicine) => (
-                <option key={medicine.id} value={medicine.id}>
-                  {medicine.name} ({medicine.dosage})
-                </option>
-              ))}
-            </select>
+            {medicines.length === 0 ? (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-700">No medicines found. Please add medicines first.</p>
+                <button
+                  onClick={() => navigate('/add-medicine')}
+                  className="mt-2 text-teal-600 hover:text-teal-800 font-medium"
+                >
+                  + Add Medicine
+                </button>
+              </div>
+            ) : (
+              <select
+                value={selectedMedicine?.id || ''}
+                onChange={(e) => {
+                  const medicine = medicines.find(
+                    (m) => String(m.id) === e.target.value
+                  );
+                  setSelectedMedicine(medicine || null);
+                }}
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              >
+                <option value="">Choose a medicine...</option>
+                {medicines.map((medicine) => (
+                  <option key={medicine.id} value={medicine.id}>
+                    {medicine.name} ({medicine.dosage})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Run Button */}
           <div className="flex justify-center">
             <button
               onClick={runSafetyCheck}
-              disabled={!selectedMedicine || loading}
-              className="px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
+              disabled={!selectedMedicine || checking}
+              className="px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
             >
-              {loading ? (
+              {checking ? (
                 <div className="flex items-center">
                   <svg
                     className="animate-spin h-5 w-5 mr-3"

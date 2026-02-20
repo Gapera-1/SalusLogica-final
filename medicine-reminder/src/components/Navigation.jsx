@@ -12,7 +12,9 @@ const Navigation = ({ setIsAuthenticated }) => {
   const { t } = useLanguage();
   const { activeAlarms = [] } = useAlarmManager(); // safe fallback
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const moreMenuRef = useRef(null);
 
   // Get user from localStorage
   const getUser = () => {
@@ -34,11 +36,14 @@ const Navigation = ({ setIsAuthenticated }) => {
   console.log("Navigation component - Is Pharmacy Admin:", isPharmacyAdmin);
   console.log("Navigation component - Is Patient:", isPatient);
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setProfileDropdownOpen(false);
+      }
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+        setMoreMenuOpen(false);
       }
     };
 
@@ -66,7 +71,7 @@ const Navigation = ({ setIsAuthenticated }) => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b" style={{ background: 'var(--nav-bg)', borderColor: 'var(--border-color)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+    <nav className="sticky top-0 z-50 border-b shadow-lg" style={{ background: 'linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%)', borderColor: 'rgba(255,255,255,0.1)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
 
@@ -88,8 +93,8 @@ const Navigation = ({ setIsAuthenticated }) => {
                   to="/dashboard"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/dashboard")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                      ? "bg-white/25 text-white"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
                   {t('navigation.dashboard')}
@@ -99,8 +104,8 @@ const Navigation = ({ setIsAuthenticated }) => {
                   to="/medicine-list"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/medicine-list")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                      ? "bg-white/25 text-white"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
                   {t('navigation.medicines')}
@@ -110,8 +115,8 @@ const Navigation = ({ setIsAuthenticated }) => {
                   to="/analytics"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/analytics")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                      ? "bg-white/25 text-white"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
                   {t('navigation.analytics')}
@@ -121,8 +126,8 @@ const Navigation = ({ setIsAuthenticated }) => {
                   to="/interaction-checker"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/interaction-checker")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                      ? "bg-white/25 text-white"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
                   {t('navigation.interactionChecker')}
@@ -132,8 +137,8 @@ const Navigation = ({ setIsAuthenticated }) => {
                   to="/dose-history"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/dose-history")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                      ? "bg-white/25 text-white"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
                   {t('navigation.doseHistory')}
@@ -143,8 +148,8 @@ const Navigation = ({ setIsAuthenticated }) => {
                   to="/safety-check"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/safety-check")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                      ? "bg-white/25 text-white"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
                   {t('navigation.safetyCheck')}
@@ -154,45 +159,75 @@ const Navigation = ({ setIsAuthenticated }) => {
                   to="/food-advice"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/food-advice")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                      ? "bg-white/25 text-white"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
                   {t('navigation.foodAdvice')}
                 </Link>
 
-                <Link
-                  to="/side-effects"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive("/side-effects")
-                      ? "bg-amber-50 text-amber-700"
-                      : "text-gray-600 hover:text-amber-700 hover:bg-amber-50"
-                  }`}
-                >
-                  {t('navigation.sideEffects')}
-                </Link>
+                {/* More Menu Dropdown */}
+                <div ref={moreMenuRef} className="relative">
+                  <button
+                    onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1 ${
+                      isActive("/side-effects") || isActive("/export-reports") || isActive("/notifications")
+                        ? "bg-white/25 text-white"
+                        : "text-white/90 hover:text-white hover:bg-white/15"
+                    }`}
+                  >
+                    <span>{t('navigation.more') || 'More'}</span>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${moreMenuOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
 
-                <Link
-                  to="/export-reports"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive("/export-reports")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
-                  }`}
-                >
-                  {t('navigation.exportReports')}
-                </Link>
-
-                <Link
-                  to="/notifications"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive("/notifications")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
-                  }`}
-                >
-                  {t('navigation.notifications')}
-                </Link>
+                  {moreMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg z-50 border border-gray-200 overflow-hidden">
+                      <Link
+                        to="/side-effects"
+                        onClick={() => setMoreMenuOpen(false)}
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center space-x-3 ${
+                          isActive("/side-effects") ? "bg-amber-50 text-amber-700" : "text-gray-700"
+                        }`}
+                      >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span className="text-sm font-medium">{t('navigation.sideEffects')}</span>
+                      </Link>
+                      <Link
+                        to="/notifications"
+                        onClick={() => setMoreMenuOpen(false)}
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center space-x-3 border-t border-gray-100 ${
+                          isActive("/notifications") ? "bg-teal-50 text-teal-700" : "text-gray-700"
+                        }`}
+                      >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        <span className="text-sm font-medium">{t('navigation.notifications')}</span>
+                      </Link>
+                      <Link
+                        to="/export-reports"
+                        onClick={() => setMoreMenuOpen(false)}
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center space-x-3 border-t border-gray-100 ${
+                          isActive("/export-reports") ? "bg-teal-50 text-teal-700" : "text-gray-700"
+                        }`}
+                      >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="text-sm font-medium">{t('navigation.exportReports')}</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
@@ -203,8 +238,8 @@ const Navigation = ({ setIsAuthenticated }) => {
                   to="/pharmacy-admin/dashboard"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/pharmacy-admin/dashboard")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                      ? "bg-white/25 text-white"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
                   {t('navigation.dashboard')}
@@ -214,8 +249,8 @@ const Navigation = ({ setIsAuthenticated }) => {
                   to="/pharmacy-admin/patients"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/pharmacy-admin/patients")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                      ? "bg-white/25 text-white"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
                   {t('navigation.patients')}
@@ -225,8 +260,8 @@ const Navigation = ({ setIsAuthenticated }) => {
                   to="/pharmacy-admin/adverse-reactions"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/pharmacy-admin/adverse-reactions")
-                      ? "bg-amber-50 text-amber-700"
-                      : "text-gray-600 hover:text-amber-700 hover:bg-amber-50"
+                      ? "bg-amber-400/30 text-amber-100"
+                      : "text-white/90 hover:text-amber-100 hover:bg-amber-400/20"
                   }`}
                 >
                   {t('navigation.adverseReactions')}
@@ -236,8 +271,8 @@ const Navigation = ({ setIsAuthenticated }) => {
                   to="/export-reports"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive("/export-reports")
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                      ? "bg-white/25 text-white"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
                   {t('navigation.exportReports')}
@@ -269,18 +304,18 @@ const Navigation = ({ setIsAuthenticated }) => {
             <div ref={dropdownRef} className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="p-0.5 rounded-full hover:ring-2 hover:ring-teal-400 hover:ring-offset-2 transition-all"
+                className="p-0.5 rounded-full hover:ring-2 hover:ring-white/50 hover:ring-offset-2 hover:ring-offset-teal-600 transition-all"
                 title={t('navigation.profileMenu')}
               >
                 {user?.avatar ? (
                   <img
                     src={user.avatar}
                     alt="Profile"
-                    className="h-9 w-9 rounded-full object-cover border-2 border-teal-200"
+                    className="h-9 w-9 rounded-full object-cover border-2 border-white/50"
                   />
                 ) : (
-                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
-                    <span className="text-white text-sm font-semibold">
+                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-white/90 to-teal-100 flex items-center justify-center border-2 border-white/50">
+                    <span className="text-teal-700 text-sm font-semibold">
                       {user?.username ? user.username.charAt(0).toUpperCase() : '?'}
                     </span>
                   </div>

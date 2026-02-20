@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import BaseLayout from "../components/BaseLayout";
+import { medicineAPI } from "../services/api";
 
 const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
   const navigate = useNavigate();
@@ -40,30 +41,27 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
 
   const loadMedicine = async () => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoading(true);
+      const data = await medicineAPI.getById(id);
       
-      // Mock medicine data
-      const mockMedicine = {
-        id: parseInt(id),
-        name: "Aspirin",
-        dosage: "100mg",
-        frequency: "TWICE_DAILY",
-        duration: "30",
-        start_date: "2024-01-01",
-        end_date: "2024-01-31",
-        instructions: "Take with food to avoid stomach upset",
-        prescribed_for: "Headache prevention",
-        doctor: "Dr. Smith",
-        notes: "Patient history of stomach sensitivity",
-        reminder_times: ["08:00", "20:00"]
-      };
-      
-      setMedicine(mockMedicine);
-      setLoading(false);
+      setMedicine({
+        id: data.id,
+        name: data.name || "",
+        dosage: data.dosage || "",
+        frequency: data.frequency || "",
+        duration: data.duration || "",
+        start_date: data.start_date || "",
+        end_date: data.end_date || "",
+        instructions: data.instructions || "",
+        prescribed_for: data.prescribed_for || "",
+        doctor: data.prescribing_doctor || data.doctor || "",
+        notes: data.notes || "",
+        reminder_times: data.times || data.reminder_times || ["08:00", "14:00", "20:00"]
+      });
     } catch (error) {
       console.error("Error loading medicine:", error);
       setMessage({ type: "error", text: "Failed to load medicine details" });
+    } finally {
       setLoading(false);
     }
   };
@@ -138,15 +136,22 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
     setMessage(null);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Prepare data for API
+      const updateData = {
+        name: medicine.name,
+        dosage: medicine.dosage,
+        frequency: medicine.frequency,
+        duration: medicine.duration,
+        start_date: medicine.start_date,
+        end_date: medicine.end_date,
+        instructions: medicine.instructions,
+        prescribed_for: medicine.prescribed_for,
+        prescribing_doctor: medicine.doctor,
+        notes: medicine.notes,
+        times: medicine.reminder_times
+      };
       
-      // Update localStorage
-      const medicines = JSON.parse(localStorage.getItem("medicines") || "[]");
-      const updatedMedicines = medicines.map(m => 
-        m.id === parseInt(id) ? { ...medicine, id: parseInt(id) } : m
-      );
-      localStorage.setItem("medicines", JSON.stringify(updatedMedicines));
+      await medicineAPI.update(id, updateData);
       
       setMessage({ type: "success", text: "Medicine updated successfully!" });
       
@@ -156,7 +161,7 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
       
     } catch (error) {
       console.error("Error updating medicine:", error);
-      setMessage({ type: "error", text: "Failed to update medicine. Please try again." });
+      setMessage({ type: "error", text: error.message || "Failed to update medicine. Please try again." });
     } finally {
       setSaving(false);
     }

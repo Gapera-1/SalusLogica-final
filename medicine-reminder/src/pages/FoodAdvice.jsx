@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BaseLayout from '../components/BaseLayout';
 import { useLanguage } from '../i18n';
-import { medicineAPI } from '../services/api';
+import { medicineAPI, safetyAPI } from '../services/api';
 
-const FoodAdvice = () => {
+const FoodAdvice = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [medicines, setMedicines] = useState([]);
   const [foodAdvice, setFoodAdvice] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadMedicinesWithFoodAdvice();
@@ -17,31 +18,59 @@ const FoodAdvice = () => {
 
   const loadMedicinesWithFoodAdvice = async () => {
     try {
-      const response = await medicineAPI.getAll();
-      const medicines = response.data || [];
-      setMedicines(medicines);
+      setLoading(true);
+      setError(null);
       
-      // Generate food advice for each medicine
-      const adviceMap = {};
-      medicines.forEach(medicine => {
-        adviceMap[medicine.id] = generateFoodAdvice(medicine);
+      // Load medicines and food advice from backend in parallel
+      const [medicinesResponse, foodAdviceResponse] = await Promise.all([
+        medicineAPI.getAll(),
+        safetyAPI.foodAdvice()
+      ]);
+      
+      const medicineList = medicinesResponse.results || medicinesResponse || [];
+      setMedicines(medicineList);
+      
+      // Backend returns food_advice map
+      const adviceData = foodAdviceResponse.food_advice || {};
+      
+      // Merge backend advice with generated advice for medicines without data
+      const fullAdvice = {};
+      medicineList.forEach(medicine => {
+        if (adviceData[medicine.id]) {
+          fullAdvice[medicine.id] = adviceData[medicine.id];
+        } else {
+          // Generate advice for medicines without backend data
+          fullAdvice[medicine.id] = generateFoodAdvice(medicine);
+        }
       });
       
-      setFoodAdvice(adviceMap);
-    } catch (error) {
-      console.error('Failed to load medicines:', error);
+      setFoodAdvice(fullAdvice);
+    } catch (err) {
+      console.error('Failed to load medicines:', err);
+      setError(err.message || 'Failed to load food advice. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const generateFoodAdvice = (medicine) => {
     const advice = {
+      medicine_name: medicine.name,
       foods_to_avoid: [],
       foods_advised: [],
       general_advice: [],
       timing_advice: []
     };
 
-    // Generate advice based on medicine type and common interactions
+    // Use medicine's stored food data if available
+    if (medicine.food_to_avoid && medicine.food_to_avoid.length > 0) {
+      advice.foods_to_avoid = medicine.food_to_avoid;
+    }
+    
+    if (medicine.food_advised && medicine.food_advised.length > 0) {
+      advice.foods_advised = medicine.food_advised;
+    }
+
     const medicineName = medicine.name.toLowerCase();
     
     // Common food interactions by medicine category
@@ -74,12 +103,12 @@ const FoodAdvice = () => {
     };
 
     // Determine medicine category based on name
-    let category = 'general';
-    if (medicineName.includes('antibiotic') || medicineName.includes('amoxicillin') || medicineName.includes('doxycycline')) {
+    let category = null;
+    if (medicineName.includes('antibiotic') || medicineName.includes('amoxicillin') || medicineName.includes('doxycycline') || medicineName.includes('azithromycin')) {
       category = 'antibiotics';
-    } else if (medicineName.includes('warfarin') || medicineName.includes('coumadin')) {
+    } else if (medicineName.includes('warfarin') || medicineName.includes('coumadin') || medicineName.includes('heparin')) {
       category = 'blood thinners';
-    } else if (medicineName.includes('aspirin') || medicineName.includes('ibuprofen') || medicineName.includes('naproxen')) {
+    } else if (medicineName.includes('aspirin') || medicineName.includes('ibuprofen') || medicineName.includes('naproxen') || medicineName.includes('diclofenac')) {
       category = 'nsaids';
     } else if (medicineName.includes('statin') || medicineName.includes('atorvastatin') || medicineName.includes('simvastatin')) {
       category = 'statins';
@@ -141,70 +170,90 @@ const FoodAdvice = () => {
     return '🍽';
   };
 
+  if (loading) {
+    return (
+      <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="bg-white rounded-lg shadow-lg p-6 text-center">
+            <div className="animate-spin h-10 w-10 border-4 border-teal-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading food advice for your medicines...</p>
+          </div>
+        </div>
+      </BaseLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <span className="text-4xl mb-3 block">⚠️</span>
+            <h3 className="text-lg font-medium text-red-800 mb-2">Error Loading Food Advice</h3>
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={loadMedicinesWithFoodAdvice}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </BaseLayout>
+    );
+  }
+
   return (
-    <BaseLayout>
+    <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
       <div className="max-w-6xl mx-auto p-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            🍽 {t("foodAdvice.title")}
+            🍽 {t("foodAdvice.title") || "Food & Medicine Interactions"}
           </h1>
-          <p className="text-gray-600 mb-6">
-            {t("foodAdvice.foodRecommendations", { drug: "medications" })}
+          <p className="text-gray-600">
+            {t("foodAdvice.foodRecommendations", { drug: "medications" }) || "Learn what foods to avoid or include when taking your medications."}
           </p>
         </div>
 
-        {/* Medicine Selection */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">{t("foodAdvice.selectMedicine")}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {medicines.map(medicine => (
-              <div key={medicine.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
-                <h3 className="font-semibold text-lg text-gray-900 mb-2">
-                  💊 {medicine.name}
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">{medicine.dosage}</p>
-                <p className="text-sm text-gray-600 mb-4">{medicine.frequency}</p>
-                
-                <button
-                  onClick={() => setFoodAdvice(prev => ({
-                    ...prev,
-                    [medicine.id]: generateFoodAdvice(medicine)
-                  }))}
-                  className="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors duration-300"
-                >
-                  {t("foodAdvice.selectMedicine")}
-                </button>
-              </div>
-            ))}
+        {/* No medicines message */}
+        {medicines.length === 0 ? (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+            <span className="text-4xl mb-3 block">💊</span>
+            <h3 className="text-lg font-medium text-yellow-800 mb-2">No Medicines Found</h3>
+            <p className="text-yellow-600 mb-4">Add medicines to see food interaction advice.</p>
+            <button
+              onClick={() => navigate('/add-medicine')}
+              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+            >
+              + Add Medicine
+            </button>
           </div>
-        </div>
-
-        {/* Food Advice Display */}
-        {Object.keys(foodAdvice).length > 0 && (
+        ) : (
+          /* Food Advice Display */
           <div className="space-y-6">
-            {Object.entries(foodAdvice).map(([medicineId, advice]) => {
-              const medicine = medicines.find(m => m.id === parseInt(medicineId));
-              if (!medicine) return null;
+            {medicines.map(medicine => {
+              const advice = foodAdvice[medicine.id];
+              if (!advice) return null;
 
               return (
-                <div key={medicineId} className="bg-white rounded-lg shadow-lg p-6">
+                <div key={medicine.id} className="bg-white rounded-lg shadow-lg p-6">
                   {/* Header */}
-                  <div className="flex items-center mb-4">
-                    <span className="text-2xl mr-3">💊</span>
+                  <div className="flex items-center mb-4 pb-4 border-b">
+                    <span className="text-3xl mr-3">💊</span>
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900">
-                        {medicine.name} - {t("foodAdvice.foodInteractions")}
+                        {medicine.name}
                       </h2>
                       <p className="text-gray-600">{medicine.dosage} • {medicine.frequency}</p>
                     </div>
                   </div>
 
                   {/* Foods to Avoid */}
-                  {advice.foods_to_avoid.length > 0 && (
+                  {advice.foods_to_avoid && advice.foods_to_avoid.length > 0 && (
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold text-red-600 mb-3">
-                        🚫 {t("foodAdvice.foodsToAvoid") || "Foods to Avoid"}
+                        🚫 Foods to Avoid
                       </h3>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {advice.foods_to_avoid.map((food, index) => (
@@ -212,7 +261,7 @@ const FoodAdvice = () => {
                             <span className="text-2xl mr-2">{getFoodIcon(food)}</span>
                             <div>
                               <p className="font-medium text-red-800">{food}</p>
-                              <p className="text-sm text-red-600">Avoid while taking this medication</p>
+                              <p className="text-xs text-red-600">Avoid while taking this medication</p>
                             </div>
                           </div>
                         ))}
@@ -221,7 +270,7 @@ const FoodAdvice = () => {
                   )}
 
                   {/* Recommended Foods */}
-                  {advice.foods_advised.length > 0 && (
+                  {advice.foods_advised && advice.foods_advised.length > 0 && (
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold text-green-600 mb-3">
                         ✅ Recommended Foods
@@ -232,7 +281,7 @@ const FoodAdvice = () => {
                             <span className="text-2xl mr-2">{getFoodIcon(food)}</span>
                             <div>
                               <p className="font-medium text-green-800">{food}</p>
-                              <p className="text-sm text-green-600">Recommended with this medication</p>
+                              <p className="text-xs text-green-600">Recommended with this medication</p>
                             </div>
                           </div>
                         ))}
@@ -241,7 +290,7 @@ const FoodAdvice = () => {
                   )}
 
                   {/* Timing Advice */}
-                  {advice.timing_advice.length > 0 && (
+                  {advice.timing_advice && advice.timing_advice.length > 0 && (
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold text-teal-600 mb-3">
                         ⏰ Timing Instructions
@@ -250,9 +299,7 @@ const FoodAdvice = () => {
                         {advice.timing_advice.map((timing, index) => (
                           <div key={index} className="flex items-start p-3 bg-teal-50 rounded-lg border border-teal-200">
                             <span className="text-xl mr-3">⏰</span>
-                            <div>
-                              <p className="font-medium text-teal-800">{timing}</p>
-                            </div>
+                            <p className="font-medium text-teal-800">{timing}</p>
                           </div>
                         ))}
                       </div>
@@ -260,19 +307,32 @@ const FoodAdvice = () => {
                   )}
 
                   {/* General Advice */}
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                      📋 General Guidelines
-                    </h3>
-                    <div className="space-y-2">
-                      {advice.general_advice.map((tip, index) => (
-                        <div key={index} className="flex items-start p-3 bg-gray-50 rounded-lg">
-                          <span className="text-xl mr-3">💡</span>
-                          <p className="text-gray-700">{tip}</p>
-                        </div>
-                      ))}
+                  {advice.general_advice && advice.general_advice.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        📋 General Guidelines
+                      </h3>
+                      <div className="space-y-2">
+                        {advice.general_advice.map((tip, index) => (
+                          <div key={index} className="flex items-start p-3 bg-gray-50 rounded-lg">
+                            <span className="text-xl mr-3">💡</span>
+                            <p className="text-gray-700">{tip}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* No advice available message */}
+                  {(!advice.foods_to_avoid || advice.foods_to_avoid.length === 0) &&
+                   (!advice.foods_advised || advice.foods_advised.length === 0) &&
+                   (!advice.timing_advice || advice.timing_advice.length === 0) && (
+                    <div className="text-center py-6 bg-gray-50 rounded-lg">
+                      <span className="text-4xl mb-3 block">✅</span>
+                      <p className="text-gray-600">No specific food restrictions for this medicine.</p>
+                      <p className="text-sm text-gray-500 mt-2">Take as directed by your healthcare provider.</p>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -280,19 +340,17 @@ const FoodAdvice = () => {
         )}
 
         {/* Educational Content */}
-        <div className="bg-teal-50 rounded-lg p-6">
+        <div className="bg-teal-50 rounded-lg p-6 mt-6">
           <h3 className="text-lg font-semibold text-teal-900 mb-4">
             🎓 Understanding Food-Drug Interactions
           </h3>
-          <div className="prose text-teal-800 space-y-3">
+          <div className="text-teal-800 space-y-3">
             <p>
               Food can significantly affect how your body absorbs and processes medications. 
               Some foods can enhance drug effectiveness, while others may reduce it or cause side effects.
             </p>
-            <p>
-              <strong>Key Principles:</strong>
-            </p>
-            <ul className="list-disc list-inside space-y-2 ml-6">
+            <p className="font-semibold">Key Principles:</p>
+            <ul className="list-disc list-inside space-y-2 ml-4">
               <li>Take medications at consistent times relative to meals</li>
               <li>Separate food and medication by recommended time intervals</li>
               <li>Avoid foods that are known to interact with your specific medications</li>
@@ -306,13 +364,13 @@ const FoodAdvice = () => {
         <div className="flex gap-4 mt-6">
           <button
             onClick={() => navigate('/medicine-list')}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-300"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Back to Medicines
           </button>
           <button
             onClick={() => navigate('/safety-check')}
-            className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors duration-300"
+            className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
           >
             Run Safety Check
           </button>

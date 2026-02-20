@@ -84,9 +84,24 @@ const apiCall = async (endpoint, options = {}) => {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error(`API Error Response:`, errorData);
-      const error = new Error(
-        errorData.error || errorData.message || errorData.non_field_errors?.[0] || errorData.detail || `HTTP error! status: ${response.status}`
-      );
+      
+      // Handle custom error format from backend: {success: false, error: {message: ..., type: ...}}
+      let errorMessage = 'An error occurred';
+      if (errorData.error && typeof errorData.error === 'object') {
+        errorMessage = errorData.error.message || errorData.error.detail || JSON.stringify(errorData.error);
+      } else if (errorData.error) {
+        errorMessage = errorData.error;
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (errorData.detail) {
+        errorMessage = errorData.detail;
+      } else if (errorData.non_field_errors?.[0]) {
+        errorMessage = errorData.non_field_errors[0];
+      } else {
+        errorMessage = `HTTP error! status: ${response.status}`;
+      }
+      
+      const error = new Error(errorMessage);
       error.response = { data: errorData, status: response.status };
       throw error;
     }
@@ -456,7 +471,7 @@ export const interactionAPI = {
 export const safetyAPI = {
   // Safety check for a specific medicine
   safetyCheck: async (medicineId, populationType) => {
-    return await apiCall('/api/safety-check/safety_check/', {
+    return await apiCall('/medicines/safety-check/safety_check/', {
       method: 'POST',
       body: JSON.stringify({ 
         medicine_id: medicineId, 
@@ -467,12 +482,12 @@ export const safetyAPI = {
   
   // Get food advice for user's medicines
   foodAdvice: async () => {
-    return await apiCall('/api/safety-check/food_advice/');
+    return await apiCall('/medicines/safety-check/food_advice/');
   },
   
   // Get contraindications for user's population type
   contraindications: async (populationType) => {
-    return await apiCall('/api/safety-check/contraindications/', {
+    return await apiCall('/medicines/safety-check/contraindications/', {
       method: 'GET',
       params: { population_type: populationType }
     });

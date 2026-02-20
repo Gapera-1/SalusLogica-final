@@ -19,10 +19,11 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
     doctor: "",
     notes: "",
     reminderEnabled: true,
-    startDate: "",
+    startDate: new Date().toISOString().split('T')[0],
     endDate: "",
     instructions: ""
   });
+  const [calculatedDuration, setCalculatedDuration] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [showScanner, setShowScanner] = useState(false);
@@ -46,6 +47,42 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
     t("addMedicine.monthly")
   ];
 
+  // Calculate doses per day based on frequency
+  const getDosesPerDay = (frequency) => {
+    const freq = frequency.toLowerCase();
+    if (freq.includes('once') || freq.includes('une fois') || freq.includes('rimwe')) return 1;
+    if (freq.includes('twice') || freq.includes('deux fois') || freq.includes('kabiri')) return 2;
+    if (freq.includes('three') || freq.includes('trois fois') || freq.includes('gatatu')) return 3;
+    if (freq.includes('four') || freq.includes('quatre fois') || freq.includes('kane')) return 4;
+    if (freq.includes('weekly') || freq.includes('hebdomadaire') || freq.includes('icyumweru')) return 1/7; // 1 dose per 7 days
+    if (freq.includes('monthly') || freq.includes('mensuel') || freq.includes('ukwezi')) return 1/30; // 1 dose per 30 days
+    return null; // "As needed" - can't calculate
+  };
+
+  // Calculate duration and end date based on stock and frequency
+  const calculateDuration = (stock, frequency, startDate) => {
+    if (!stock || !frequency) return null;
+    
+    const dosesPerDay = getDosesPerDay(frequency);
+    if (dosesPerDay === null) return null; // "As needed" - can't calculate
+    
+    const stockNum = parseInt(stock);
+    if (isNaN(stockNum) || stockNum <= 0) return null;
+    
+    const durationDays = Math.floor(stockNum / dosesPerDay);
+    
+    // Calculate end date
+    let endDate = null;
+    if (startDate && durationDays > 0) {
+      const start = new Date(startDate);
+      const end = new Date(start);
+      end.setDate(end.getDate() + durationDays);
+      endDate = end.toISOString().split('T')[0];
+    }
+    
+    return { days: durationDays, endDate };
+  };
+
   // Helper function to get suggested times based on frequency
   const getSuggestedTimes = (frequency) => {
     switch (frequency) {
@@ -65,11 +102,22 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
   // Update times when frequency changes
   const handleFrequencyChange = (e) => {
     const frequency = e.target.value;
-    setFormData(prev => ({
-      ...prev,
+    const newFormData = {
+      ...formData,
       frequency,
       times: getSuggestedTimes(frequency)
-    }));
+    };
+    
+    // Calculate duration with new frequency
+    const result = calculateDuration(formData.stock, frequency, formData.startDate);
+    if (result) {
+      setCalculatedDuration(result.days);
+      newFormData.endDate = result.endDate || '';
+    } else {
+      setCalculatedDuration(null);
+    }
+    
+    setFormData(newFormData);
   };
 
   // Add a new time slot
@@ -100,10 +148,27 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value
-    }));
+    const newValue = type === "checkbox" ? checked : value;
+    
+    const newFormData = {
+      ...formData,
+      [name]: newValue
+    };
+    
+    // Recalculate duration when stock or startDate changes
+    if (name === 'stock' || name === 'startDate') {
+      const stockVal = name === 'stock' ? value : formData.stock;
+      const startVal = name === 'startDate' ? value : formData.startDate;
+      const result = calculateDuration(stockVal, formData.frequency, startVal);
+      if (result) {
+        setCalculatedDuration(result.days);
+        newFormData.endDate = result.endDate || '';
+      } else {
+        setCalculatedDuration(null);
+      }
+    }
+    
+    setFormData(newFormData);
     
     // Clear error for this field
     if (errors[name]) {
@@ -180,12 +245,12 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
         dosage: formData.dosage,
         frequency: formData.frequency.toLowerCase().replace(" ", "_"),
         times: formData.times, // Array of times
-        duration: parseInt(formData.stock) || 30,
+        duration: calculatedDuration || parseInt(formData.stock) || 30,
         stock_count: parseInt(formData.stock) || 30,
         prescribed_for: formData.prescribedFor || "",
         prescribing_doctor: formData.doctor || "",
         start_date: formData.startDate || new Date().toISOString().split('T')[0],
-        end_date: formData.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end_date: formData.endDate || new Date(Date.now() + (calculatedDuration || 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         instructions: formData.instructions || "",
         notes: formData.notes || "",
         reminder_enabled: formData.reminderEnabled,
@@ -417,6 +482,17 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
                 placeholder={t("addMedicine.stockPlaceholder")}
                 min="0"
               />
+              {/* Calculated Duration Display */}
+              {calculatedDuration && (
+                <div className="flex items-center gap-2 p-2 bg-teal-50 rounded-lg border border-teal-200">
+                  <svg className="w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm text-teal-700">
+                    {t("addMedicine.estimatedDuration") || "Estimated duration"}: <strong>{calculatedDuration} {t("addMedicine.days") || "days"}</strong>
+                  </span>
+                </div>
+              )}
               {errors.stock && <span className="text-red-400 text-xs">{errors.stock}</span>}
             </div>
 

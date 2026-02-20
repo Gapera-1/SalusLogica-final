@@ -24,6 +24,9 @@ urlpatterns = [
     path('adverse-reactions/', views.AdverseReactionListCreateView.as_view(), name='adverse_reactions'),
     path('adverse-reactions/<int:pk>/', views.AdverseReactionDetailView.as_view(), name='adverse_reaction_detail'),
     
+    # Drug Information Lookup
+    path('drug-lookup/', views.drug_info_lookup, name='drug_info_lookup'),
+    
     # Dashboard
     path('dashboard/', views.pharmacy_admin_dashboard, name='pharmacy_admin_dashboard'),
     

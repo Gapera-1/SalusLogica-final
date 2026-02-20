@@ -41,7 +41,8 @@
     "alarms": "Ibyibutsa by’amasaha",
     "profileMenu": "Menu y'umwirondoro",
     "exportReports": "Raporo",
-    "sideEffects": "Ibimenyetso"
+    "sideEffects": "Ibimenyetso",
+    "more": "Ibindi"
   },
   "home": {
     "welcome": "Murakaza neza kuri SalusLogica",
@@ -370,6 +371,8 @@
     "error": "Ntibyashobotse kongeramo umuti. Ongera ugerageze.",
     "dosagePlaceholder": "urugero: 100mg, ibinini 2",
     "stockPlaceholder": "Umubare w'ibinini/capsule",
+    "estimatedDuration": "Igihe cyibazemo",
+    "days": "iminsi",
     "prescribedForPlaceholder": "urugero: Umutwe, Umuvuduko w'amaraso",
     "doctorPlaceholder": "Dr. Muganga",
     "instructionsPlaceholder": "urugero: Fata hamwe n'ibiryo, irinde grape",

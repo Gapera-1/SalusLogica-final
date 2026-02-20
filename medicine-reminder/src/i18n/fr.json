@@ -36,7 +36,8 @@
     "alarms": "Alarmes",
     "profileMenu": "Menu de profil",
     "exportReports": "Rapports",
-    "sideEffects": "Effets secondaires"
+    "sideEffects": "Effets secondaires",
+    "more": "Plus"
   },
   "home": {
     "welcome": "Bienvenue à SalusLogica",
@@ -359,6 +360,8 @@
     "error": "Échec de l'ajout du médicament. Veuillez réessayer.",
     "dosagePlaceholder": "ex: 100mg, 2 comprimés",
     "stockPlaceholder": "Nombre de comprimés/capsules",
+    "estimatedDuration": "Durée estimée",
+    "days": "jours",
     "prescribedForPlaceholder": "ex: Maux de tête, Tension artérielle",
     "doctorPlaceholder": "Dr. Dupont",
     "instructionsPlaceholder": "ex: Prendre avec de la nourriture, éviter le pamplemousse",

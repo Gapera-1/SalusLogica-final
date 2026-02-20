@@ -36,7 +36,8 @@
     "alarms": "Alarms",
     "profileMenu": "Profile Menu",
     "exportReports": "Reports",
-    "sideEffects": "Side Effects"
+    "sideEffects": "Side Effects",
+    "more": "More"
   },
   "home": {
     "welcome": "Welcome to SalusLogica",
@@ -359,6 +360,8 @@
     "error": "Failed to add medicine. Please try again.",
     "dosagePlaceholder": "e.g., 100mg, 2 tablets",
     "stockPlaceholder": "Number of tablets/capsules",
+    "estimatedDuration": "Estimated duration",
+    "days": "days",
     "prescribedForPlaceholder": "e.g., Headaches, Blood pressure",
     "doctorPlaceholder": "Dr. Smith",
     "instructionsPlaceholder": "e.g., Take with food, avoid grapefruit",
