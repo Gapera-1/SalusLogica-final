@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import BaseLayout from "../components/BaseLayout";
 import { useLanguage } from "../i18n";
-
-const API_BASE = "http://127.0.0.1:8000/api";
+import { API_BASE_URL } from "../services/api";
 
 const PharmacyAdminDashboard = ({ setIsAuthenticated }) => {
   const { t } = useLanguage();
@@ -31,7 +30,7 @@ const PharmacyAdminDashboard = ({ setIsAuthenticated }) => {
 
         /* ================= PROFILE ================= */
         const profileResponse = await fetch(
-          `${API_BASE}/pharmacy-admin/profile/`,
+          `${API_BASE_URL}/pharmacy-admin/profile/`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -55,7 +54,7 @@ const PharmacyAdminDashboard = ({ setIsAuthenticated }) => {
 
         /* ================= ADVERSE REACTIONS ================= */
         const reactionsResponse = await fetch(
-          `${API_BASE}/pharmacy-admin/adverse-reactions/`,
+          `${API_BASE_URL}/pharmacy-admin/adverse-reactions/`,
           {
             headers: {
               "Content-Type": "application/json",

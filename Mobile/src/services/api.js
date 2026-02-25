@@ -1,10 +1,10 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { tokenStorage, userStorage } from './storage';
 
 // ============ API CONFIGURATION ============
 // For web: use localhost, for Android emulator: use 10.0.2.2, for iOS simulator/physical devices: use your computer's IP
 const getBaseUrl = () => {
-  console.log('[API] Platform.OS:', Platform.OS);
+  if (__DEV__) console.log('[API] Platform.OS:', Platform.OS);
   if (Platform.OS === 'web') {
     return 'http://localhost:8000/api';
   } else if (Platform.OS === 'android') {
@@ -13,8 +13,11 @@ const getBaseUrl = () => {
     return 'http://localhost:8000/api'; // iOS simulator
   }
 };
-const API_BASE_URL = process.env.REACT_APP_API_URL || getBaseUrl();
-console.log('[API] Using API_BASE_URL:', API_BASE_URL);
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  process.env.REACT_APP_API_URL ||
+  getBaseUrl();
+if (__DEV__) console.log('[API] Using API_BASE_URL:', API_BASE_URL);
 
 /**
  * Helper function for unified API calls
@@ -23,26 +26,30 @@ console.log('[API] Using API_BASE_URL:', API_BASE_URL);
 const apiCall = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
   
-  // Get token from AsyncStorage
-  const token = await AsyncStorage.getItem('access_token');
+  // Get token from secure storage (falls back to AsyncStorage)
+  const { accessToken, refreshToken } = await tokenStorage.getTokens();
   
   const defaultOptions = {
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Token ${token}` }),
+      ...(accessToken && { 'Authorization': `Token ${accessToken}` }),
     },
   };
 
   const config = { ...defaultOptions, ...options };
 
   try {
-    console.log(`API Request: ${config.method || 'GET'} ${url}`, config.body ? JSON.parse(config.body) : {});
+    if (__DEV__) {
+      console.log(
+        `API Request: ${config.method || 'GET'} ${url}`,
+        config.body ? JSON.parse(config.body) : {},
+      );
+    }
     
     let response = await fetch(url, config);
 
     // If unauthorized, try to refresh token once and retry
     if (response.status === 401) {
-      const refreshToken = await AsyncStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
           const refreshResp = await fetch(`${API_BASE_URL}/auth/refresh/`, {
@@ -55,14 +62,11 @@ const apiCall = async (endpoint, options = {}) => {
             const refreshData = await refreshResp.json().catch(() => ({}));
             // Update tokens if present
             if (refreshData.access) {
-              await AsyncStorage.setItem('access_token', refreshData.access);
-            }
-            if (refreshData.refresh) {
-              await AsyncStorage.setItem('refresh_token', refreshData.refresh);
+              await tokenStorage.setTokens(refreshData.access, refreshData.refresh || null);
             }
 
             // Retry original request with new token
-            const newToken = await AsyncStorage.getItem('access_token');
+            const { accessToken: newToken } = await tokenStorage.getTokens();
             if (newToken) {
               config.headers = { ...config.headers, Authorization: `Token ${newToken}` };
             }
@@ -118,12 +122,12 @@ const apiCall = async (endpoint, options = {}) => {
 
     // Handle 204 No Content or empty responses
     if (response.status === 204 || response.headers.get('content-length') === '0') {
-      console.log(`API Response: (No Content)`);
+      if (__DEV__) console.log(`API Response: (No Content)`);
       return {};
     }
 
     const data = await response.json().catch(() => ({}));
-    console.log(`API Response:`, data);
+    if (__DEV__) console.log(`API Response:`, data);
     return data;
   } catch (error) {
     console.error(`API Error (${endpoint}):`, error);
@@ -136,7 +140,7 @@ const apiCall = async (endpoint, options = {}) => {
  */
 export const clearAuthData = async () => {
   try {
-    await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+    await Promise.all([tokenStorage.clearTokens(), userStorage.clearUser()]);
   } catch (error) {
     console.error('Error clearing auth data:', error);
   }
@@ -147,12 +151,7 @@ export const clearAuthData = async () => {
  */
 export const storeAuthTokens = async (accessToken, refreshToken) => {
   try {
-    if (accessToken) {
-      await AsyncStorage.setItem('access_token', accessToken);
-    }
-    if (refreshToken) {
-      await AsyncStorage.setItem('refresh_token', refreshToken);
-    }
+    await tokenStorage.setTokens(accessToken, refreshToken);
   } catch (error) {
     console.error('Error storing auth tokens:', error);
     throw error;
@@ -164,7 +163,8 @@ export const storeAuthTokens = async (accessToken, refreshToken) => {
  */
 export const getAuthToken = async () => {
   try {
-    return await AsyncStorage.getItem('access_token');
+    const { accessToken } = await tokenStorage.getTokens();
+    return accessToken;
   } catch (error) {
     console.error('Error getting auth token:', error);
     return null;

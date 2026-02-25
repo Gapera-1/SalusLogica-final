@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import BaseLayout from "../components/BaseLayout";
 import { useLanguage } from "../i18n";
+import { API_BASE_URL } from "../services/api";
 
 const PharmacyAdminAdverseReactions = ({ setIsAuthenticated }) => {
   const { t } = useLanguage();
@@ -25,7 +26,7 @@ const PharmacyAdminAdverseReactions = ({ setIsAuthenticated }) => {
         }
 
         const response = await fetch(
-          `http://127.0.0.1:8000/api/pharmacy-admin/adverse-reactions/?${params}`,
+          `${API_BASE_URL}/pharmacy-admin/adverse-reactions/?${params}`,
           {
             method: "GET",
             headers: {

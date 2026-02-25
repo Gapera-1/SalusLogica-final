@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Card, Button, Avatar, Checkbox, Switch } from 'react-native-paper';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -163,132 +163,152 @@ const NotificationCenter = () => {
     );
   }
 
-  return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>{t('navigation.notifications')}</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {filteredNotifications.length} {t('notifications.notifications')}
-          </Text>
+  const renderNotification = ({ item: notification }) => (
+    <TouchableOpacity
+      style={[
+        styles.notificationItem,
+        {
+          backgroundColor: notification.read
+            ? colors.border
+            : getNotificationColor(notification.type, notification.read),
+        },
+      ]}
+      onPress={() => handleNotificationPress(notification)}
+    >
+      <View style={styles.notificationContent}>
+        <View style={styles.notificationHeader}>
+          <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+            <Text style={styles.notificationIcon}>
+              {getNotificationIcon(notification.type)}
+            </Text>
+          </View>
+          <View style={styles.notificationInfo}>
+            <Text style={[styles.notificationTitle, { color: colors.text }]}>
+              {notification.title}
+            </Text>
+            <Text style={[styles.notificationTime, { color: colors.textSecondary }]}>
+              {notification.time}
+            </Text>
+          </View>
+          {!notification.read && (
+            <View style={[styles.unreadIndicator, { backgroundColor: colors.error }]} />
+          )}
         </View>
+        <Text style={[styles.notificationMessage, { color: colors.text }]}>
+          {notification.message}
+        </Text>
+      </View>
 
-        {/* Push Notification Settings */}
-        <Card style={[styles.pushCard, { backgroundColor: colors.surface }]}>
-          <View style={styles.pushContent}>
-            <View style={styles.pushHeader}>
-              <Text style={styles.pushIcon}>🔔</Text>
-              <View style={styles.pushInfo}>
-                <Text style={[styles.pushTitle, { color: colors.text }]}>{t('notifications.pushNotifications')}</Text>
-                <Text style={[styles.pushDesc, { color: colors.textSecondary }]}>{t('notifications.pushDescription')}</Text>
-              </View>
-              <Switch
-                value={pushEnabled}
-                onValueChange={handleTogglePush}
-                disabled={pushLoading}
-                color={colors.primary}
-              />
+      {notification.type === 'reminder' && (
+        <View style={styles.notificationActions}>
+          <Button
+            mode="outlined"
+            onPress={() => handleMarkAsRead(notification.id)}
+            style={styles.actionButton}
+            compact
+          >
+            {t('notifications.markAsTaken')}
+          </Button>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+
+  const Header = (
+    <View style={styles.content}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.text }]}>{t('navigation.notifications')}</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          {filteredNotifications.length} {t('notifications.notifications')}
+        </Text>
+      </View>
+
+      {/* Push Notification Settings */}
+      <Card style={[styles.pushCard, { backgroundColor: colors.surface }]}>
+        <View style={styles.pushContent}>
+          <View style={styles.pushHeader}>
+            <Text style={styles.pushIcon}>🔔</Text>
+            <View style={styles.pushInfo}>
+              <Text style={[styles.pushTitle, { color: colors.text }]}>{t('notifications.pushNotifications')}</Text>
+              <Text style={[styles.pushDesc, { color: colors.textSecondary }]}>{t('notifications.pushDescription')}</Text>
             </View>
-            {pushEnabled && (
-              <Button
-                mode="outlined"
-                onPress={handleTestPush}
-                style={[styles.testPushButton, { borderColor: colors.primary }]}
-                compact
-              >
-                {t('notifications.sendTestPush')}
-              </Button>
-            )}
+            <Switch
+              value={pushEnabled}
+              onValueChange={handleTogglePush}
+              disabled={pushLoading}
+              color={colors.primary}
+            />
           </View>
-        </Card>
-
-        {/* Filter Tabs */}
-        <View style={[styles.filterContainer, { backgroundColor: colors.surface }]}>
-          {['all', 'unread', 'reminder', 'refill', 'appointment', 'safety'].map((filterOption) => (
-            <TouchableOpacity
-              key={filterOption}
-              style={[
-                styles.filterTab,
-                filter === filterOption && { backgroundColor: colors.primary }
-              ]}
-              onPress={() => handleFilterChange(filterOption)}
-            >
-              <Text style={[styles.filterText, { color: filter === filterOption ? '#ffffff' : colors.text }]}>
-                {filterOption === 'all' && t('notifications.all')}
-                {filterOption === 'unread' && t('notifications.unread')}
-                {filterOption === 'reminder' && t('notifications.reminders')}
-                {filterOption === 'refill' && t('notifications.refills')}
-                {filterOption === 'appointment' && t('notifications.appointments')}
-                {filterOption === 'safety' && t('notifications.safety')}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Notifications List */}
-        {filteredNotifications.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('notifications.noNotifications')}</Text>
-          </View>
-        ) : (
-          filteredNotifications.map((notification) => (
-            <TouchableOpacity
-              key={notification.id}
-              style={[
-                styles.notificationItem,
-                { backgroundColor: notification.read ? colors.border : getNotificationColor(notification.type, notification.read) }
-              ]}
-              onPress={() => handleNotificationPress(notification)}
-            >
-              <View style={styles.notificationContent}>
-                <View style={styles.notificationHeader}>
-                  <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
-                    <Text style={styles.notificationIcon}>
-                      {getNotificationIcon(notification.type)}
-                    </Text>
-                  </View>
-                  <View style={styles.notificationInfo}>
-                    <Text style={[styles.notificationTitle, { color: colors.text }]}>{notification.title}</Text>
-                    <Text style={[styles.notificationTime, { color: colors.textSecondary }]}>{notification.time}</Text>
-                  </View>
-                  {!notification.read && (
-                    <View style={[styles.unreadIndicator, { backgroundColor: colors.error }]} />
-                  )}
-                </View>
-                <Text style={[styles.notificationMessage, { color: colors.text }]}>{notification.message}</Text>
-              </View>
-              
-              {notification.type === 'reminder' && (
-                <View style={styles.notificationActions}>
-                  <Button
-                    mode="outlined"
-                    onPress={() => handleMarkAsRead(notification.id)}
-                    style={styles.actionButton}
-                    compact
-                  >
-                    {t('notifications.markAsTaken')}
-                  </Button>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))
-        )}
-
-        {/* Action Buttons */}
-        {notifications.some(n => !n.read) && (
-          <View style={[styles.actionContainer, { backgroundColor: colors.background }]}>
+          {pushEnabled && (
             <Button
               mode="outlined"
-              onPress={handleMarkAllAsRead}
-              style={styles.markAllButton}
+              onPress={handleTestPush}
+              style={[styles.testPushButton, { borderColor: colors.primary }]}
+              compact
             >
-              {t('notifications.markAllAsRead')}
+              {t('notifications.sendTestPush')}
             </Button>
-          </View>
-        )}
+          )}
+        </View>
+      </Card>
+
+      {/* Filter Tabs */}
+      <View style={[styles.filterContainer, { backgroundColor: colors.surface }]}>
+        {['all', 'unread', 'reminder', 'refill', 'appointment', 'safety'].map((filterOption) => (
+          <TouchableOpacity
+            key={filterOption}
+            style={[
+              styles.filterTab,
+              filter === filterOption && { backgroundColor: colors.primary },
+            ]}
+            onPress={() => handleFilterChange(filterOption)}
+          >
+            <Text style={[styles.filterText, { color: filter === filterOption ? '#ffffff' : colors.text }]}>
+              {filterOption === 'all' && t('notifications.all')}
+              {filterOption === 'unread' && t('notifications.unread')}
+              {filterOption === 'reminder' && t('notifications.reminders')}
+              {filterOption === 'refill' && t('notifications.refills')}
+              {filterOption === 'appointment' && t('notifications.appointments')}
+              {filterOption === 'safety' && t('notifications.safety')}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
-    </ScrollView>
+    </View>
+  );
+
+  const Footer = notifications.some((n) => !n.read) ? (
+    <View style={[styles.actionContainer, { backgroundColor: colors.background }]}>
+      <Button
+        mode="outlined"
+        onPress={handleMarkAllAsRead}
+        style={styles.markAllButton}
+      >
+        {t('notifications.markAllAsRead')}
+      </Button>
+    </View>
+  ) : null;
+
+  return (
+    <FlatList
+      style={[styles.container, { backgroundColor: colors.background }]}
+      data={filteredNotifications}
+      keyExtractor={(item) => String(item.id)}
+      renderItem={renderNotification}
+      ListHeaderComponent={Header}
+      ListFooterComponent={Footer}
+      ListEmptyComponent={
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            {t('notifications.noNotifications')}
+          </Text>
+        </View>
+      }
+      initialNumToRender={12}
+      windowSize={7}
+      removeClippedSubviews
+    />
   );
 };
 

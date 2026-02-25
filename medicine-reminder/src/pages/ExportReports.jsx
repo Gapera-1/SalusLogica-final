@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import BaseLayout from "../components/BaseLayout";
 import { SkeletonDashboard } from "../components/SkeletonLoaders";
 import useLanguage from "../i18n/useLanguage";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+import { API_BASE_URL } from "../services/api";
 
 const ExportReports = ({ setIsAuthenticated }) => {
   const { t } = useLanguage();

@@ -1,7 +1,7 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../i18n";
-import { authAPI } from "../services/api";
+import { authAPI, API_BASE_URL } from "../services/api";
 
 const Signup = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
@@ -68,7 +68,7 @@ const Signup = ({ setIsAuthenticated }) => {
 
   const loadLocationOptions = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/pharmacy-admin/location-options/');
+      const response = await fetch(`${API_BASE_URL}/pharmacy-admin/location-options/`);
       const data = await response.json();
       setLocationOptions(data);
     } catch (error) {
@@ -158,7 +158,7 @@ const Signup = ({ setIsAuthenticated }) => {
         // Log the request data for debugging
         console.log('Sending pharmacy data:', pharmacyData);
         
-        response = await fetch('http://127.0.0.1:8000/api/pharmacy-admin/signup/', {
+        response = await fetch(`${API_BASE_URL}/pharmacy-admin/signup/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -179,7 +179,7 @@ const Signup = ({ setIsAuthenticated }) => {
         // Log the request data for debugging
         console.log('Sending user data:', userData);
         
-        response = await fetch('http://127.0.0.1:8000/api/auth/register/', {
+        response = await fetch(`${API_BASE_URL}/auth/register/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

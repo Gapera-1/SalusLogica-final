@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureDelete, secureGet, secureSet } from './secureStorage';
 
 /**
  * Centralized AsyncStorage management
@@ -25,7 +26,7 @@ const STORAGE_KEYS = {
 export const userStorage = {
   async getUser() {
     try {
-      const user = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      const user = (await secureGet(STORAGE_KEYS.USER)) ?? (await AsyncStorage.getItem(STORAGE_KEYS.USER));
       return user ? JSON.parse(user) : null;
     } catch (error) {
       console.error('Error getting user:', error);
@@ -36,8 +37,16 @@ export const userStorage = {
   async setUser(user) {
     try {
       if (user) {
-        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+        const value = JSON.stringify(user);
+        const storedSecure = await secureSet(STORAGE_KEYS.USER, value);
+        if (!storedSecure) {
+          await AsyncStorage.setItem(STORAGE_KEYS.USER, value);
+        } else {
+          // Clean up legacy storage
+          await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+        }
       } else {
+        await secureDelete(STORAGE_KEYS.USER);
         await AsyncStorage.removeItem(STORAGE_KEYS.USER);
       }
     } catch (error) {
@@ -47,6 +56,7 @@ export const userStorage = {
 
   async clearUser() {
     try {
+      await secureDelete(STORAGE_KEYS.USER);
       await AsyncStorage.removeItem(STORAGE_KEYS.USER);
     } catch (error) {
       console.error('Error clearing user:', error);
@@ -60,13 +70,13 @@ export const userStorage = {
 export const tokenStorage = {
   async getTokens() {
     try {
-      const [accessToken, refreshToken] = await AsyncStorage.multiGet([
-        STORAGE_KEYS.ACCESS_TOKEN,
-        STORAGE_KEYS.REFRESH_TOKEN,
+      const [accessToken, refreshToken] = await Promise.all([
+        secureGet(STORAGE_KEYS.ACCESS_TOKEN),
+        secureGet(STORAGE_KEYS.REFRESH_TOKEN),
       ]);
       return {
-        accessToken: accessToken[1],
-        refreshToken: refreshToken[1],
+        accessToken: accessToken ?? (await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN)),
+        refreshToken: refreshToken ?? (await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN)),
       };
     } catch (error) {
       console.error('Error getting tokens:', error);
@@ -76,13 +86,17 @@ export const tokenStorage = {
 
   async setTokens(accessToken, refreshToken) {
     try {
-      const items = [];
-      if (accessToken) items.push([STORAGE_KEYS.ACCESS_TOKEN, accessToken]);
-      if (refreshToken) items.push([STORAGE_KEYS.REFRESH_TOKEN, refreshToken]);
-
-      if (items.length > 0) {
-        await AsyncStorage.multiSet(items);
+      if (accessToken) {
+        const ok = await secureSet(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+        if (!ok) await AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
       }
+      if (refreshToken) {
+        const ok = await secureSet(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+        if (!ok) await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+      }
+      // Clean up legacy storage if we successfully stored securely
+      if (accessToken) await AsyncStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN).catch(() => {});
+      if (refreshToken) await AsyncStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN).catch(() => {});
     } catch (error) {
       console.error('Error setting tokens:', error);
     }
@@ -90,9 +104,10 @@ export const tokenStorage = {
 
   async clearTokens() {
     try {
-      await AsyncStorage.multiRemove([
-        STORAGE_KEYS.ACCESS_TOKEN,
-        STORAGE_KEYS.REFRESH_TOKEN,
+      await Promise.all([
+        secureDelete(STORAGE_KEYS.ACCESS_TOKEN),
+        secureDelete(STORAGE_KEYS.REFRESH_TOKEN),
+        AsyncStorage.multiRemove([STORAGE_KEYS.ACCESS_TOKEN, STORAGE_KEYS.REFRESH_TOKEN]),
       ]);
     } catch (error) {
       console.error('Error clearing tokens:', error);
@@ -299,6 +314,12 @@ export const timezoneStorage = {
  */
 export const clearAllStorage = async () => {
   try {
+    // Clear sensitive data from secure storage (best-effort)
+    await Promise.all([
+      secureDelete(STORAGE_KEYS.USER),
+      secureDelete(STORAGE_KEYS.ACCESS_TOKEN),
+      secureDelete(STORAGE_KEYS.REFRESH_TOKEN),
+    ]);
     await AsyncStorage.multiRemove([
       STORAGE_KEYS.USER,
       STORAGE_KEYS.ACCESS_TOKEN,

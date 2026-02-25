@@ -75,6 +75,10 @@ class Medicine(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'is_active', 'completed']),
+            models.Index(fields=['user', 'created_at']),
+        ]
     
     def clean(self):
         """Clinical Safety Doctrine: Unified Dosage Validation (from monolith)"""

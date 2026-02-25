@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../i18n";
+import { API_BASE_URL } from "../services/api";
 
 const DebugSignup = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ const DebugSignup = ({ setIsAuthenticated }) => {
   const testAPIConnection = async () => {
     setApiStatus("Testing...");
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/pharmacy-admin/test/');
+      const response = await fetch(`${API_BASE_URL}/pharmacy-admin/test/`);
       const data = await response.json();
       setApiStatus(`✅ Connected: ${data.test_id}`);
       setMessage("API connection successful!");
@@ -43,7 +44,7 @@ const DebugSignup = ({ setIsAuthenticated }) => {
       
       console.log('Sending data:', testData);
       
-      const response = await fetch('http://127.0.0.1:8000/api/pharmacy-admin/signup/', {
+      const response = await fetch(`${API_BASE_URL}/pharmacy-admin/signup/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

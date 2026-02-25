@@ -73,6 +73,7 @@ export const AlarmProvider = ({ children }) => {
   const notificationListenerRef = useRef(null);
   const responseListenerRef = useRef(null);
   const appStateRef = useRef(AppState.currentState);
+  const repeatIntervalRef = useRef(null);
 
   // ==================== STORAGE FUNCTIONS ====================
 
@@ -824,8 +825,30 @@ export const AlarmProvider = ({ children }) => {
       if (responseListenerRef.current) {
         Notifications.removeNotificationSubscription(responseListenerRef.current);
       }
+      if (repeatIntervalRef.current) {
+        clearInterval(repeatIntervalRef.current);
+        repeatIntervalRef.current = null;
+      }
     };
   }, []);
+
+  /**
+   * Repeat alarm announcement every 10 seconds while an alarm is active
+   */
+  useEffect(() => {
+    if (currentAlarm && isAlarmModalVisible) {
+      // Start or reset 10-second repeat
+      if (repeatIntervalRef.current) {
+        clearInterval(repeatIntervalRef.current);
+      }
+      repeatIntervalRef.current = setInterval(() => {
+        repeatAnnouncement();
+      }, 10000);
+    } else if (repeatIntervalRef.current) {
+      clearInterval(repeatIntervalRef.current);
+      repeatIntervalRef.current = null;
+    }
+  }, [currentAlarm, isAlarmModalVisible, repeatAnnouncement]);
 
   const value = {
     activeAlarms,

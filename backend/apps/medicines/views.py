@@ -6,6 +6,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
 from .models import Medicine, MedicineInteraction, UserAllergy, PatientProfile
 from .serializers import MedicineSerializer, UserAllergySerializer, PatientProfileSerializer
 from apps.authentication.models import UserProfile
@@ -242,16 +243,25 @@ def barcode_lookup(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    cache_key = f"medicines:barcode_lookup:{barcode}"
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return Response(cached_result)
+
     from .barcode_lookup import lookup_by_barcode
     result = lookup_by_barcode(barcode)
 
     if not result:
-        return Response(
-            {'found': False, 'message': 'No medicine found for this barcode.'},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+        response_data = {
+            'found': False,
+            'message': 'No medicine found for this barcode.',
+        }
+        cache.set(cache_key, response_data, 300)
+        return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
-    return Response({'found': True, 'medicine': result})
+    response_data = {'found': True, 'medicine': result}
+    cache.set(cache_key, response_data, 300)
+    return Response(response_data)
 
 
 @api_view(['GET'])
@@ -272,14 +282,21 @@ def medicine_search_external(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    cache_key = f"medicines:external_search:{query}"
+    cached_data = cache.get(cache_key)
+    if cached_data is not None:
+        return Response(cached_data)
+
     from .barcode_lookup import lookup_by_name
     results = lookup_by_name(query)
 
-    return Response({
+    response_data = {
         'query': query,
         'count': len(results),
         'results': results,
-    })
+    }
+    cache.set(cache_key, response_data, 300)
+    return Response(response_data)
 
 
 @api_view(['GET'])
@@ -303,6 +320,11 @@ def rwanda_registry_search(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    cache_key = f"medicines:rwanda_registry_search:{search_type}:{query}"
+    cached_data = cache.get(cache_key)
+    if cached_data is not None:
+        return Response(cached_data)
+
     from .barcode_lookup import search_rwanda_registry, search_rwanda_registry_by_generic
 
     if search_type == 'generic':
@@ -312,12 +334,14 @@ def rwanda_registry_search(request):
         result = search_rwanda_registry(query)
         results = [result] if result else []
 
-    return Response({
+    response_data = {
         'query': query,
         'search_type': search_type,
         'count': len(results),
         'results': results,
-    })
+    }
+    cache.set(cache_key, response_data, 300)
+    return Response(response_data)
 
 
 @api_view(['GET'])
@@ -328,8 +352,12 @@ def rwanda_registry_stats(request):
 
     Returns count of drugs, unique generic names, manufacturers, and countries.
     """
-    from .barcode_lookup import get_rwanda_registry_stats
-    stats = get_rwanda_registry_stats()
+    cache_key = "medicines:rwanda_registry_stats"
+    stats = cache.get(cache_key)
+    if stats is None:
+        from .barcode_lookup import get_rwanda_registry_stats
+        stats = get_rwanda_registry_stats()
+        cache.set(cache_key, stats, 3600)
     return Response(stats)
 
 

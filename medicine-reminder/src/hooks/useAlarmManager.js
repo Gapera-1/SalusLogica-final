@@ -8,7 +8,7 @@ const useAlarmManager = () => {
   const [lastCheck, setLastCheck] = useState(null);
 
   const intervalRef = useRef(null);
-  const notifiedAlarmsRef = useRef(new Set());
+  const repeatIntervalsRef = useRef(new Map());
 
   // WebSocket connection - COMPLETELY DISABLED
   const wsUrl = null; // Completely disabled to prevent connection errors
@@ -43,25 +43,28 @@ const useAlarmManager = () => {
   }, [lastMessage]);
 
   // =============================
-  // Prevent Duplicate Notifications
+  // Repeating notifications (every 10 seconds until handled)
   // =============================
-  const handleIncomingAlarm = useCallback((alarm) => {
-    setActiveAlarms((prev) => {
-      const exists = prev.find((a) => a.group_id === alarm.group_id);
-      if (!exists) {
-        triggerNotificationOnce(alarm);
-        return [...prev, alarm];
-      }
-      return prev;
-    });
+  const startRepeatingAlarm = useCallback((alarm) => {
+    const id = alarm.group_id;
+    if (!id) return;
+    if (repeatIntervalsRef.current.has(id)) return;
+
+    // Fire once immediately, then every 10 seconds until cleared
+    showAlarmNotification(alarm);
+    const handle = setInterval(() => {
+      showAlarmNotification(alarm);
+    }, 10000);
+    repeatIntervalsRef.current.set(id, handle);
   }, []);
 
-  const triggerNotificationOnce = (alarm) => {
-    if (notifiedAlarmsRef.current.has(alarm.group_id)) return;
-
-    notifiedAlarmsRef.current.add(alarm.group_id);
-    showAlarmNotification(alarm);
-  };
+  const stopRepeatingAlarm = useCallback((groupId) => {
+    const handle = repeatIntervalsRef.current.get(groupId);
+    if (handle) {
+      clearInterval(handle);
+      repeatIntervalsRef.current.delete(groupId);
+    }
+  }, []);
 
   // =============================
   // Notifications
@@ -158,12 +161,32 @@ const useAlarmManager = () => {
     try {
       const alarms = await alarmAPI.getActive();
       setLastCheck(new Date());
+      const activeIds = new Set(alarms.map((a) => a.group_id));
 
-      alarms.forEach((alarm) => handleIncomingAlarm(alarm));
+      setActiveAlarms((prev) => {
+        const existingIds = new Set(prev.map((a) => a.group_id));
+
+        // Start repeaters for new alarms
+        alarms.forEach((alarm) => {
+          if (!existingIds.has(alarm.group_id)) {
+            startRepeatingAlarm(alarm);
+          }
+        });
+
+        // Stop repeaters for alarms that are no longer active
+        for (const [id, handle] of repeatIntervalsRef.current.entries()) {
+          if (!activeIds.has(id)) {
+            clearInterval(handle);
+            repeatIntervalsRef.current.delete(id);
+          }
+        }
+
+        return alarms;
+      });
     } catch (err) {
       console.error('Alarm check failed:', err);
     }
-  }, [handleIncomingAlarm]);
+  }, [startRepeatingAlarm]);
 
   // =============================
   // Controls
@@ -174,7 +197,7 @@ const useAlarmManager = () => {
     await requestNotificationPermission();
     setIsListening(true);
 
-    intervalRef.current = setInterval(checkActiveAlarms, 30000);
+    intervalRef.current = setInterval(checkActiveAlarms, 10000);
     await checkActiveAlarms();
   }, [isListening, checkActiveAlarms]);
 
@@ -185,6 +208,12 @@ const useAlarmManager = () => {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+
+    // Stop any repeating alarms
+    for (const handle of repeatIntervalsRef.current.values()) {
+      clearInterval(handle);
+    }
+    repeatIntervalsRef.current.clear();
 
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -206,9 +235,21 @@ const useAlarmManager = () => {
     isListening,
     lastCheck,
     checkActiveAlarms,
-    markAlarmTaken: (id) => alarmAPI.markGroupTaken(id),
-    snoozeAlarm: (id, minutes) => alarmAPI.snooze(id, minutes),
-    dismissAlarm: (id) => alarmAPI.dismiss(id),
+    markAlarmTaken: async (id) => {
+      await alarmAPI.markGroupTaken(id);
+      stopRepeatingAlarm(id);
+      setActiveAlarms((prev) => prev.filter((a) => a.group_id !== id));
+    },
+    snoozeAlarm: async (id, minutes) => {
+      await alarmAPI.snooze(id, minutes);
+      stopRepeatingAlarm(id);
+      setActiveAlarms((prev) => prev.filter((a) => a.group_id !== id));
+    },
+    dismissAlarm: async (id) => {
+      await alarmAPI.dismiss(id);
+      stopRepeatingAlarm(id);
+      setActiveAlarms((prev) => prev.filter((a) => a.group_id !== id));
+    },
     startListening,
     stopListening,
   };

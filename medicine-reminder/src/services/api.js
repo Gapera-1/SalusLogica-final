@@ -1,7 +1,8 @@
 // API Service for SalusLogica Backend Integration
 // This service provides all the API calls to match SalusLogica Django backend
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 // Helper function for API calls
 const apiCall = async (endpoint, options = {}) => {

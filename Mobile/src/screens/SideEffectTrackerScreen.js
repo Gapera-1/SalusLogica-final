@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   Alert,
   Modal,
@@ -144,130 +145,132 @@ const SideEffectTrackerScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Text style={[styles.backText, { color: colors.primary }]}>← {t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.text }]}>{t('sideEffects.title')}</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('sideEffects.subtitle')}</Text>
-          </View>
-
-          {/* Add Button */}
-          <Button
-            mode="contained"
-            onPress={() => setShowForm(true)}
-            style={styles.addButton}
-            buttonColor={colors.primary}
-            icon="plus"
-          >
-            {t('sideEffects.reportNew')}
-          </Button>
-
-          {/* Severity Filter */}
-          <View style={styles.filterRow}>
-            <Text style={[styles.filterLabel, { color: colors.text }]}>{t('sideEffects.filterBySeverity')}</Text>
-            <View style={styles.filterChips}>
-              <TouchableOpacity
-                style={[styles.chip, { backgroundColor: colors.background, borderColor: colors.border }, !filterSeverity && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-                onPress={() => setFilterSeverity('')}
-              >
-                <Text style={[styles.chipText, { color: colors.textSecondary }, !filterSeverity && styles.chipTextActive]}>
-                  {t('sideEffects.all')}
-                </Text>
+      <FlatList
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        data={sideEffects}
+        keyExtractor={(item) => String(item.id)}
+        ListHeaderComponent={
+          <>
+            {/* Header */}
+            <View style={styles.header}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Text style={[styles.backText, { color: colors.primary }]}>← {t('common.cancel')}</Text>
               </TouchableOpacity>
-              {SEVERITY_OPTIONS.map((opt) => (
+              <Text style={[styles.title, { color: colors.text }]}>{t('sideEffects.title')}</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('sideEffects.subtitle')}</Text>
+            </View>
+
+            {/* Add Button */}
+            <Button
+              mode="contained"
+              onPress={() => setShowForm(true)}
+              style={styles.addButton}
+              buttonColor={colors.primary}
+              icon="plus"
+            >
+              {t('sideEffects.reportNew')}
+            </Button>
+
+            {/* Severity Filter */}
+            <View style={styles.filterRow}>
+              <Text style={[styles.filterLabel, { color: colors.text }]}>{t('sideEffects.filterBySeverity')}</Text>
+              <View style={styles.filterChips}>
                 <TouchableOpacity
-                  key={opt.value}
                   style={[
                     styles.chip,
-                    filterSeverity === opt.value && { backgroundColor: opt.color, borderColor: opt.textColor },
+                    { backgroundColor: colors.background, borderColor: colors.border },
+                    !filterSeverity && { backgroundColor: colors.primary, borderColor: colors.primary },
                   ]}
-                  onPress={() => setFilterSeverity(opt.value)}
+                  onPress={() => setFilterSeverity('')}
                 >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      filterSeverity === opt.value && { color: opt.textColor },
-                    ]}
-                  >
-                    {t(`sideEffects.${opt.value}`)}
+                  <Text style={[styles.chipText, { color: colors.textSecondary }, !filterSeverity && styles.chipTextActive]}>
+                    {t('sideEffects.all')}
                   </Text>
                 </TouchableOpacity>
-              ))}
+                {SEVERITY_OPTIONS.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.chip,
+                      filterSeverity === opt.value && { backgroundColor: opt.color, borderColor: opt.textColor },
+                    ]}
+                    onPress={() => setFilterSeverity(opt.value)}
+                  >
+                    <Text style={[styles.chipText, filterSeverity === opt.value && { color: opt.textColor }]}>
+                      {t(`sideEffects.${opt.value}`)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          </View>
-
-          {/* Side Effects List */}
-          {sideEffects.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📋</Text>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('sideEffects.noRecords')}</Text>
-            </View>
-          ) : (
-            sideEffects.map((item) => {
-              const severity = getSeverityStyle(item.severity);
-              const isExpanded = expandedId === item.id;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  onPress={() => setExpandedId(isExpanded ? null : item.id)}
-                >
-                  <Card style={[styles.itemCard, { borderLeftColor: severity.textColor, backgroundColor: colors.surface }]}>
-                    <View style={styles.itemContent}>
-                      <View style={styles.itemHeader}>
-                        <View style={[styles.severityBadge, { backgroundColor: severity.color }]}>
-                          <Text style={[styles.severityText, { color: severity.textColor }]}>
-                            {t(`sideEffects.${item.severity}`)}
-                          </Text>
-                        </View>
-                        <Text style={[styles.itemDate, { color: colors.textMuted }]}>
-                          {item.onset_time ? new Date(item.onset_time).toLocaleDateString() : ''}
-                        </Text>
-                      </View>
-                      <Text style={[styles.itemSymptoms, { color: colors.text }]} numberOfLines={isExpanded ? undefined : 2}>
-                        {item.symptoms}
+          </>
+        }
+        renderItem={({ item }) => {
+          const severity = getSeverityStyle(item.severity);
+          const isExpanded = expandedId === item.id;
+          return (
+            <TouchableOpacity onPress={() => setExpandedId(isExpanded ? null : item.id)}>
+              <Card style={[styles.itemCard, { borderLeftColor: severity.textColor, backgroundColor: colors.surface }]}>
+                <View style={styles.itemContent}>
+                  <View style={styles.itemHeader}>
+                    <View style={[styles.severityBadge, { backgroundColor: severity.color }]}>
+                      <Text style={[styles.severityText, { color: severity.textColor }]}>
+                        {t(`sideEffects.${item.severity}`)}
                       </Text>
-                      {item.medication_name && (
-                        <Text style={[styles.itemMedicine, { color: colors.textSecondary }]}>💊 {item.medication_name}</Text>
+                    </View>
+                    <Text style={[styles.itemDate, { color: colors.textMuted }]}>
+                      {item.onset_time ? new Date(item.onset_time).toLocaleDateString() : ''}
+                    </Text>
+                  </View>
+                  <Text style={[styles.itemSymptoms, { color: colors.text }]} numberOfLines={isExpanded ? undefined : 2}>
+                    {item.symptoms}
+                  </Text>
+                  {item.medication_name && (
+                    <Text style={[styles.itemMedicine, { color: colors.textSecondary }]}>💊 {item.medication_name}</Text>
+                  )}
+                  {isExpanded && (
+                    <View style={[styles.expandedContent, { borderTopColor: colors.border }]}>
+                      {item.treatment_given ? (
+                        <Text style={[styles.detailText, { color: colors.textSecondary }]}>
+                          {t('sideEffects.treatmentGiven')}: {item.treatment_given}
+                        </Text>
+                      ) : null}
+                      <Text style={[styles.detailText, { color: colors.textSecondary }]}>
+                        {t('sideEffects.outcome')}: {t(`sideEffects.${item.outcome || 'unknown'}`)}
+                      </Text>
+                      {!item.is_resolved && (
+                        <Button
+                          mode="outlined"
+                          onPress={() => handleResolve(item.id)}
+                          style={[styles.resolveButton, { borderColor: colors.primary }]}
+                          compact
+                        >
+                          {t('sideEffects.markResolved')}
+                        </Button>
                       )}
-                      {isExpanded && (
-                        <View style={[styles.expandedContent, { borderTopColor: colors.border }]}>
-                          {item.treatment_given ? (
-                            <Text style={[styles.detailText, { color: colors.textSecondary }]}>
-                              {t('sideEffects.treatmentGiven')}: {item.treatment_given}
-                            </Text>
-                          ) : null}
-                          <Text style={[styles.detailText, { color: colors.textSecondary }]}>
-                            {t('sideEffects.outcome')}: {t(`sideEffects.${item.outcome || 'unknown'}`)}
-                          </Text>
-                          {!item.is_resolved && (
-                            <Button
-                              mode="outlined"
-                              onPress={() => handleResolve(item.id)}
-                              style={[styles.resolveButton, { borderColor: colors.primary }]}
-                              compact
-                            >
-                              {t('sideEffects.markResolved')}
-                            </Button>
-                          )}
-                          {item.is_resolved && (
-                            <View style={styles.resolvedBadge}>
-                              <Text style={styles.resolvedText}>✅ {t('sideEffects.resolvedLabel')}</Text>
-                            </View>
-                          )}
+                      {item.is_resolved && (
+                        <View style={styles.resolvedBadge}>
+                          <Text style={styles.resolvedText}>✅ {t('sideEffects.resolvedLabel')}</Text>
                         </View>
                       )}
                     </View>
-                  </Card>
-                </TouchableOpacity>
-              );
-            })
-          )}
-        </View>
-      </ScrollView>
+                  )}
+                </View>
+              </Card>
+            </TouchableOpacity>
+          );
+        }}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>📋</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('sideEffects.noRecords')}</Text>
+          </View>
+        }
+        initialNumToRender={10}
+        windowSize={7}
+        removeClippedSubviews
+      />
 
       {/* New Side Effect Form Modal */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet">

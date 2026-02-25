@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -13,31 +13,47 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 /* ================= PAGES ================= */
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import Home from "./pages/Home";
-import Dashboard from "./pages/Dashboard";
-import MedicineList from "./pages/MedicineList";
-import AddMedicine from "./pages/AddMedicine";
-import Profile from "./pages/Profile";
-import AnalyticsDashboard from "./pages/AnalyticsDashboard";
-import InteractionChecker from "./pages/InteractionChecker";
-import DoseHistory from "./pages/DoseHistory";
-import EditMedicine from "./pages/EditMedicine";
-import ContraIndicationsPage from "./pages/ContraIndicationsPage";
-import FoodAdvice from "./pages/FoodAdvice";
-import SafetyCheck from "./pages/SafetyCheck";
-import ExportReports from "./pages/ExportReports";
-import SideEffectTracker from "./pages/SideEffectTracker";
-import NotificationCenter from "./pages/NotificationCenter";
-import VerifyEmail from "./pages/VerifyEmail";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
+const Login = React.lazy(() => import("./pages/Login"));
+const Signup = React.lazy(() => import("./pages/Signup"));
+const Home = React.lazy(() => import("./pages/Home"));
+const Dashboard = React.lazy(() => import("./pages/Dashboard"));
+const MedicineList = React.lazy(() => import("./pages/MedicineList"));
+const AddMedicine = React.lazy(() => import("./pages/AddMedicine"));
+const Profile = React.lazy(() => import("./pages/Profile"));
+const AnalyticsDashboard = React.lazy(
+  () => import("./pages/AnalyticsDashboard"),
+);
+const InteractionChecker = React.lazy(
+  () => import("./pages/InteractionChecker"),
+);
+const DoseHistory = React.lazy(() => import("./pages/DoseHistory"));
+const EditMedicine = React.lazy(() => import("./pages/EditMedicine"));
+const ContraIndicationsPage = React.lazy(
+  () => import("./pages/ContraIndicationsPage"),
+);
+const FoodAdvice = React.lazy(() => import("./pages/FoodAdvice"));
+const SafetyCheck = React.lazy(() => import("./pages/SafetyCheck"));
+const ExportReports = React.lazy(() => import("./pages/ExportReports"));
+const SideEffectTracker = React.lazy(
+  () => import("./pages/SideEffectTracker"),
+);
+const NotificationCenter = React.lazy(
+  () => import("./pages/NotificationCenter"),
+);
+const VerifyEmail = React.lazy(() => import("./pages/VerifyEmail"));
+const ForgotPassword = React.lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = React.lazy(() => import("./pages/ResetPassword"));
 
 /* ============ PHARMACY ADMIN ============ */
-import PharmacyAdminDashboard from "./pages/PharmacyAdminDashboard";
-import PharmacyAdminPatients from "./pages/PharmacyAdminPatients";
-import PharmacyAdminAdverseReactions from "./pages/PharmacyAdminAdverseReactions";
+const PharmacyAdminDashboard = React.lazy(
+  () => import("./pages/PharmacyAdminDashboard"),
+);
+const PharmacyAdminPatients = React.lazy(
+  () => import("./pages/PharmacyAdminPatients"),
+);
+const PharmacyAdminAdverseReactions = React.lazy(
+  () => import("./pages/PharmacyAdminAdverseReactions"),
+);
 
 /* ============ COMPONENTS ============ */
 import AlarmContainer from "./components/AlarmContainer";
@@ -188,6 +204,13 @@ function App() {
             <AlarmContainer />
             <RouteHistoryTracker isAuthenticated={isAuthenticated} />
 
+        <Suspense
+          fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          }
+        >
         <Routes>
           {/* ================= PUBLIC ROUTES ================= */}
 
@@ -501,6 +524,7 @@ function App() {
           {/* ================= FALLBACK ================= */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </Router>
       </LanguageProvider>
     </ThemeProvider>

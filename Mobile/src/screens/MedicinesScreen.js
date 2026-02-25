@@ -3,7 +3,7 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  ScrollView, 
+  FlatList,
   TouchableOpacity, 
   RefreshControl,
   Alert,
@@ -109,7 +109,7 @@ export default function MedicinesScreen() {
       try {
         setSearching(true);
         const response = await medicineAPI.search(searchQuery, false);
-        const results = response.data?.results || [];
+        const results = response.results || response.data?.results || [];
         
         setFilteredMedicines(results);
         
@@ -248,11 +248,68 @@ export default function MedicinesScreen() {
 
   if (loading && medicines.length === 0) {
     return (
-      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <SkeletonMedicineList />
-      </ScrollView>
+      </View>
     );
   }
+
+  const renderMedicineItem = ({ item: medicine, index }) => (
+    <Card
+      style={[styles.medicineCard, { backgroundColor: colors.surface }]}
+    >
+      <TouchableOpacity onPress={() => handleMedicinePress(medicine, index)}>
+        <View style={styles.medicineContent}>
+          <View style={styles.medicineInfo}>
+            <Text style={[styles.medicineName, { color: colors.text }]}>
+              {medicine.name}
+            </Text>
+            {medicine.scientific_name && (
+              <Text
+                style={[
+                  styles.medicineScientific,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {medicine.scientific_name}
+              </Text>
+            )}
+            <Text style={[styles.medicineDetails, { color: colors.textSecondary }]}>
+              {medicine.dosage} • {medicine.frequency || t('addMedicine.asNeeded')}
+            </Text>
+            {medicine.prescribed_for && (
+              <Text style={[styles.medicineProvider, { color: colors.textSecondary }]}>
+                {t('medicines.prescribedFor')}: {medicine.prescribed_for}
+              </Text>
+            )}
+          </View>
+          <View style={styles.medicineActions}>
+            {(medicine.stock_count ?? medicine.stock) != null && (
+              <View style={styles.stockContainer}>
+                <Text style={[styles.stockLabel, { color: colors.textSecondary }]}>
+                  {t('medicines.stock')}:{" "}
+                </Text>
+                <Text
+                  style={[
+                    styles.stockValue,
+                    { color: getStockColor(medicine.stock_count ?? medicine.stock) },
+                  ]}
+                >
+                  {medicine.stock_count ?? medicine.stock}
+                </Text>
+              </View>
+            )}
+            <IconButton
+              icon="delete"
+              size={20}
+              iconColor={colors.error}
+              onPress={() => handleDeleteMedicine(medicine)}
+            />
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Card>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -288,64 +345,30 @@ export default function MedicinesScreen() {
       </View>
 
       {/* Medicines List */}
-      <ScrollView 
+      <FlatList
         style={styles.scrollView}
+        data={filteredMedicines}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={renderMedicineItem}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
+          <RefreshControl
+            refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={colors.primary}
             colors={[colors.primary]}
           />
         }
-      >
-        {filteredMedicines.length === 0 ? (
+        ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              {searchQuery ? t('medicines.noMedicines') : t('medicines.noMedicines')}
+              {t('medicines.noMedicines')}
             </Text>
           </View>
-        ) : (
-          filteredMedicines.map((medicine, index) => (
-            <Card key={medicine.id} style={[styles.medicineCard, { backgroundColor: colors.surface }]}>
-              <TouchableOpacity onPress={() => handleMedicinePress(medicine, index)}>
-                <View style={styles.medicineContent}>
-                  <View style={styles.medicineInfo}>
-                    <Text style={[styles.medicineName, { color: colors.text }]}>{medicine.name}</Text>
-                    {medicine.scientific_name && (
-                      <Text style={[styles.medicineScientific, { color: colors.textSecondary }]}>{medicine.scientific_name}</Text>
-                    )}
-                    <Text style={[styles.medicineDetails, { color: colors.textSecondary }]}>
-                      {medicine.dosage} • {medicine.frequency || t('addMedicine.asNeeded')}
-                    </Text>
-                    {medicine.prescribed_for && (
-                      <Text style={[styles.medicineProvider, { color: colors.textSecondary }]}>
-                        {t('medicines.prescribedFor')}: {medicine.prescribed_for}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.medicineActions}>
-                    {medicine.stock != null && (
-                      <View style={styles.stockContainer}>
-                        <Text style={[styles.stockLabel, { color: colors.textSecondary }]}>{t('medicines.stock')}: </Text>
-                        <Text style={[styles.stockValue, { color: getStockColor(medicine.stock) }]}>
-                          {medicine.stock}
-                        </Text>
-                      </View>
-                    )}
-                    <IconButton
-                      icon="delete"
-                      size={20}
-                      iconColor={colors.error}
-                      onPress={() => handleDeleteMedicine(medicine)}
-                    />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </Card>
-          ))
-        )}
-      </ScrollView>
+        }
+        initialNumToRender={10}
+        windowSize={7}
+        removeClippedSubviews
+      />
 
       {/* Add Medicine Button */}
       <View style={[styles.addButtonContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
