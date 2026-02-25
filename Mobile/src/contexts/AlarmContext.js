@@ -3,7 +3,7 @@ import * as Notifications from 'expo-notifications';
 import * as Speech from 'expo-speech';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import { alarmAPI, medicineAPI } from '../services/api';
+import { alarmAPI, medicineAPI, doseAPI } from '../services/api';
 import { Platform, Vibration, AppState } from 'react-native';
 
 // Storage keys
@@ -144,13 +144,15 @@ export const AlarmProvider = ({ children }) => {
       try {
         switch (action.type) {
           case 'MARK_TAKEN':
+            // For each dose log, call backend mark_taken which also updates stock
             if (action.doseLogIds?.length > 0) {
-              await alarmAPI.markGroupTaken(action.doseLogIds);
-            }
-            // Update stock
-            if (action.stockUpdates) {
-              for (const update of action.stockUpdates) {
-                await medicineAPI.patch(update.medicineId, { current_stock: update.newStock });
+              for (const id of action.doseLogIds) {
+                try {
+                  await doseAPI.markTaken(id);
+                } catch (err) {
+                  console.error('Error syncing MARK_TAKEN for dose', id, err);
+                  throw err;
+                }
               }
             }
             break;
@@ -577,22 +579,65 @@ export const AlarmProvider = ({ children }) => {
    */
   const markDoseTaken = useCallback(async (alarm) => {
     try {
-      const doseLogIds = alarm.medicines?.map(m => m.dose_log_id).filter(Boolean) || [];
+      const medicinesInAlarm = alarm.medicines || [];
+
+      // Collect dose log IDs (for backend) – support both dose_log_id and id
+      const doseLogIds = medicinesInAlarm
+        .map(med => med.dose_log_id || med.id)
+        .filter(Boolean);
+
       const stockUpdates = [];
 
-      // Calculate stock updates
-      for (const medicine of (alarm.medicines || [])) {
-        if (medicine.id && medicine.dose_amount) {
-          // Find cached medicine to get current stock
-          const cached = cachedMedicines.find(m => m.id === medicine.id);
-          if (cached && cached.current_stock !== undefined) {
-            const newStock = Math.max(0, cached.current_stock - medicine.dose_amount);
-            stockUpdates.push({
-              medicineId: medicine.id,
-              newStock,
-            });
+      // Calculate local stock updates for cached medicines (for UI/offline)
+      for (const medicine of medicinesInAlarm) {
+        if (!medicine.id) continue;
+
+        // Find cached medicine to get current stock
+        const cached = cachedMedicines.find(m => m.id === medicine.id);
+        if (!cached) continue;
+
+        // Determine current stock from server-aligned fields
+        const currentStock =
+          typeof cached.stock_count === 'number'
+            ? cached.stock_count
+            : typeof cached.stock === 'number'
+            ? cached.stock
+            : typeof cached.current_stock === 'number'
+            ? cached.current_stock
+            : null;
+
+        if (currentStock == null) continue;
+
+        // Determine dose quantity:
+        // 1) Prefer explicit dose_amount if present
+        // 2) Fallback: parse first integer from dosage text (e.g. "2 tablets")
+        let doseQuantity = medicine.dose_amount;
+
+        if (!doseQuantity) {
+          const dosageText = medicine.dosage || cached.dosage || '';
+          try {
+            const match = dosageText.match(/(\d+)/);
+            if (match) {
+              const parsed = parseInt(match[1], 10);
+              if (!Number.isNaN(parsed) && parsed > 0) {
+                doseQuantity = parsed;
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to parse dose quantity from dosage text:', e);
           }
         }
+
+        if (!doseQuantity || doseQuantity <= 0) {
+          doseQuantity = 1;
+        }
+
+        const newStock = Math.max(0, currentStock - doseQuantity);
+
+        stockUpdates.push({
+          medicineId: medicine.id,
+          newStock,
+        });
       }
 
       // Record taken dose locally
@@ -610,25 +655,35 @@ export const AlarmProvider = ({ children }) => {
       if (stockUpdates.length > 0) {
         const updatedMedicines = cachedMedicines.map(med => {
           const update = stockUpdates.find(u => u.medicineId === med.id);
-          return update ? { ...med, current_stock: update.newStock } : med;
+          return update
+            ? {
+                ...med,
+                stock_count: update.newStock,
+              }
+            : med;
         });
         await cacheMedicines(updatedMedicines);
       }
 
       if (isOnline) {
-        // Sync immediately when online
+        // Online: call backend per-dose endpoint which also updates stock
         if (doseLogIds.length > 0) {
-          await alarmAPI.markGroupTaken(doseLogIds);
-        }
-        for (const update of stockUpdates) {
-          await medicineAPI.patch(update.medicineId, { current_stock: update.newStock });
+          await Promise.all(
+            doseLogIds.map(async (id) => {
+              try {
+                await doseAPI.markTaken(id);
+              } catch (err) {
+                console.error('Error marking dose taken on backend for id', id, err);
+                throw err;
+              }
+            })
+          );
         }
       } else {
         // Queue for later sync when offline
         await queuePendingAction({
           type: 'MARK_TAKEN',
           doseLogIds,
-          stockUpdates,
           alarmId: alarm.id,
         });
       }

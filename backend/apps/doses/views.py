@@ -25,13 +25,58 @@ class DoseLogViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def mark_taken(self, request, pk=None):
-        """Mark a dose as taken"""
+        """Mark a dose as taken and reduce medicine stock by dose amount"""
         dose = self.get_object()
+        
+        # If already taken, do not double-decrement stock
+        if dose.status == 'taken':
+            return Response(
+                {
+                    'status': 'dose already marked as taken',
+                    'stock_count': dose.medicine.stock_count,
+                },
+                status=status.HTTP_200_OK,
+            )
+        
         dose.status = 'taken'
         dose.taken_at = timezone.now()
         dose.save()
         
-        return Response({'status': 'dose marked as taken'})
+        medicine = dose.medicine
+        # Safely decrement stock if tracking stock and value is positive
+        if medicine.stock_count is not None and medicine.stock_count > 0:
+            # Try to infer quantity from dosage text, e.g. "2 tablets"
+            dosage_text = medicine.dosage or ""
+            dose_quantity = 1
+            
+            try:
+                import re
+                match = re.search(r'(\d+)', dosage_text)
+                if match:
+                    parsed_qty = int(match.group(1))
+                    if parsed_qty > 0:
+                        dose_quantity = parsed_qty
+            except Exception:
+                # If parsing fails for any reason, fall back to 1
+                dose_quantity = 1
+            
+            decrement = min(dose_quantity, medicine.stock_count)
+            medicine.stock_count -= decrement
+            
+            # When stock reaches zero, make medicine inactive/completed
+            if medicine.stock_count <= 0:
+                medicine.stock_count = 0
+                medicine.is_active = False
+                medicine.completed = True
+            
+            medicine.save(update_fields=['stock_count', 'is_active', 'completed', 'updated_at'])
+        
+        return Response(
+            {
+                'status': 'dose marked as taken',
+                'stock_count': medicine.stock_count,
+            }
+        )
     
     @action(detail=True, methods=['post'])
     def taken(self, request, pk=None):

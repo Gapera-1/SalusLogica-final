@@ -376,6 +376,13 @@ export const doseAPI = {
       method: 'DELETE',
     });
   },
+
+  // Mark a specific dose as taken (uses backend stock reduction logic)
+  markTaken: async (id) => {
+    return await apiCall(`/doses/${id}/mark_taken/`, {
+      method: 'POST',
+    });
+  },
 };
 
 // ============ ALARM SYSTEM API ============
