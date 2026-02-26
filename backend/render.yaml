@@ -1,0 +1,128 @@
+services:
+  - type: web
+    name: saluslogica-backend
+    runtime: python
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn saluslogica.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --threads 2 --timeout 60"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saluslogica-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: saluslogica-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: saluslogica-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: saluslogica-redis
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,localhost,127.0.0.1"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://your-frontend-domain.onrender.com,http://localhost:3000,http://localhost:5173"
+      - key: FRONTEND_URL
+        value: "https://your-frontend-domain.onrender.com"
+      - key: TIME_ZONE
+        value: "Africa/Kigali"
+
+  - type: worker
+    name: saluslogica-celery-worker
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A saluslogica worker --loglevel=info --concurrency=2"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: saluslogica-backend
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saluslogica-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: saluslogica-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: saluslogica-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: saluslogica-redis
+          property: connectionString
+      - key: DEBUG
+        value: "False"
+      - key: TIME_ZONE
+        value: "Africa/Kigali"
+
+  - type: worker
+    name: saluslogica-celery-beat
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A saluslogica beat --loglevel=info"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: saluslogica-backend
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saluslogica-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: saluslogica-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: saluslogica-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: saluslogica-redis
+          property: connectionString
+      - key: DEBUG
+        value: "False"
+      - key: TIME_ZONE
+        value: "Africa/Kigali"
+
+  - type: redis
+    name: saluslogica-redis
+    plan: free
+    ipAllowList: []
+
+databases:
+  - name: saluslogica-db
+    plan: free
+    databaseName: saluslogica
+    user: saluslogica
