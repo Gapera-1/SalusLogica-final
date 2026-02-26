@@ -69,22 +69,35 @@ CORS_ALLOWED_ORIGINS = config(
     cast=Csv()
 )
 
+# Allow all origins in production if specific origins not set properly
+# Remove this after testing
+CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=False, cast=bool)
+
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_METHODS = [
     "GET",
     "POST",
     "PUT",
+    "PATCH",
     "DELETE",
     "OPTIONS",
 ]
 
 CORS_ALLOW_HEADERS = [
     "accept",
+    "accept-encoding",
     "accept-language",
+    "access-control-request-headers",
+    "access-control-request-method",
+    "authorization",
     "content-language",
     "content-type",
-    "authorization",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
 
 ROOT_URLCONF = 'saluslogica.urls'
