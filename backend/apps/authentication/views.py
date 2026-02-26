@@ -241,8 +241,13 @@ def resend_verification_email(request):
         logger.error(f"Failed to send verification email to {user.email}: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
+        # Print to console for Render logs
+        print(f"EMAIL ERROR: {str(e)}")
+        print(f"EMAIL BACKEND: {settings.EMAIL_BACKEND}")
+        print(f"EMAIL HOST: {settings.EMAIL_HOST}")
+        print(f"FROM EMAIL: {settings.DEFAULT_FROM_EMAIL}")
         return Response({
-            'error': 'Failed to send verification email. Please try again later.'
+            'error': f'Failed to send verification email: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
