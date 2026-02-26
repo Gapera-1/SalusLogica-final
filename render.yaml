@@ -15,22 +15,22 @@ services:
         value: "False"
       - key: DATABASE_URL
         fromDatabase:
-          name: saluslogica-db-v2
+          name: saluslogica-db
           property: connectionString
       - key: REDIS_URL
         fromService:
           type: redis
-          name: saluslogica-redis-v2
+          name: saluslogica-redis
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
           type: redis
-          name: saluslogica-redis-v2
+          name: saluslogica-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
           type: redis
-          name: saluslogica-redis-v2
+          name: saluslogica-redis
           property: connectionString
       - key: ALLOWED_HOSTS
         value: ".onrender.com,localhost,127.0.0.1"
@@ -41,13 +41,5 @@ services:
       - key: TIME_ZONE
         value: "Africa/Kigali"
 
-  - type: redis
-    name: saluslogica-redis-v2
-    plan: free
-    ipAllowList: []
-
-databases:
-  - name: saluslogica-db-v2
-    plan: free
-    databaseName: saluslogica
-    user: saluslogica
+# Redis and Database already exist from previous deployment
+# Using: saluslogica-db and saluslogica-redis
