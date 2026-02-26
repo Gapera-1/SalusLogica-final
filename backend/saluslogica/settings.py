@@ -289,6 +289,7 @@ CELERY_BEAT_SCHEDULE = {
 AUTH_USER_MODEL = 'authentication.User'
 
 # Email configuration (for notifications)
+# Use console backend for debugging - emails will appear in logs
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@saluslogica.com')
 SERVER_EMAIL = config('SERVER_EMAIL', default=DEFAULT_FROM_EMAIL)
@@ -298,15 +299,7 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-
-# Print email settings for debugging (remove in production)
-import logging
-logger = logging.getLogger(__name__)
-logger.info(f"EMAIL_BACKEND: {EMAIL_BACKEND}")
-logger.info(f"EMAIL_HOST: {EMAIL_HOST}")
-logger.info(f"EMAIL_PORT: {EMAIL_PORT}")
-logger.info(f"EMAIL_USE_TLS: {EMAIL_USE_TLS}")
-logger.info(f"DEFAULT_FROM_EMAIL: {DEFAULT_FROM_EMAIL}")
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)
 
 # Logging
 LOG_LEVEL = config('LOG_LEVEL', default='INFO')

@@ -246,6 +246,12 @@ def resend_verification_email(request):
         print(f"EMAIL BACKEND: {settings.EMAIL_BACKEND}")
         print(f"EMAIL HOST: {settings.EMAIL_HOST}")
         print(f"FROM EMAIL: {settings.DEFAULT_FROM_EMAIL}")
+        # Return user-friendly error
+        error_msg = str(e)
+        if 'Connection timed out' in error_msg or 'Connection refused' in error_msg:
+            return Response({
+                'error': 'Email service is temporarily unavailable. Please try again later or contact support.'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return Response({
             'error': f'Failed to send verification email: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
