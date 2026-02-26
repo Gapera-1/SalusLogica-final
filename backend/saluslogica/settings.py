@@ -304,6 +304,8 @@ import logging
 logger = logging.getLogger(__name__)
 logger.info(f"EMAIL_BACKEND: {EMAIL_BACKEND}")
 logger.info(f"EMAIL_HOST: {EMAIL_HOST}")
+logger.info(f"EMAIL_PORT: {EMAIL_PORT}")
+logger.info(f"EMAIL_USE_TLS: {EMAIL_USE_TLS}")
 logger.info(f"DEFAULT_FROM_EMAIL: {DEFAULT_FROM_EMAIL}")
 
 # Logging
