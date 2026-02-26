@@ -5,7 +5,7 @@ services:
     plan: free
     rootDir: backend
     buildCommand: "./build.sh"
-    startCommand: "gunicorn saluslogica.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --threads 2 --timeout 60"
+    startCommand: "./start.sh"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -38,84 +38,6 @@ services:
         value: "https://your-frontend.vercel.app,http://localhost:3000,http://localhost:5173"
       - key: FRONTEND_URL
         value: "https://your-frontend.vercel.app"
-      - key: TIME_ZONE
-        value: "Africa/Kigali"
-
-  - type: worker
-    name: saluslogica-celery-worker
-    runtime: python
-    plan: free
-    rootDir: backend
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "celery -A saluslogica worker --loglevel=info --concurrency=2"
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: SECRET_KEY
-        fromService:
-          type: web
-          name: saluslogica-backend
-          envVarKey: SECRET_KEY
-      - key: DATABASE_URL
-        fromDatabase:
-          name: saluslogica-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: saluslogica-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: redis
-          name: saluslogica-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: redis
-          name: saluslogica-redis
-          property: connectionString
-      - key: DEBUG
-        value: "False"
-      - key: TIME_ZONE
-        value: "Africa/Kigali"
-
-  - type: worker
-    name: saluslogica-celery-beat
-    runtime: python
-    plan: free
-    rootDir: backend
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "celery -A saluslogica beat --loglevel=info"
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: SECRET_KEY
-        fromService:
-          type: web
-          name: saluslogica-backend
-          envVarKey: SECRET_KEY
-      - key: DATABASE_URL
-        fromDatabase:
-          name: saluslogica-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: saluslogica-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: redis
-          name: saluslogica-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: redis
-          name: saluslogica-redis
-          property: connectionString
-      - key: DEBUG
-        value: "False"
       - key: TIME_ZONE
         value: "Africa/Kigali"
 
