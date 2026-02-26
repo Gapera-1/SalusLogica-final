@@ -193,14 +193,18 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
           instructions: data.instructions || prev.instructions,
           notes: data.notes ? `${prev.notes ? prev.notes + '\n' : ''}${data.notes}` : prev.notes,
         }));
-        setBarcodeResult(data);
+        setBarcodeResult({ ...data, barcode });
         showToast(t("scanner.autoFillSuccess"));
       } else {
-        showToast(t("scanner.notFound"), "error");
+        // Barcode not found in database, but keep the barcode for reference
+        setBarcodeResult({ barcode, name: null });
+        showToast(`Barcode ${barcode} scanned. Enter medicine details manually.`, "info");
       }
     } catch (err) {
       console.error("Barcode lookup error:", err);
-      showToast(t("scanner.lookupError"), "error");
+      // Even if lookup fails, keep the barcode
+      setBarcodeResult({ barcode, name: null });
+      showToast(`Barcode ${barcode} saved. Enter medicine details manually.`, "info");
     } finally {
       setBarcodeLookupLoading(false);
     }
@@ -358,12 +362,29 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
               )}
               {t("scanner.scanBarcode")}
             </button>
+            
+            {/* Manual Barcode Entry */}
+            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+              <input
+                type="text"
+                value={barcodeResult?.barcode || ''}
+                onChange={(e) => setBarcodeResult({ barcode: e.target.value })}
+                placeholder="Enter barcode manually"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-teal-500"
+              />
+            </div>
+            
             {barcodeResult && (
               <span className="text-teal-700 text-xs">
                 ✓ {t("scanner.autoFillSuccess")}
               </span>
             )}
           </div>
+          
+          {/* Barcode Note */}
+          <p className="text-xs text-gray-500 -mt-4 mb-2">
+            Note: Barcode scanning works best with US medicines. For Rwandan medicines, you can enter the barcode manually or type the medicine name directly.
+          </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Medicine Name */}

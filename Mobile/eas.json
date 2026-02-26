@@ -1,0 +1,25 @@
+{
+  "cli": {
+    "version": ">= 18.0.4",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "node": "18.19.0",
+      "env": {
+        "EAS_BUILD_NPM_CACHE_URL": "https://registry.npmjs.org/"
+      }
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

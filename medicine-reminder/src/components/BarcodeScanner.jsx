@@ -38,9 +38,17 @@ const BarcodeScanner = ({ onScanSuccess, onClose }) => {
   // Enumerate cameras on mount
   useEffect(() => {
     mountedRef.current = true;
+    
+    // Check if running in a secure context (HTTPS or localhost)
+    if (!window.isSecureContext) {
+      setError("Camera access requires HTTPS or localhost. Please use a secure connection.");
+      return;
+    }
+    
     Html5Qrcode.getCameras()
       .then((devices) => {
         if (!mountedRef.current) return;
+        console.log("[BarcodeScanner] Found cameras:", devices);
         setCameras(devices);
         // Prefer rear camera
         const rear = devices.find(
@@ -50,11 +58,21 @@ const BarcodeScanner = ({ onScanSuccess, onClose }) => {
             d.label.toLowerCase().includes("environment")
         );
         setSelectedCamera(rear || devices[0] || null);
+        
+        if (devices.length === 0) {
+          setError("No cameras found. Please ensure your device has a camera and you've granted permission.");
+        }
       })
       .catch((err) => {
         console.error("[BarcodeScanner] getCameras error:", err);
         if (mountedRef.current) {
-          setError(t("scanner.cameraPermissionError"));
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            setError("Camera permission denied. Please allow camera access in your browser settings.");
+          } else if (err.name === 'NotFoundError') {
+            setError("No camera found on this device.");
+          } else {
+            setError(t("scanner.cameraPermissionError"));
+          }
         }
       });
 

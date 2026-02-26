@@ -258,6 +258,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.alarms.tasks.check_medication_schedules',
         'schedule': 60.0,  # Every minute - check for upcoming doses
     },
+    'repeat-unacknowledged-alarms': {
+        'task': 'apps.alarms.tasks.repeat_unacknowledged_alarms',
+        'schedule': 10.0,  # Every 10 seconds - repeat unacknowledged alarms
+    },
     'generate-daily-schedules': {
         'task': 'apps.alarms.tasks.generate_daily_schedules',
         'schedule': 86400.0,  # Daily at midnight - generate schedules for the day

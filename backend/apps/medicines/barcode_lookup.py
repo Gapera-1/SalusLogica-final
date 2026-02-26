@@ -5,8 +5,9 @@ Uses the OpenFDA Drug API (free, no key required for low-volume use) to resolve
 a UPC/EAN barcode or text search query into medicine details that can auto-fill
 the AddMedicine form.
 
-Also integrates Rwanda FDA registered drugs database as a fallback for brand name
-to generic name resolution when OpenFDA doesn't have the drug.
+Also integrates Rwanda FDA registered drugs database as the PRIMARY source for 
+brand name to generic name resolution. The system first searches Rwanda FDA,
+extracts the generic name, then uses that to search OpenFDA for detailed info.
 
 Docs: https://open.fda.gov/apis/drug/
 """
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 OPENFDA_BASE = 'https://api.fda.gov/drug'
 REQUEST_TIMEOUT = 10  # seconds
 
-# Path to Rwanda FDA registered drugs CSV
+# Path to Rwanda FDA registered drugs CSV (fallback)
 RWANDA_DRUGS_CSV = os.path.join(
     settings.BASE_DIR, 'data', 'cleaned-data.csv'
 )
@@ -64,11 +65,47 @@ def search_rwanda_registry(name: str) -> dict | None:
     """
     Search Rwanda FDA registered drugs by brand name.
     Returns the first matching drug record or None.
+    
+    First tries the database model (faster), then falls back to CSV.
     """
     if not name:
         return None
     
     name_lower = name.lower().strip()
+    
+    # Try database model first (faster)
+    try:
+        from .models import RwandaFDADrug
+        
+        # Exact match first
+        drug = RwandaFDADrug.objects.filter(brand_name__iexact=name_lower).first()
+        if drug:
+            return {
+                'registration_number': drug.registration_number,
+                'brand_name': drug.brand_name,
+                'generic_name': drug.generic_name,
+                'strength': drug.strength,
+                'form': drug.dosage_form,
+                'manufacturer': drug.manufacturer,
+                'country': drug.country,
+            }
+        
+        # Partial match (brand name contains search term)
+        drug = RwandaFDADrug.objects.filter(brand_name__icontains=name_lower).first()
+        if drug:
+            return {
+                'registration_number': drug.registration_number,
+                'brand_name': drug.brand_name,
+                'generic_name': drug.generic_name,
+                'strength': drug.strength,
+                'form': drug.dosage_form,
+                'manufacturer': drug.manufacturer,
+                'country': drug.country,
+            }
+    except Exception as e:
+        logger.warning(f'Database search failed, falling back to CSV: {e}')
+    
+    # Fallback to CSV
     drugs = _load_rwanda_drugs()
     
     # Exact match first
@@ -179,46 +216,32 @@ def lookup_by_name(name: str) -> list[dict]:
     """
     Search for medicines by name. Returns up to 5 matches.
     
-    Uses OpenFDA as primary source. If no results found for brand name,
-    falls back to Rwanda FDA registry to get generic name, then searches
-    OpenFDA with the generic name.
+    Priority:
+    1. Search Rwanda FDA registry first by brand name
+    2. Extract generic name from Rwanda FDA
+    3. Use generic name to search OpenFDA for detailed info
+    4. If OpenFDA has no data, return Rwanda FDA data directly
     """
     if not name or not name.strip():
         return []
 
     name = name.strip()
+    results = []
+    seen = set()
 
     try:
-        # First, try OpenFDA with the original name (brand or generic)
-        url = f'{OPENFDA_BASE}/label.json'
-        params = {
-            'search': f'openfda.brand_name:"{name}"+openfda.generic_name:"{name}"',
-            'limit': 5,
-        }
-        resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
+        # STEP 1: First, search Rwanda FDA registry by brand name
+        logger.info(f'Searching Rwanda FDA registry for "{name}"')
+        rwanda_drug = search_rwanda_registry(name)
         
-        results = []
-        seen = set()
-        
-        if resp.status_code == 200:
-            data = resp.json()
-            for item in data.get('results', []):
-                parsed = _parse_label(item)
-                if parsed and parsed['name'].lower() not in seen:
-                    seen.add(parsed['name'].lower())
-                    results.append(parsed)
-        
-        # If no results found, try Rwanda registry fallback
-        if not results:
-            logger.info(f'OpenFDA found no results for "{name}", checking Rwanda registry')
+        if rwanda_drug:
+            generic_name = rwanda_drug.get('generic_name', '').strip()
+            brand_name = rwanda_drug.get('brand_name', '').strip()
+            logger.info(f'Found in Rwanda FDA: brand="{brand_name}", generic="{generic_name}"')
             
-            # Look up brand name in Rwanda registry to get generic name
-            generic_name = get_generic_from_rwanda_registry(name)
-            
+            # STEP 2: If we have a generic name, search OpenFDA with it
             if generic_name:
-                logger.info(f'Found generic name "{generic_name}" in Rwanda registry for "{name}"')
-                
-                # Search OpenFDA with the generic name
+                url = f'{OPENFDA_BASE}/label.json'
                 params = {
                     'search': f'openfda.generic_name:"{generic_name}"',
                     'limit': 5,
@@ -231,20 +254,45 @@ def lookup_by_name(name: str) -> list[dict]:
                         parsed = _parse_label(item)
                         if parsed and parsed['name'].lower() not in seen:
                             seen.add(parsed['name'].lower())
-                            # Add source info indicating this came via Rwanda registry
-                            parsed['rwanda_registry_match'] = True
-                            parsed['original_brand_name'] = name
+                            # Enhance with Rwanda FDA data
+                            parsed['rwanda_fda_match'] = True
+                            parsed['rwanda_brand_name'] = brand_name
+                            parsed['rwanda_generic_name'] = generic_name
+                            parsed['rwanda_registration'] = rwanda_drug.get('registration_number', '')
                             results.append(parsed)
-                
-                # If still no OpenFDA results, return Rwanda registry data directly
-                if not results:
-                    rwanda_drug = search_rwanda_registry(name)
-                    if rwanda_drug:
-                        results.append(_parse_rwanda_drug(rwanda_drug))
+                    
+                    if results:
+                        logger.info(f'Found {len(results)} results in OpenFDA using Rwanda generic name')
+            
+            # STEP 3: If no OpenFDA results, return Rwanda FDA data directly
+            if not results:
+                logger.info(f'No OpenFDA results, returning Rwanda FDA data for "{name}"')
+                parsed_rwanda = _parse_rwanda_drug(rwanda_drug)
+                results.append(parsed_rwanda)
+                return results[:5]
+        
+        # STEP 4: If not found in Rwanda FDA, try OpenFDA directly with original name
+        if not results:
+            logger.info(f'Not found in Rwanda FDA, trying OpenFDA directly for "{name}"')
+            url = f'{OPENFDA_BASE}/label.json'
+            params = {
+                'search': f'openfda.brand_name:"{name}"+openfda.generic_name:"{name}"',
+                'limit': 5,
+            }
+            resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                for item in data.get('results', []):
+                    parsed = _parse_label(item)
+                    if parsed and parsed['name'].lower() not in seen:
+                        seen.add(parsed['name'].lower())
+                        parsed['openfda_direct_match'] = True
+                        results.append(parsed)
 
         return results[:5]
     except Exception as exc:
-        logger.warning('OpenFDA name search failed: %s', exc)
+        logger.warning('Medicine search failed: %s', exc)
         
         # On error, try Rwanda registry as fallback
         rwanda_drug = search_rwanda_registry(name)

@@ -134,6 +134,19 @@ class AlarmViewSet(viewsets.ViewSet):
             taken_at=timezone.now()
         )
         
+        # Mark associated medication schedule as acknowledged to stop repeat alarms
+        from apps.alarms.models import MedicationSchedule
+        if group_id.startswith('schedule_'):
+            try:
+                schedule_id = group_id.split('_')[-1]
+                schedule = MedicationSchedule.objects.get(
+                    id=schedule_id,
+                    user=request.user
+                )
+                schedule.acknowledge_alarm()
+            except MedicationSchedule.DoesNotExist:
+                pass
+        
         return Response({
             'status': f'marked {count} doses as taken',
             'count': count
@@ -177,6 +190,19 @@ class AlarmViewSet(viewsets.ViewSet):
             dismissed_at=timezone.now()
         )
         
+        # Mark associated medication schedule as acknowledged to stop repeat alarms
+        from apps.alarms.models import MedicationSchedule
+        if group_id.startswith('schedule_'):
+            try:
+                schedule_id = group_id.split('_')[-1]
+                schedule = MedicationSchedule.objects.get(
+                    id=schedule_id,
+                    user=request.user
+                )
+                schedule.acknowledge_alarm()
+            except MedicationSchedule.DoesNotExist:
+                pass
+        
         return Response({
             'status': f'dismissed {count} doses',
             'count': count
@@ -218,6 +244,19 @@ class AlarmViewSet(viewsets.ViewSet):
             snoozed_until=snooze_until,
             snooze_count=models.F('snooze_count') + 1
         )
+        
+        # Mark associated medication schedule as acknowledged to stop repeat alarms
+        from apps.alarms.models import MedicationSchedule
+        if group_id.startswith('schedule_'):
+            try:
+                schedule_id = group_id.split('_')[-1]
+                schedule = MedicationSchedule.objects.get(
+                    id=schedule_id,
+                    user=request.user
+                )
+                schedule.acknowledge_alarm()
+            except MedicationSchedule.DoesNotExist:
+                pass
         
         return Response({
             'status': f'snoozed {count} doses for {minutes} minutes',

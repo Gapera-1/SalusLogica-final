@@ -192,6 +192,60 @@ class Drug(models.Model):
         return f"{self.name} ({self.generic_name})"
 
 
+class RwandaFDADrug(models.Model):
+    """
+    Model representing drugs registered with Rwanda FDA.
+    Imported from cleaned-data.csv containing Rwanda FDA drug registry.
+    """
+    registration_number = models.CharField(
+        max_length=100, 
+        unique=True,
+        help_text="Rwanda FDA registration number (e.g., RWANDA-FDA24/HM/0769/0004)"
+    )
+    brand_name = models.TextField(
+        help_text="Brand/Trade name of the drug"
+    )
+    generic_name = models.TextField(
+        help_text="Generic name / active ingredient"
+    )
+    strength = models.TextField(
+        help_text="Drug strength (e.g., 500mg, 1% w/v)"
+    )
+    dosage_form = models.TextField(
+        help_text="Dosage form (e.g., Tablet, Capsule, Injection)"
+    )
+    manufacturer = models.TextField(
+        help_text="Drug manufacturer"
+    )
+    country = models.CharField(
+        max_length=100,
+        help_text="Country of manufacture"
+    )
+    distributor = models.TextField(
+        help_text="Distributor company"
+    )
+    local_agent = models.TextField(
+        help_text="Local agent in Rwanda"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this registration is active"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['brand_name', 'generic_name']
+        verbose_name = "Rwanda FDA Drug"
+        verbose_name_plural = "Rwanda FDA Drugs"
+        indexes = [
+            models.Index(fields=['registration_number']),
+        ]
+    
+    def __str__(self):
+        return f"{self.brand_name[:50]} ({self.generic_name[:50]}) - {self.registration_number}"
+
+
 class Contraindication(models.Model):
     """
     Model representing drug contraindications for specific populations.

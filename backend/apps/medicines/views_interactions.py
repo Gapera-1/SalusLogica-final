@@ -9,6 +9,11 @@ from .serializers import (
     ContraindicationSerializer, UserAllergySerializer, FoodInteractionSerializer,
     MedicineInteractionCheckSerializer, SafetyCheckSerializer
 )
+from .safety_lookup import (
+    check_contraindications_rwanda_first,
+    get_food_advice_rwanda_first,
+    get_generic_name_from_rwanda
+)
 
 
 class InteractionViewSet(viewsets.ViewSet):
@@ -24,7 +29,7 @@ class InteractionViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['post'])
     def check_interactions(self, request):
-        """Check for drug interactions between multiple medicines"""
+        """Check for drug interactions between multiple medicines using Rwanda FDA-first strategy"""
         serializer = MedicineInteractionCheckSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -38,14 +43,28 @@ class InteractionViewSet(viewsets.ViewSet):
         )
         
         interactions = []
+        medicine_generic_map = {}  # Cache generic names
         
-        # Check drug-drug interactions
+        # Build generic name map using Rwanda FDA-first
+        for medicine in user_medicines:
+            generic_name = get_generic_name_from_rwanda(medicine.name)
+            medicine_generic_map[medicine.name] = {
+                'generic': generic_name,
+                'rwanda_match': generic_name is not None
+            }
+        
+        # Check drug-drug interactions using generic names
         for i, med1 in enumerate(user_medicines):
             for med2 in user_medicines[i+1:]:
-                # Check for existing interaction in database
+                # Get generic names from Rwanda FDA
+                generic1 = medicine_generic_map[med1.name]['generic'] or med1.name
+                generic2 = medicine_generic_map[med2.name]['generic'] or med2.name
+                
+                # Check for interaction using generic names
                 existing_interaction = DrugInteraction.objects.filter(
-                    drug1__name__iexact=med1.name,
-                    drug2__name__iexact=med2.name
+                    Q(drug1__generic_name__iexact=generic1, drug2__generic_name__iexact=generic2) |
+                    Q(drug1__generic_name__iexact=generic2, drug2__generic_name__iexact=generic1) |
+                    Q(drug1__name__iexact=med1.name, drug2__name__iexact=med2.name)
                 ).first()
                 
                 if existing_interaction:
@@ -53,52 +72,60 @@ class InteractionViewSet(viewsets.ViewSet):
                         'type': 'drug_interaction',
                         'medicine1': med1.name,
                         'medicine2': med2.name,
+                        'generic1': generic1,
+                        'generic2': generic2,
                         'severity': existing_interaction.severity,
                         'description': existing_interaction.description,
                         'management': existing_interaction.management,
-                        'evidence_level': existing_interaction.evidence_level
+                        'evidence_level': existing_interaction.evidence_level,
+                        'source': 'drug_database'
                     })
         
-        # Check for contraindications based on population type
+        # Check for contraindications using Rwanda FDA-first
         if population_type:
             for medicine in user_medicines:
-                contraindications = Contraindication.objects.filter(
-                    drug__name__iexact=medicine.name,
-                    population_groups__contains=[population_type]
+                contra_results = check_contraindications_rwanda_first(
+                    medicine.name,
+                    population_type=population_type
                 )
                 
-                for contraindication in contraindications:
+                for contraindication in contra_results['contraindications']:
                     interactions.append({
                         'type': 'contraindication',
                         'medicine': medicine.name,
-                        'contraindication_type': contraindication.contraindication_type,
-                        'condition': contraindication.condition,
-                        'severity': contraindication.severity,
-                        'description': contraindication.description,
-                        'rationale': contraindication.rationale,
-                        'alternatives': contraindication.alternatives
+                        'generic_name': contra_results.get('generic_name'),
+                        'rwanda_fda_match': contra_results['rwanda_fda_match'],
+                        'contraindication_type': contraindication['type'],
+                        'condition': contraindication['condition'],
+                        'severity': contraindication['severity'],
+                        'description': contraindication['description'],
+                        'rationale': contraindication['rationale'],
+                        'alternatives': contraindication['alternatives']
                     })
         
-        # Check for food interactions
+        # Check for food interactions using Rwanda FDA-first
         for medicine in user_medicines:
-            food_interactions = FoodInteraction.objects.filter(medicine=medicine)
+            food_result = get_food_advice_rwanda_first(medicine.name)
             
-            for food_interaction in food_interactions:
+            for food_interaction in food_result['food_interactions']:
                 interactions.append({
                     'type': 'food_interaction',
                     'medicine': medicine.name,
-                    'food': food_interaction.food,
-                    'food_category': food_interaction.food_category,
-                    'severity': food_interaction.severity,
-                    'description': food_interaction.description,
-                    'recommendation': food_interaction.recommendation
+                    'generic_name': food_result.get('generic_name'),
+                    'rwanda_fda_match': food_result['rwanda_fda_match'],
+                    'food': food_interaction['food'],
+                    'severity': food_interaction['severity'],
+                    'description': food_interaction['description'],
+                    'recommendation': food_interaction['recommendation']
                 })
         
         return Response({
             'interactions': interactions,
             'total_checks': len(interactions),
             'population_type': population_type,
-            'medicines_checked': len(user_medicines)
+            'medicines_checked': len(user_medicines),
+            'medicine_generic_map': medicine_generic_map,
+            'strategy': 'rwanda_fda_first'
         })
     
     @action(detail=False, methods=['post'])
@@ -189,36 +216,61 @@ class InteractionViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'])
     def food_advice(self, request):
-        """Get food advice for user's medicines"""
+        """Get food advice for user's medicines using Rwanda FDA-first strategy"""
         user = request.user
         medicines = Medicine.objects.filter(user=user, is_active=True)
         
         food_advice = {}
         
         for medicine in medicines:
+            # Use Rwanda FDA-first strategy
+            advice_result = get_food_advice_rwanda_first(medicine.name)
+            
+            # Get database food interactions
             food_interactions = FoodInteraction.objects.filter(medicine=medicine)
             
-            if food_interactions.exists():
-                advice = {
-                    'medicine_name': medicine.name,
-                    'foods_to_avoid': medicine.food_to_avoid or [],
-                    'foods_advised': medicine.food_advised or [],
-                    'interactions': [
-                        {
-                            'food': fi.food,
-                            'food_category': fi.food_category,
-                            'severity': fi.severity,
-                            'recommendation': fi.recommendation,
-                            'description': fi.description
-                        } for fi in food_interactions
-                    ]
-                }
-                food_advice[medicine.id] = advice
+            # Combine Rwanda FDA advice with database interactions
+            db_interactions = [
+                {
+                    'food': fi.food,
+                    'food_category': fi.food_category,
+                    'severity': fi.severity,
+                    'recommendation': fi.recommendation,
+                    'description': fi.description,
+                    'source': 'database'
+                } for fi in food_interactions
+            ]
+            
+            # Convert general_advice to array if it's a string
+            general_advice = advice_result['general_advice']
+            if isinstance(general_advice, str) and general_advice:
+                general_advice = [general_advice]
+            elif not general_advice:
+                general_advice = []
+            
+            advice = {
+                'medicine_name': medicine.name,
+                'generic_name': advice_result.get('generic_name'),
+                'rwanda_fda_match': advice_result['rwanda_fda_match'],
+                'openfda_match': advice_result['openfda_match'],
+                'source': advice_result.get('source'),
+                'foods_to_avoid': list(set(
+                    (medicine.food_to_avoid or []) + advice_result['foods_to_avoid']
+                )),
+                'foods_advised': list(set(
+                    (medicine.food_advised or []) + advice_result['foods_advised']
+                )),
+                'interactions': advice_result['food_interactions'] + db_interactions,
+                'general_advice': general_advice,
+                'timing_advice': [],  # Frontend expects this
+            }
+            food_advice[medicine.id] = advice
         
         return Response({
             'food_advice': food_advice,
             'total_medicines': len(medicines),
-            'medicines_with_food_interactions': len(food_advice)
+            'medicines_with_food_interactions': len(food_advice),
+            'strategy': 'rwanda_fda_first'
         })
     
     @action(detail=False, methods=['get'])

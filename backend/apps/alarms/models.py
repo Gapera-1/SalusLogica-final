@@ -45,6 +45,19 @@ class MedicationSchedule(models.Model):
         null=True,
         help_text="When the alarm was sent"
     )
+    alarm_repeat_count = models.IntegerField(
+        default=0,
+        help_text="Number of times alarm has been repeated (auto-repeat every 10s)"
+    )
+    last_alarm_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="When the last alarm was triggered"
+    )
+    acknowledged = models.BooleanField(
+        default=False,
+        help_text="Whether user has acknowledged the alarm (taken/snooze/dismiss)"
+    )
     dose_log = models.OneToOneField(
         'doses.DoseLog',
         on_delete=models.CASCADE,
@@ -72,7 +85,32 @@ class MedicationSchedule(models.Model):
         """Mark that alarm has been sent for this schedule"""
         self.alarm_sent = True
         self.alarm_sent_at = timezone.now()
-        self.save(update_fields=['alarm_sent', 'alarm_sent_at'])
+        self.last_alarm_at = timezone.now()
+        self.save(update_fields=['alarm_sent', 'alarm_sent_at', 'last_alarm_at'])
+    
+    def trigger_repeat_alarm(self):
+        """Trigger a repeat alarm - increments counter and updates timestamp"""
+        self.alarm_repeat_count += 1
+        self.last_alarm_at = timezone.now()
+        self.save(update_fields=['alarm_repeat_count', 'last_alarm_at'])
+    
+    def acknowledge_alarm(self):
+        """Mark alarm as acknowledged by user (taken/snooze/dismiss)"""
+        self.acknowledged = True
+        self.save(update_fields=['acknowledged'])
+    
+    def should_repeat_alarm(self):
+        """Check if alarm should repeat (every 10 seconds until acknowledged)"""
+        if self.acknowledged:
+            return False
+        if not self.alarm_sent:
+            return False
+        if not self.last_alarm_at:
+            return True  # First repeat
+        
+        # Check if 10 seconds have passed since last alarm
+        time_since_last = timezone.now() - self.last_alarm_at
+        return time_since_last >= timezone.timedelta(seconds=10)
     
     @property
     def is_due(self):

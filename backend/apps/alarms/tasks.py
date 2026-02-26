@@ -132,6 +132,104 @@ def send_alarm_notification(schedule):
 
 
 @shared_task
+def repeat_unacknowledged_alarms():
+    """
+    Check for unacknowledged alarms and repeat them every 10 seconds.
+    This task runs every 10 seconds to ensure users don't miss their medication.
+    """
+    now = timezone.now()
+    
+    # Get all sent but unacknowledged alarms that are due for repeat
+    # Only repeat for up to 5 minutes (30 repeats max) to avoid infinite loops
+    schedules = MedicationSchedule.objects.filter(
+        is_active=True,
+        alarm_sent=True,
+        acknowledged=False,
+        alarm_repeat_count__lt=30,  # Max 30 repeats (5 minutes)
+        scheduled_time__gte=now - timezone.timedelta(minutes=5),  # Only recent alarms
+    ).select_related('medicine', 'user')
+    
+    repeat_count = 0
+    
+    for schedule in schedules:
+        try:
+            # Check if 10 seconds have passed since last alarm
+            if schedule.should_repeat_alarm():
+                # Send repeat notification
+                send_repeat_notification(schedule)
+                schedule.trigger_repeat_alarm()
+                repeat_count += 1
+                logger.info(f"Repeat alarm #{schedule.alarm_repeat_count} sent for schedule {schedule.id}")
+        except Exception as e:
+            logger.error(f"Error repeating alarm for schedule {schedule.id}: {str(e)}")
+            continue
+    
+    if repeat_count > 0:
+        logger.info(f"Sent {repeat_count} repeat alarms")
+    
+    return {
+        'repeat_alarms_sent': repeat_count,
+        'timestamp': now.isoformat()
+    }
+
+
+def send_repeat_notification(schedule):
+    """
+    Send a repeat alarm notification for unacknowledged alarms.
+    This is more urgent than the initial notification.
+    """
+    repeat_number = schedule.alarm_repeat_count + 1
+    
+    # Create urgent message in Kinyarwanda
+    if schedule.medicine.dosage:
+        message = f"⏰ IBYITONDERWA: Igihe cyo gufata {schedule.medicine.name} ({schedule.medicine.dosage}) cyarenze! Nyamuneka wifate umuti wawe none. (Ingaruka ya {repeat_number})"
+    else:
+        message = f"⏰ IBYITONDERWA: Igihe cyo gufata {schedule.medicine.name} cyarenze! Nyamuneka wifate umuti wawe none. (Ingaruka ya {repeat_number})"
+    
+    title = "⚠️ Igihe cyo gufata umuti cyarenze!"
+    
+    # Create urgent in-app notification
+    AlarmNotification.objects.create(
+        medication_schedule=schedule,
+        user=schedule.user,
+        notification_type='in_app',
+        title=title,
+        message=message,
+        sent_at=timezone.now(),
+        is_successful=True
+    )
+    
+    # Send urgent push notification via FCM
+    try:
+        from apps.notifications.fcm import send_push_to_user
+        push_count = send_push_to_user(
+            user=schedule.user,
+            title=title,
+            body=message,
+            data={
+                'type': 'dose_reminder_repeat',
+                'medicine_name': schedule.medicine.name,
+                'schedule_id': str(schedule.id),
+                'repeat_count': str(repeat_number),
+                'is_repeat': 'true',
+            },
+        )
+        if push_count > 0:
+            AlarmNotification.objects.create(
+                medication_schedule=schedule,
+                user=schedule.user,
+                notification_type='push',
+                title=title,
+                message=message,
+                sent_at=timezone.now(),
+                is_successful=True,
+            )
+            logger.info(f"FCM repeat push sent to {push_count} device(s) for schedule {schedule.id}")
+    except Exception as e:
+        logger.error(f"FCM repeat push failed for schedule {schedule.id}: {str(e)}")
+
+
+@shared_task
 def cleanup_old_schedules():
     """
     Cleanup old medication schedules and notifications.

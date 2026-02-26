@@ -74,6 +74,9 @@ export const AlarmProvider = ({ children }) => {
   const responseListenerRef = useRef(null);
   const appStateRef = useRef(AppState.currentState);
   const repeatIntervalRef = useRef(null);
+  const autoRepeatIntervalRef = useRef(null);
+  const currentAlarmRepeatCountRef = useRef(0);
+  const lastAlarmTriggeredAtRef = useRef(null);
 
   // ==================== STORAGE FUNCTIONS ====================
 
@@ -375,6 +378,10 @@ export const AlarmProvider = ({ children }) => {
     setCurrentAlarm(alarm);
     setIsAlarmModalVisible(true);
     
+    // Track when alarm was triggered
+    lastAlarmTriggeredAtRef.current = Date.now();
+    currentAlarmRepeatCountRef.current = 0;
+    
     // Trigger vibration
     triggerVibration();
     
@@ -385,7 +392,92 @@ export const AlarmProvider = ({ children }) => {
     if (!alarm.fromNotification) {
       await sendImmediateNotification(alarm);
     }
+    
+    // Start auto-repeat every 10 seconds until user interacts
+    startAutoRepeatAlarm(alarm);
   }, [announceAlarm, triggerVibration, sendImmediateNotification]);
+
+  /**
+   * Start auto-repeat alarm every 10 seconds
+   * Repeats until user marks as taken, snoozes, or dismisses
+   */
+  const startAutoRepeatAlarm = useCallback((alarm) => {
+    // Clear any existing auto-repeat
+    if (autoRepeatIntervalRef.current) {
+      clearInterval(autoRepeatIntervalRef.current);
+      autoRepeatIntervalRef.current = null;
+    }
+    
+    // Start new auto-repeat interval (every 10 seconds)
+    autoRepeatIntervalRef.current = setInterval(async () => {
+      // Check if alarm modal is still visible (user hasn't interacted)
+      if (!isAlarmModalVisible || !currentAlarm) {
+        // User has interacted, stop repeating
+        stopAutoRepeatAlarm();
+        return;
+      }
+      
+      // Increment repeat count
+      currentAlarmRepeatCountRef.current += 1;
+      
+      // Max 30 repeats (5 minutes) to avoid infinite loop
+      if (currentAlarmRepeatCountRef.current >= 30) {
+        console.log('Auto-repeat max count reached (5 minutes), stopping');
+        stopAutoRepeatAlarm();
+        return;
+      }
+      
+      console.log(`Auto-repeat alarm #${currentAlarmRepeatCountRef.current}`);
+      
+      // Trigger vibration
+      triggerVibration();
+      
+      // Re-announce the alarm
+      await announceAlarm(alarm.medicines || alarm.medicine);
+      
+      // Send urgent repeat notification
+      await sendRepeatNotification(alarm, currentAlarmRepeatCountRef.current);
+    }, 10000); // 10 seconds
+  }, [isAlarmModalVisible, currentAlarm, triggerVibration, announceAlarm]);
+
+  /**
+   * Stop auto-repeat alarm
+   */
+  const stopAutoRepeatAlarm = useCallback(() => {
+    if (autoRepeatIntervalRef.current) {
+      clearInterval(autoRepeatIntervalRef.current);
+      autoRepeatIntervalRef.current = null;
+    }
+    currentAlarmRepeatCountRef.current = 0;
+    lastAlarmTriggeredAtRef.current = null;
+  }, []);
+
+  /**
+   * Send repeat notification (more urgent)
+   */
+  const sendRepeatNotification = useCallback(async (alarm, repeatCount) => {
+    try {
+      const medicineNames = alarm.medicines?.map(m => m.name).join(', ') || 'Medicine';
+      
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `⏰ URGENT: Medicine Reminder (${repeatCount})`,
+          body: `Time to take: ${medicineNames} - Please take your medicine now!`,
+          data: { 
+            alarm,
+            isRepeat: true,
+            repeatCount,
+          },
+          badge: 1,
+          sound: true,
+          priority: 'max',
+        },
+        trigger: null, // Show immediately
+      });
+    } catch (error) {
+      console.error('Error sending repeat notification:', error);
+    }
+  }, []);
 
   /**
    * Handle notification response (when user taps notification)
@@ -688,6 +780,9 @@ export const AlarmProvider = ({ children }) => {
         });
       }
 
+      // Stop auto-repeat alarm
+      stopAutoRepeatAlarm();
+
       // Close modal
       await stopSpeech();
       setIsAlarmModalVisible(false);
@@ -704,7 +799,7 @@ export const AlarmProvider = ({ children }) => {
         error: error.message || 'Failed to mark dose as taken',
       };
     }
-  }, [isOnline, cachedMedicines, loadFromStorage, saveToStorage, cacheMedicines, queuePendingAction, stopSpeech, checkAlarms]);
+  }, [isOnline, cachedMedicines, loadFromStorage, saveToStorage, cacheMedicines, queuePendingAction, stopSpeech, checkAlarms, stopAutoRepeatAlarm]);
 
   /**
    * Dismiss alarm - works offline
@@ -720,6 +815,9 @@ export const AlarmProvider = ({ children }) => {
         });
       }
 
+      // Stop auto-repeat alarm
+      stopAutoRepeatAlarm();
+
       await stopSpeech();
       setIsAlarmModalVisible(false);
       setCurrentAlarm(null);
@@ -733,7 +831,7 @@ export const AlarmProvider = ({ children }) => {
         error: error.message || 'Failed to dismiss alarm',
       };
     }
-  }, [isOnline, queuePendingAction, stopSpeech, checkAlarms]);
+  }, [isOnline, queuePendingAction, stopSpeech, checkAlarms, stopAutoRepeatAlarm]);
 
   /**
    * Snooze alarm - works offline
@@ -771,6 +869,9 @@ export const AlarmProvider = ({ children }) => {
         });
       }
 
+      // Stop auto-repeat alarm
+      stopAutoRepeatAlarm();
+
       await stopSpeech();
       setIsAlarmModalVisible(false);
       setCurrentAlarm(null);
@@ -784,7 +885,7 @@ export const AlarmProvider = ({ children }) => {
         error: error.message || 'Failed to snooze alarm',
       };
     }
-  }, [isOnline, queuePendingAction, stopSpeech, checkAlarms]);
+  }, [isOnline, queuePendingAction, stopSpeech, checkAlarms, stopAutoRepeatAlarm]);
 
   /**
    * Repeat announcement
@@ -883,6 +984,10 @@ export const AlarmProvider = ({ children }) => {
       if (repeatIntervalRef.current) {
         clearInterval(repeatIntervalRef.current);
         repeatIntervalRef.current = null;
+      }
+      if (autoRepeatIntervalRef.current) {
+        clearInterval(autoRepeatIntervalRef.current);
+        autoRepeatIntervalRef.current = null;
       }
     };
   }, []);
