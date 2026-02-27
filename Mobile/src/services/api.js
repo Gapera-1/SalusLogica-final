@@ -6,11 +6,11 @@ import { tokenStorage, userStorage } from './storage';
 const getBaseUrl = () => {
   if (__DEV__) console.log('[API] Platform.OS:', Platform.OS);
   if (Platform.OS === 'web') {
-    return 'http://localhost:8000/api';
+    return 'https://saluslogica-api-c5sl.onrender.com/api'; // Production backend
   } else if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:8000/api'; // Android emulator
+    return 'https://saluslogica-api-c5sl.onrender.com/api'; // Production backend
   } else {
-    return 'http://localhost:8000/api'; // iOS simulator
+    return 'https://saluslogica-api-c5sl.onrender.com/api'; // Production backend
   }
 };
 const API_BASE_URL =
