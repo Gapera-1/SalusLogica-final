@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import Navigation from "../components/Navigation";
+import BaseLayout from "../components/BaseLayout";
 import { sideEffectAPI, medicineAPI } from "../services/api";
 import { useLanguage } from "../i18n";
 
@@ -162,12 +162,11 @@ const SideEffectTracker = ({ setIsAuthenticated }) => {
   const resolvedCount = sideEffects.filter((s) => s.is_resolved).length;
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--page-bg)" }}>
-      <Navigation setIsAuthenticated={setIsAuthenticated} />
+    <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
 
       {/* Toast */}
       {toast && (
-        <div className="fixed top-20 right-4 z-50 animate-fade-in">
+        <div className="fixed top-20 right-4 left-4 sm:left-auto z-50 animate-fade-in">
           <div
             className={`px-5 py-3 rounded-xl shadow-lg text-sm font-medium ${
               toast.type === "error"
@@ -180,7 +179,7 @@ const SideEffectTracker = ({ setIsAuthenticated }) => {
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div>
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
@@ -797,7 +796,7 @@ const SideEffectTracker = ({ setIsAuthenticated }) => {
           </div>
         )}
       </div>
-    </div>
+    </BaseLayout>
   );
 };
 

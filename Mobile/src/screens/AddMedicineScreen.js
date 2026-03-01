@@ -1,45 +1,184 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image, Alert, Modal } from 'react-native';
-import { Card, Button, TextInput, Snackbar } from 'react-native-paper';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Platform,
+  Image,
+  Alert,
+  Switch,
+  KeyboardAvoidingView,
+} from 'react-native';
+import { Card, Button, TextInput, Snackbar, Chip, Divider } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { medicineAPI } from '../services/api';
 import { getErrorMessage, logError } from '../utils/errorHandler';
 
+// ─── Section Header Component ───────────────────────────────────────────────
+const SectionHeader = ({ icon, title, subtitle, colors }) => (
+  <View style={sectionStyles.header}>
+    <View style={[sectionStyles.iconCircle, { backgroundColor: colors.primaryLight + '22' }]}>
+      <MaterialCommunityIcons name={icon} size={22} color={colors.primary} />
+    </View>
+    <View style={sectionStyles.headerText}>
+      <Text style={[sectionStyles.title, { color: colors.text }]}>{title}</Text>
+      {subtitle && (
+        <Text style={[sectionStyles.subtitle, { color: colors.textMuted }]}>{subtitle}</Text>
+      )}
+    </View>
+  </View>
+);
+
+const sectionStyles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f020',
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  headerText: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  subtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+});
+
+// ─── Tag/Chip Input Component ───────────────────────────────────────────────
+const TagInput = ({ label, placeholder, tags, onTagsChange, colors }) => {
+  const [inputValue, setInputValue] = useState('');
+
+  const addTag = () => {
+    const trimmed = inputValue.trim();
+    if (trimmed && !tags.includes(trimmed)) {
+      onTagsChange([...tags, trimmed]);
+      setInputValue('');
+    }
+  };
+
+  const removeTag = (index) => {
+    onTagsChange(tags.filter((_, i) => i !== index));
+  };
+
+  return (
+    <View style={tagStyles.container}>
+      <View style={tagStyles.inputRow}>
+        <TextInput
+          label={label}
+          placeholder={placeholder}
+          value={inputValue}
+          onChangeText={setInputValue}
+          onSubmitEditing={addTag}
+          mode="outlined"
+          dense
+          style={[tagStyles.input, { backgroundColor: colors.surface }]}
+          textColor={colors.text}
+          outlineColor={colors.border}
+          activeOutlineColor={colors.primary}
+          right={
+            <TextInput.Icon
+              icon="plus-circle"
+              color={colors.primary}
+              onPress={addTag}
+            />
+          }
+        />
+      </View>
+      {tags.length > 0 && (
+        <View style={tagStyles.chipRow}>
+          {tags.map((tag, index) => (
+            <Chip
+              key={index}
+              onClose={() => removeTag(index)}
+              style={[tagStyles.chip, { backgroundColor: colors.primaryLight + '20' }]}
+              textStyle={{ color: colors.primary, fontSize: 13 }}
+              closeIconAccessibilityLabel="Remove"
+            >
+              {tag}
+            </Chip>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
+
+const tagStyles = StyleSheet.create({
+  container: { marginBottom: 8 },
+  inputRow: { flexDirection: 'row', alignItems: 'center' },
+  input: { flex: 1, marginBottom: 6 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  chip: { marginBottom: 4 },
+});
+
+// ─── Main Screen ────────────────────────────────────────────────────────────
 export default function AddMedicineScreen({ route }) {
   const { t } = useLanguage();
   const { colors, isDark } = useTheme();
   const navigation = useNavigation();
-  const { medicine } = route?.params || {}; // For edit mode
-  
+  const { medicine } = route?.params || {};
+
   const isEditMode = !!medicine;
-  
+
+  // ── Form State ──────────────────────────────────────────────────────────
   const [formData, setFormData] = useState({
+    // Basic
     name: '',
     scientific_name: '',
     dosage: '',
     frequency: 'once_daily',
     times: ['08:00'],
     stock: '',
-    prescribed_for: '',
-    doctor: '',
-    notes: '',
-    reminder_enabled: true,
+    // Schedule
     start_date: new Date().toISOString().split('T')[0],
     end_date: '',
+    duration: '',
+    reminder_enabled: true,
+    // Clinical
+    dose_mg: '',
+    posology: '',
     instructions: '',
+    // Doctor
+    prescribed_for: '',
+    doctor: '',
+    // Food
+    food_to_avoid: [],
+    food_advised: [],
+    // Notes
+    notes: '',
   });
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' });
-  const [showScanner, setShowScanner] = useState(false);
   const [barcodeLookupLoading, setBarcodeLookupLoading] = useState(false);
   const [barcodeResult, setBarcodeResult] = useState(null);
-  const [medicinePhoto, setMedicinePhoto] = useState(null); // { uri, fileName, mimeType }
+  const [medicinePhoto, setMedicinePhoto] = useState(null);
+  const [showClinical, setShowClinical] = useState(false);
 
-  // Load medicine data if editing
+  // ── Load edit data ──────────────────────────────────────────────────────
   useEffect(() => {
     if (medicine && isEditMode) {
       setFormData({
@@ -48,18 +187,27 @@ export default function AddMedicineScreen({ route }) {
         dosage: medicine.dosage || '',
         frequency: medicine.frequency || 'once_daily',
         times: medicine.times || ['08:00'],
-        stock: medicine.stock?.toString() || '',
-        prescribed_for: medicine.prescribed_for || '',
-        doctor: medicine.doctor || '',
-        notes: medicine.notes || '',
-        reminder_enabled: medicine.reminder_enabled !== false,
+        stock: medicine.stock_count?.toString() || medicine.stock?.toString() || '',
         start_date: medicine.start_date || new Date().toISOString().split('T')[0],
         end_date: medicine.end_date || '',
+        duration: medicine.duration?.toString() || '',
+        reminder_enabled: medicine.reminder_enabled !== false,
+        dose_mg: medicine.dose_mg?.toString() || '',
+        posology: medicine.posology || '',
         instructions: medicine.instructions || '',
+        prescribed_for: medicine.prescribed_for || '',
+        doctor: medicine.prescribing_doctor || medicine.doctor || '',
+        food_to_avoid: medicine.food_to_avoid || [],
+        food_advised: medicine.food_advised || [],
+        notes: medicine.notes || '',
       });
+      if (medicine.dose_mg || medicine.posology) {
+        setShowClinical(true);
+      }
     }
   }, [medicine, isEditMode]);
 
+  // ── Frequencies ─────────────────────────────────────────────────────────
   const frequencies = [
     { label: t('addMedicine.onceDaily'), value: 'once_daily' },
     { label: t('addMedicine.twiceDaily'), value: 'twice_daily' },
@@ -70,32 +218,26 @@ export default function AddMedicineScreen({ route }) {
     { label: t('addMedicine.monthly'), value: 'monthly' },
   ];
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    // Clear error for this field
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  const handleInputChange = useCallback((field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
     }
-  };
+  }, [errors]);
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = t('addMedicine.medicineNameRequired');
-    }
-    if (!formData.dosage.trim()) {
-      newErrors.dosage = t('addMedicine.dosageRequired');
-    }
+    if (!formData.name.trim()) newErrors.name = t('addMedicine.medicineNameRequired');
+    if (!formData.dosage.trim()) newErrors.dosage = t('addMedicine.dosageRequired');
     if (!formData.stock.trim()) {
       newErrors.stock = t('addMedicine.stockRequired');
     } else if (isNaN(parseInt(formData.stock))) {
       newErrors.stock = t('addMedicine.stockMustBeNumber');
     }
-
+    if (!formData.start_date.trim()) {
+      newErrors.start_date = 'Start date is required';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -104,12 +246,26 @@ export default function AddMedicineScreen({ route }) {
     setSnackbar({ visible: true, message, type });
   };
 
-  // Handle barcode scan result
+  // ── Auto-calculate end date from start date + duration ──────────────────
+  useEffect(() => {
+    if (formData.start_date && formData.duration && !isNaN(parseInt(formData.duration))) {
+      try {
+        const start = new Date(formData.start_date);
+        if (!isNaN(start.getTime())) {
+          const end = new Date(start);
+          end.setDate(end.getDate() + parseInt(formData.duration));
+          setFormData(prev => ({ ...prev, end_date: end.toISOString().split('T')[0] }));
+        }
+      } catch (e) {
+        // ignore invalid date
+      }
+    }
+  }, [formData.start_date, formData.duration]);
+
+  // ── Barcode handlers ────────────────────────────────────────────────────
   const handleBarcodeScan = async (barcode) => {
-    setShowScanner(false);
     setBarcodeLookupLoading(true);
     setBarcodeResult(null);
-
     try {
       const data = await medicineAPI.barcodeLookup(barcode);
       if (data && data.name) {
@@ -133,35 +289,37 @@ export default function AddMedicineScreen({ route }) {
     }
   };
 
-  // Manual barcode entry (for devices without camera or as fallback)
   const handleManualBarcode = () => {
-    Alert.prompt(
-      t('scanner.title'),
-      t('scanner.enterManually'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.search'),
-          onPress: (barcode) => {
-            if (barcode && barcode.trim()) {
-              handleBarcodeScan(barcode.trim());
-            }
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        t('scanner.title'),
+        t('scanner.enterManually'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('common.search'),
+            onPress: (barcode) => {
+              if (barcode && barcode.trim()) handleBarcodeScan(barcode.trim());
+            },
           },
-        },
-      ],
-      'plain-text',
-      '',
-      'number-pad'
-    );
+        ],
+        'plain-text',
+        '',
+        'number-pad'
+      );
+    } else {
+      Alert.alert(
+        t('scanner.title'),
+        t('scanner.enterManually'),
+        [{ text: t('common.cancel'), style: 'cancel' }, { text: 'OK' }]
+      );
+    }
   };
 
-  // Photo picker using standard React Native approach
+  // ── Photo picker ────────────────────────────────────────────────────────
   const handlePickPhoto = async (useCamera = false) => {
     try {
-      // Dynamic import to avoid crash if expo-image-picker is not installed
       const ImagePicker = require('expo-image-picker');
-      
-      // Request permissions
       if (useCamera) {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
@@ -175,187 +333,175 @@ export default function AddMedicineScreen({ route }) {
           return;
         }
       }
-
       const result = useCamera
-        ? await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.8,
-            allowsEditing: true,
-            aspect: [4, 3],
-          })
-        : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.8,
-            allowsEditing: true,
-            aspect: [4, 3],
-          });
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [4, 3] })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [4, 3] });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
+      if (!result.canceled && result.assets?.[0]) {
         const asset = result.assets[0];
-        setMedicinePhoto({
-          uri: asset.uri,
-          fileName: asset.fileName || 'medicine_photo.jpg',
-          mimeType: asset.mimeType || 'image/jpeg',
-        });
+        setMedicinePhoto({ uri: asset.uri, fileName: asset.fileName || 'medicine_photo.jpg', mimeType: asset.mimeType || 'image/jpeg' });
       }
     } catch (err) {
-      // expo-image-picker might not be installed
       console.warn('Image picker not available:', err.message);
-      Alert.alert(
-        t('medicinePhoto.label'),
-        t('medicinePhoto.notAvailable')
-      );
+      Alert.alert(t('medicinePhoto.label'), t('medicinePhoto.notAvailable'));
     }
   };
 
+  // ── Submit ──────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!validateForm()) return;
-
     setLoading(true);
     try {
+      const durationVal = parseInt(formData.duration) || parseInt(formData.stock) || 30;
       const medicineData = {
         name: formData.name,
         scientific_name: formData.scientific_name,
         dosage: formData.dosage,
         frequency: formData.frequency,
         times: formData.times,
-        duration: parseInt(formData.stock) || 30,
+        duration: durationVal,
         stock_count: parseInt(formData.stock) || 30,
-        prescribed_for: formData.prescribed_for,
-        prescribing_doctor: formData.doctor,
-        notes: formData.notes,
-        reminder_enabled: formData.reminder_enabled,
         start_date: formData.start_date,
         end_date: formData.end_date || null,
-        instructions: formData.instructions,
+        reminder_enabled: formData.reminder_enabled,
+        dose_mg: formData.dose_mg ? parseFloat(formData.dose_mg) : null,
+        posology: formData.posology || null,
+        instructions: formData.instructions || null,
+        prescribed_for: formData.prescribed_for,
+        prescribing_doctor: formData.doctor,
+        food_to_avoid: formData.food_to_avoid,
+        food_advised: formData.food_advised,
+        notes: formData.notes,
         barcode: barcodeResult?.barcode || '',
       };
 
       if (isEditMode) {
-        // Update existing medicine
         await medicineAPI.update(medicine.id, medicineData);
-
-        // Upload photo if new one selected
         if (medicinePhoto) {
           try {
             await medicineAPI.uploadPhoto(medicine.id, medicinePhoto.uri, medicinePhoto.fileName, medicinePhoto.mimeType);
-          } catch (photoErr) {
-            console.error('Photo upload failed:', photoErr);
+          } catch (e) {
+            console.error('Photo upload failed:', e);
           }
         }
-
         showSnackbar(t('notifications.medicineUpdateSuccess'), 'success');
       } else {
-        // Create new medicine
         const response = await medicineAPI.create(medicineData);
-
-        // Upload photo after creation
         if (medicinePhoto && response.id) {
           try {
             await medicineAPI.uploadPhoto(response.id, medicinePhoto.uri, medicinePhoto.fileName, medicinePhoto.mimeType);
-          } catch (photoErr) {
-            console.error('Photo upload failed:', photoErr);
+          } catch (e) {
+            console.error('Photo upload failed:', e);
           }
         }
-
         showSnackbar(t('notifications.medicineAddSuccess'), 'success');
       }
 
-      // Wait a bit for user to see the message
-      setTimeout(() => {
-        navigation.goBack();
-      }, 1500);
+      setTimeout(() => navigation.goBack(), 1500);
     } catch (error) {
       logError('AddMedicineScreen.handleSave', error);
-      const errorMessage = getErrorMessage(error, t);
-      showSnackbar(errorMessage, 'error');
+      showSnackbar(getErrorMessage(error, t), 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    navigation.goBack();
-  };
-
+  // ── Time slot helpers ───────────────────────────────────────────────────
   const addTimeSlot = () => {
-    setFormData(prev => ({
-      ...prev,
-      times: [...prev.times, '12:00']
-    }));
+    setFormData(prev => ({ ...prev, times: [...prev.times, '12:00'] }));
   };
 
   const removeTimeSlot = (index) => {
     if (formData.times.length > 1) {
-      setFormData(prev => ({
-        ...prev,
-        times: prev.times.filter((_, i) => i !== index)
-      }));
+      setFormData(prev => ({ ...prev, times: prev.times.filter((_, i) => i !== index) }));
     }
   };
 
+  // ═══════════════════════════════════════════════════════════════════════
+  //   RENDER
+  // ═══════════════════════════════════════════════════════════════════════
+
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            {isEditMode ? t('common.edit') + ' ' + t('medicines.title') : t('addMedicine.title')}
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {isEditMode ? t('addMedicine.editSubtitle') : t('addMedicine.subtitle')}
-          </Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ─── Page Header ─────────────────────────────────────────── */}
+        <View style={[styles.pageHeader, { backgroundColor: colors.primary }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.headerTextWrap}>
+            <Text style={styles.pageTitle}>
+              {isEditMode ? (t('common.edit') || 'Edit') + ' ' + (t('medicines.title') || 'Medicine') : t('addMedicine.title')}
+            </Text>
+            <Text style={styles.pageSubtitle}>
+              {isEditMode ? (t('addMedicine.editSubtitle') || 'Update your medicine details') : t('addMedicine.subtitle')}
+            </Text>
+          </View>
+          <MaterialCommunityIcons name="pill" size={48} color="rgba(255,255,255,0.25)" style={styles.headerIcon} />
         </View>
 
-        {/* Form */}
-        <View style={styles.form}>
-          {/* Barcode Scanner Toolbar */}
-          <Card style={[styles.scannerCard, { backgroundColor: colors.primaryLight }]}>
-            <View style={styles.scannerContent}>
-              <Text style={[styles.scannerLabel, { color: colors.primary }]}>📷 {t('scanner.quickFill')}</Text>
-              <View style={styles.scannerButtons}>
-                <Button
-                  mode="contained"
-                  onPress={() => {
-                    // On Android, use Alert.prompt workaround
-                    if (Platform.OS === 'ios') {
-                      handleManualBarcode();
-                    } else {
-                      // Android doesn't support Alert.prompt, show simple input
-                      Alert.alert(
-                        t('scanner.title'),
-                        t('scanner.enterManually'),
-                        [
-                          { text: t('common.cancel'), style: 'cancel' },
-                          { text: 'OK' },
-                        ]
-                      );
-                    }
-                  }}
-                  loading={barcodeLookupLoading}
-                  disabled={barcodeLookupLoading}
-                  style={[styles.scanButton, { backgroundColor: colors.primary }]}
-                  compact
-                  icon="barcode-scan"
-                >
-                  {t('scanner.scanBarcode')}
-                </Button>
+        <View style={styles.body}>
+          {/* ─── Quick Fill (Barcode) ──────────────────────────────── */}
+          <Card style={[styles.scanCard, { backgroundColor: isDark ? colors.surface : '#f0fdfa' }]} mode="contained">
+            <View style={styles.scanInner}>
+              <View style={styles.scanLeft}>
+                <MaterialCommunityIcons name="barcode-scan" size={28} color={colors.primary} />
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <Text style={[styles.scanTitle, { color: colors.primary }]}>{t('scanner.quickFill') || 'Quick Fill'}</Text>
+                  <Text style={[styles.scanHint, { color: colors.textMuted }]}>
+                    Scan barcode to auto-fill medicine details
+                  </Text>
+                </View>
               </View>
-              {barcodeResult && (
-                <Text style={[styles.scanSuccess, { color: colors.primary }]}>✓ {t('scanner.autoFillSuccess')}</Text>
-              )}
+              <Button
+                mode="contained"
+                onPress={handleManualBarcode}
+                loading={barcodeLookupLoading}
+                disabled={barcodeLookupLoading}
+                style={[styles.scanBtn, { backgroundColor: colors.primary }]}
+                labelStyle={{ fontSize: 12 }}
+                compact
+                icon="barcode-scan"
+              >
+                Scan
+              </Button>
             </View>
+            {barcodeResult && (
+              <View style={styles.scanSuccess}>
+                <MaterialCommunityIcons name="check-circle" size={16} color={colors.success} />
+                <Text style={[styles.scanSuccessText, { color: colors.success }]}>{t('scanner.autoFillSuccess')}</Text>
+              </View>
+            )}
           </Card>
-          <Card style={[styles.card, { backgroundColor: colors.surface }]}>
-            <View style={styles.cardContent}>
+
+          {/* ═══════════════════════════════════════════════════════════
+               SECTION 1: Basic Information
+             ═══════════════════════════════════════════════════════════ */}
+          <Card style={[styles.sectionCard, { backgroundColor: colors.surface }]} mode="elevated">
+            <View style={styles.sectionInner}>
+              <SectionHeader
+                icon="pill"
+                title="Basic Information"
+                subtitle="Medicine name, dosage, and stock"
+                colors={colors}
+              />
+
               <TextInput
                 label={t('addMedicine.medicineName')}
                 placeholder={t('addMedicine.medicinePlaceholder')}
                 value={formData.name}
-                onChangeText={(value) => handleInputChange('name', value)}
+                onChangeText={(v) => handleInputChange('name', v)}
                 disabled={loading}
                 error={!!errors.name}
                 mode="outlined"
+                left={<TextInput.Icon icon="pill" color={colors.textMuted} />}
                 style={[styles.input, { backgroundColor: colors.surface }]}
                 textColor={colors.text}
                 outlineColor={colors.border}
@@ -364,12 +510,13 @@ export default function AddMedicineScreen({ route }) {
               {errors.name && <Text style={[styles.errorText, { color: colors.error }]}>{errors.name}</Text>}
 
               <TextInput
-                label={t('medicines.scientificName')}
-                placeholder={t('addMedicine.scientificNamePlaceholder')}
+                label={t('medicines.scientificName') || 'Scientific Name'}
+                placeholder="e.g., Acetylsalicylic acid"
                 value={formData.scientific_name}
-                onChangeText={(value) => handleInputChange('scientific_name', value)}
+                onChangeText={(v) => handleInputChange('scientific_name', v)}
                 disabled={loading}
                 mode="outlined"
+                left={<TextInput.Icon icon="flask" color={colors.textMuted} />}
                 style={[styles.input, { backgroundColor: colors.surface }]}
                 textColor={colors.text}
                 outlineColor={colors.border}
@@ -382,10 +529,11 @@ export default function AddMedicineScreen({ route }) {
                     label={t('addMedicine.dosage')}
                     placeholder={t('addMedicine.dosagePlaceholder')}
                     value={formData.dosage}
-                    onChangeText={(value) => handleInputChange('dosage', value)}
+                    onChangeText={(v) => handleInputChange('dosage', v)}
                     disabled={loading}
                     error={!!errors.dosage}
                     mode="outlined"
+                    left={<TextInput.Icon icon="eyedropper" color={colors.textMuted} />}
                     style={[styles.input, { backgroundColor: colors.surface }]}
                     textColor={colors.text}
                     outlineColor={colors.border}
@@ -399,11 +547,12 @@ export default function AddMedicineScreen({ route }) {
                     label={t('addMedicine.stock')}
                     placeholder={t('addMedicine.stockPlaceholder')}
                     value={formData.stock}
-                    onChangeText={(value) => handleInputChange('stock', value)}
+                    onChangeText={(v) => handleInputChange('stock', v)}
                     disabled={loading}
                     keyboardType="numeric"
                     error={!!errors.stock}
                     mode="outlined"
+                    left={<TextInput.Icon icon="package-variant" color={colors.textMuted} />}
                     style={[styles.input, { backgroundColor: colors.surface }]}
                     textColor={colors.text}
                     outlineColor={colors.border}
@@ -412,62 +561,258 @@ export default function AddMedicineScreen({ route }) {
                   {errors.stock && <Text style={[styles.errorText, { color: colors.error }]}>{errors.stock}</Text>}
                 </View>
               </View>
+            </View>
+          </Card>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>{t('addMedicine.frequency')}</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={formData.frequency}
-                    onValueChange={(value) => handleInputChange('frequency', value)}
-                    style={styles.picker}
-                  >
-                    {frequencies.map((freq) => (
-                      <Picker.Item key={freq.value} label={freq.label} value={freq.value} />
-                    ))}
-                  </Picker>
-                </View>
+          {/* ═══════════════════════════════════════════════════════════
+               SECTION 2: Schedule & Timing
+             ═══════════════════════════════════════════════════════════ */}
+          <Card style={[styles.sectionCard, { backgroundColor: colors.surface }]} mode="elevated">
+            <View style={styles.sectionInner}>
+              <SectionHeader
+                icon="clock-outline"
+                title="Schedule & Timing"
+                subtitle="Frequency, times, dates and reminders"
+                colors={colors}
+              />
+
+              {/* Frequency Picker */}
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t('addMedicine.frequency')}</Text>
+              <View style={[styles.pickerWrapper, { borderColor: colors.border, backgroundColor: isDark ? colors.surface : '#fff' }]}>
+                <Picker
+                  selectedValue={formData.frequency}
+                  onValueChange={(v) => handleInputChange('frequency', v)}
+                  style={[styles.picker, { color: colors.text }]}
+                  dropdownIconColor={colors.textSecondary}
+                >
+                  {frequencies.map((f) => (
+                    <Picker.Item key={f.value} label={f.label} value={f.value} />
+                  ))}
+                </Picker>
               </View>
 
-              <View style={styles.inputGroup}>
-                <View style={styles.timeHeader}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>{t('addMedicine.times')}</Text>
-                  <TouchableOpacity onPress={addTimeSlot} style={styles.addTimeButton}>
-                    <Text style={[styles.addTimeText, { color: colors.primary }]}>+ {t('addMedicine.addTimeSlot')}</Text>
+              {/* Time Slots */}
+              <View style={styles.timeSection}>
+                <View style={styles.timeSectionHeader}>
+                  <View style={styles.timeLabelRow}>
+                    <MaterialCommunityIcons name="clock-time-four-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginLeft: 6, marginBottom: 0 }]}>
+                      {t('addMedicine.times')}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={addTimeSlot} style={[styles.addTimeBtn, { backgroundColor: colors.primaryLight + '20' }]}>
+                    <MaterialCommunityIcons name="plus" size={16} color={colors.primary} />
+                    <Text style={[styles.addTimeBtnText, { color: colors.primary }]}>{t('addMedicine.addTimeSlot')}</Text>
                   </TouchableOpacity>
                 </View>
+
                 {formData.times.map((time, index) => (
-                  <View key={index} style={styles.timeSlot}>
-                    <TextInput
-                      value={time}
-                      onChangeText={(value) => {
-                        const newTimes = [...formData.times];
-                        newTimes[index] = value;
-                        handleInputChange('times', newTimes);
-                      }}
-                      style={[styles.input, styles.timeInput, { backgroundColor: colors.surface }]}
-                      textColor={colors.text}
-                      outlineColor={colors.border}
-                      activeOutlineColor={colors.primary}
-                    />
+                  <View key={index} style={styles.timeSlotRow}>
+                    <View style={[styles.timeChip, { backgroundColor: colors.primaryLight + '15', borderColor: colors.primaryLight + '40' }]}>
+                      <MaterialCommunityIcons name="clock-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+                      <TextInput
+                        value={time}
+                        onChangeText={(v) => {
+                          const newTimes = [...formData.times];
+                          newTimes[index] = v;
+                          handleInputChange('times', newTimes);
+                        }}
+                        style={[styles.timeTextInput, { color: colors.text }]}
+                        placeholder="HH:MM"
+                        placeholderTextColor={colors.textMuted}
+                      />
+                    </View>
                     {formData.times.length > 1 && (
-                      <TouchableOpacity
-                        onPress={() => removeTimeSlot(index)}
-                        style={[styles.removeTimeButton, { backgroundColor: colors.error }]}
-                      >
-                        <Text style={styles.removeTimeText}>×</Text>
+                      <TouchableOpacity onPress={() => removeTimeSlot(index)} style={[styles.removeTimeBtn, { backgroundColor: colors.error + '15' }]}>
+                        <MaterialCommunityIcons name="close" size={16} color={colors.error} />
                       </TouchableOpacity>
                     )}
                   </View>
                 ))}
               </View>
 
+              <Divider style={{ marginVertical: 12, backgroundColor: colors.border }} />
+
+              {/* Start Date + Duration + End Date */}
+              <View style={styles.row}>
+                <View style={styles.halfWidth}>
+                  <TextInput
+                    label={t('addMedicine.startDate') || 'Start Date'}
+                    placeholder="YYYY-MM-DD"
+                    value={formData.start_date}
+                    onChangeText={(v) => handleInputChange('start_date', v)}
+                    disabled={loading}
+                    error={!!errors.start_date}
+                    mode="outlined"
+                    left={<TextInput.Icon icon="calendar-start" color={colors.textMuted} />}
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    textColor={colors.text}
+                    outlineColor={colors.border}
+                    activeOutlineColor={colors.primary}
+                  />
+                  {errors.start_date && <Text style={[styles.errorText, { color: colors.error }]}>{errors.start_date}</Text>}
+                </View>
+                <View style={styles.halfWidth}>
+                  <TextInput
+                    label="Duration (days)"
+                    placeholder="e.g., 30"
+                    value={formData.duration}
+                    onChangeText={(v) => handleInputChange('duration', v)}
+                    disabled={loading}
+                    keyboardType="numeric"
+                    mode="outlined"
+                    left={<TextInput.Icon icon="timer-sand" color={colors.textMuted} />}
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    textColor={colors.text}
+                    outlineColor={colors.border}
+                    activeOutlineColor={colors.primary}
+                  />
+                </View>
+              </View>
+
               <TextInput
-                label={t('addMedicine.prescribedFor')}
-                placeholder={t('addMedicine.prescribedForPlaceholder')}
+                label={t('addMedicine.endDate') || 'End Date'}
+                placeholder="YYYY-MM-DD (auto-calculated)"
+                value={formData.end_date}
+                onChangeText={(v) => handleInputChange('end_date', v)}
+                disabled={loading}
+                mode="outlined"
+                left={<TextInput.Icon icon="calendar-end" color={colors.textMuted} />}
+                style={[styles.input, { backgroundColor: colors.surface }]}
+                textColor={colors.text}
+                outlineColor={colors.border}
+                activeOutlineColor={colors.primary}
+              />
+
+              <Divider style={{ marginVertical: 12, backgroundColor: colors.border }} />
+
+              {/* Reminder Toggle */}
+              <View style={[styles.toggleRow, { backgroundColor: isDark ? colors.background : '#f8fafc', borderColor: colors.border }]}>
+                <View style={styles.toggleLeft}>
+                  <MaterialCommunityIcons name="bell-ring-outline" size={22} color={colors.primary} />
+                  <View style={{ marginLeft: 12 }}>
+                    <Text style={[styles.toggleLabel, { color: colors.text }]}>
+                      {t('addMedicine.reminderEnabled') || 'Reminders'}
+                    </Text>
+                    <Text style={[styles.toggleHint, { color: colors.textMuted }]}>
+                      {t('addMedicine.enableReminders') || "Get notified when it's time"}
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={formData.reminder_enabled}
+                  onValueChange={(v) => handleInputChange('reminder_enabled', v)}
+                  trackColor={{ false: colors.border, true: colors.primaryLight }}
+                  thumbColor={formData.reminder_enabled ? colors.primary : '#f4f3f4'}
+                  ios_backgroundColor={colors.border}
+                />
+              </View>
+            </View>
+          </Card>
+
+          {/* ═══════════════════════════════════════════════════════════
+               SECTION 3: Clinical Details (Collapsible)
+             ═══════════════════════════════════════════════════════════ */}
+          <Card style={[styles.sectionCard, { backgroundColor: colors.surface }]} mode="elevated">
+            <TouchableOpacity
+              onPress={() => setShowClinical(!showClinical)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.sectionInner}>
+                <View style={styles.collapsibleHeader}>
+                  <SectionHeader
+                    icon="shield-check-outline"
+                    title="Clinical Safety"
+                    subtitle="Dose details for safety checks (optional)"
+                    colors={colors}
+                  />
+                  <MaterialCommunityIcons
+                    name={showClinical ? 'chevron-up' : 'chevron-down'}
+                    size={24}
+                    color={colors.textMuted}
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
+            {showClinical && (
+              <View style={[styles.sectionInner, { paddingTop: 0 }]}>
+                <TextInput
+                  label="Dose (mg)"
+                  placeholder="e.g., 500"
+                  value={formData.dose_mg}
+                  onChangeText={(v) => handleInputChange('dose_mg', v)}
+                  disabled={loading}
+                  keyboardType="decimal-pad"
+                  mode="outlined"
+                  left={<TextInput.Icon icon="scale" color={colors.textMuted} />}
+                  style={[styles.input, { backgroundColor: colors.surface }]}
+                  textColor={colors.text}
+                  outlineColor={colors.border}
+                  activeOutlineColor={colors.primary}
+                />
+
+                <TextInput
+                  label="Posology / Directions"
+                  placeholder="e.g., Take with food, 30 min before meals"
+                  value={formData.posology}
+                  onChangeText={(v) => handleInputChange('posology', v)}
+                  disabled={loading}
+                  multiline
+                  numberOfLines={2}
+                  mode="outlined"
+                  left={<TextInput.Icon icon="clipboard-text-outline" color={colors.textMuted} />}
+                  style={[styles.input, { backgroundColor: colors.surface }]}
+                  textColor={colors.text}
+                  outlineColor={colors.border}
+                  activeOutlineColor={colors.primary}
+                />
+
+                <TextInput
+                  label={t('addMedicine.instructions') || 'Special Instructions'}
+                  placeholder="e.g., Do not crush, take on empty stomach"
+                  value={formData.instructions}
+                  onChangeText={(v) => handleInputChange('instructions', v)}
+                  disabled={loading}
+                  multiline
+                  numberOfLines={2}
+                  mode="outlined"
+                  left={<TextInput.Icon icon="alert-circle-outline" color={colors.textMuted} />}
+                  style={[styles.input, { backgroundColor: colors.surface }]}
+                  textColor={colors.text}
+                  outlineColor={colors.border}
+                  activeOutlineColor={colors.primary}
+                />
+
+                <View style={[styles.infoBox, { backgroundColor: colors.infoLight || '#e0f2fe', borderColor: colors.info || '#0ea5e9' }]}>
+                  <MaterialCommunityIcons name="information-outline" size={18} color={colors.info || '#0ea5e9'} />
+                  <Text style={[styles.infoText, { color: colors.info || '#0284c7' }]}>
+                    Adding dose in mg enables automatic safety checks against your patient profile (weight, age, pregnancy status).
+                  </Text>
+                </View>
+              </View>
+            )}
+          </Card>
+
+          {/* ═══════════════════════════════════════════════════════════
+               SECTION 4: Doctor & Prescription
+             ═══════════════════════════════════════════════════════════ */}
+          <Card style={[styles.sectionCard, { backgroundColor: colors.surface }]} mode="elevated">
+            <View style={styles.sectionInner}>
+              <SectionHeader
+                icon="doctor"
+                title="Doctor & Prescription"
+                subtitle="Healthcare provider details"
+                colors={colors}
+              />
+
+              <TextInput
+                label={t('addMedicine.prescribedFor') || 'Prescribed For'}
+                placeholder="e.g., Headache, Hypertension"
                 value={formData.prescribed_for}
-                onChangeText={(value) => handleInputChange('prescribed_for', value)}
+                onChangeText={(v) => handleInputChange('prescribed_for', v)}
                 disabled={loading}
                 mode="outlined"
+                left={<TextInput.Icon icon="medical-bag" color={colors.textMuted} />}
                 style={[styles.input, { backgroundColor: colors.surface }]}
                 textColor={colors.text}
                 outlineColor={colors.border}
@@ -475,63 +820,121 @@ export default function AddMedicineScreen({ route }) {
               />
 
               <TextInput
-                label={t('addMedicine.doctor')}
-                placeholder={t('addMedicine.doctorPlaceholder')}
+                label={t('addMedicine.doctor') || 'Healthcare Provider'}
+                placeholder="e.g., Dr. Smith"
                 value={formData.doctor}
-                onChangeText={(value) => handleInputChange('doctor', value)}
+                onChangeText={(v) => handleInputChange('doctor', v)}
                 disabled={loading}
                 mode="outlined"
+                left={<TextInput.Icon icon="stethoscope" color={colors.textMuted} />}
                 style={[styles.input, { backgroundColor: colors.surface }]}
                 textColor={colors.text}
                 outlineColor={colors.border}
                 activeOutlineColor={colors.primary}
               />
+            </View>
+          </Card>
+
+          {/* ═══════════════════════════════════════════════════════════
+               SECTION 5: Food Guidance
+             ═══════════════════════════════════════════════════════════ */}
+          <Card style={[styles.sectionCard, { backgroundColor: colors.surface }]} mode="elevated">
+            <View style={styles.sectionInner}>
+              <SectionHeader
+                icon="food-apple-outline"
+                title="Food Guidance"
+                subtitle="Foods to avoid or recommended with this medicine"
+                colors={colors}
+              />
+
+              <TagInput
+                label="Foods to Avoid"
+                placeholder="e.g., Grapefruit"
+                tags={formData.food_to_avoid}
+                onTagsChange={(tags) => handleInputChange('food_to_avoid', tags)}
+                colors={colors}
+              />
+
+              <TagInput
+                label="Recommended Foods"
+                placeholder="e.g., Milk, Water"
+                tags={formData.food_advised}
+                onTagsChange={(tags) => handleInputChange('food_advised', tags)}
+                colors={colors}
+              />
+            </View>
+          </Card>
+
+          {/* ═══════════════════════════════════════════════════════════
+               SECTION 6: Notes & Photo
+             ═══════════════════════════════════════════════════════════ */}
+          <Card style={[styles.sectionCard, { backgroundColor: colors.surface }]} mode="elevated">
+            <View style={styles.sectionInner}>
+              <SectionHeader
+                icon="note-text-outline"
+                title="Notes & Photo"
+                subtitle="Additional information and medicine image"
+                colors={colors}
+              />
 
               <TextInput
-                label={t('addMedicine.notes')}
-                placeholder={t('addMedicine.instructionsPlaceholder')}
+                label={t('addMedicine.notes') || 'Notes'}
+                placeholder="Any additional notes about this medicine..."
                 value={formData.notes}
-                onChangeText={(value) => handleInputChange('notes', value)}
+                onChangeText={(v) => handleInputChange('notes', v)}
                 disabled={loading}
                 multiline
                 numberOfLines={3}
                 mode="outlined"
+                left={<TextInput.Icon icon="text" color={colors.textMuted} />}
                 style={[styles.input, { backgroundColor: colors.surface }]}
                 textColor={colors.text}
                 outlineColor={colors.border}
                 activeOutlineColor={colors.primary}
               />
 
-              {/* Medicine Photo Section */}
+              {/* Medicine Photo */}
               <View style={[styles.photoSection, { borderTopColor: colors.border }]}>
-                <Text style={[styles.photoLabel, { color: colors.text }]}>{t('medicinePhoto.label')}</Text>
-                <Text style={[styles.photoHint, { color: colors.textMuted }]}>{t('medicinePhoto.hint')}</Text>
-                
+                <View style={styles.photoLabelRow}>
+                  <MaterialCommunityIcons name="camera" size={18} color={colors.textSecondary} />
+                  <Text style={[styles.photoLabel, { color: colors.text }]}>
+                    {t('medicinePhoto.label') || 'Medicine Photo'}
+                  </Text>
+                </View>
+                <Text style={[styles.photoHint, { color: colors.textMuted }]}>
+                  {t('medicinePhoto.hint') || 'Take a photo of the medicine for easy identification'}
+                </Text>
+
                 {medicinePhoto ? (
                   <View style={styles.photoPreview}>
                     <Image source={{ uri: medicinePhoto.uri }} style={styles.photoImage} />
                     <TouchableOpacity
-                      style={styles.removePhotoButton}
+                      style={styles.removePhotoBtn}
                       onPress={() => setMedicinePhoto(null)}
                     >
-                      <Text style={styles.removePhotoText}>✕ {t('medicinePhoto.remove')}</Text>
+                      <MaterialCommunityIcons name="close-circle" size={20} color="#fff" />
+                      <Text style={styles.removePhotoText}>{t('medicinePhoto.remove') || 'Remove'}</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
                   <View style={styles.photoButtons}>
                     <TouchableOpacity
-                      style={[styles.photoButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+                      style={[styles.photoButton, { backgroundColor: isDark ? colors.background : '#f8fafc', borderColor: colors.border }]}
                       onPress={() => handlePickPhoto(true)}
                     >
-                      <Text style={styles.photoButtonIcon}>📷</Text>
-                      <Text style={[styles.photoButtonText, { color: colors.textSecondary }]}>{t('medicinePhoto.takePhoto')}</Text>
+                      <MaterialCommunityIcons name="camera" size={28} color={colors.primary} />
+                      <Text style={[styles.photoButtonText, { color: colors.textSecondary }]}>
+                        {t('medicinePhoto.takePhoto') || 'Camera'}
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.photoButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+                      style={[styles.photoButton, { backgroundColor: isDark ? colors.background : '#f8fafc', borderColor: colors.border }]}
                       onPress={() => handlePickPhoto(false)}
                     >
-                      <Text style={styles.photoButtonIcon}>🖼️</Text>
-                      <Text style={[styles.photoButtonText, { color: colors.textSecondary }]}>{t('medicinePhoto.fromGallery')}</Text>
+                      <MaterialCommunityIcons name="image-outline" size={28} color={colors.primary} />
+                      <Text style={[styles.photoButtonText, { color: colors.textSecondary }]}>
+                        {t('medicinePhoto.fromGallery') || 'Gallery'}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -539,220 +942,321 @@ export default function AddMedicineScreen({ route }) {
             </View>
           </Card>
 
-          {/* Action Buttons */}
-          <View style={styles.buttonContainer}>
-            <Button
-              mode="outlined"
-              onPress={handleCancel}
-              style={[styles.cancelButton, { borderColor: colors.border }]}
-              textColor={colors.text}
+          {/* ─── Action Buttons ────────────────────────────────────── */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
               disabled={loading}
+              style={[styles.cancelBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
             >
-              {t('addMedicine.cancel')}
-            </Button>
-            <Button
-              mode="contained"
-              onPress={handleSubmit}
-              style={styles.submitButton}
-              buttonColor={colors.primary}
-              loading={loading}
-              disabled={loading}
-            >
-              {loading ? t('addMedicine.submitting') : (isEditMode ? t('common.update') : t('addMedicine.submit'))}
-            </Button>
-          </View>
-        </View>
-      </View>
+              <MaterialCommunityIcons name="close" size={18} color={colors.textSecondary} />
+              <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>{t('addMedicine.cancel')}</Text>
+            </TouchableOpacity>
 
-      {/* Snackbar for messages */}
-      <Snackbar
-        visible={snackbar.visible}
-        onDismiss={() => setSnackbar({ visible: false, message: '', type: 'success' })}
-        duration={3000}
-        style={[
-          styles.snackbar,
-          { backgroundColor: snackbar.type === 'error' ? colors.error : colors.success },
-        ]}
-      >
-        {snackbar.message}
-      </Snackbar>
-    </ScrollView>
+            <TouchableOpacity
+              onPress={handleSubmit}
+              disabled={loading}
+              style={[styles.submitBtn, { backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }]}
+            >
+              {loading ? (
+                <Text style={styles.submitBtnText}>{t('addMedicine.submitting')}</Text>
+              ) : (
+                <>
+                  <MaterialCommunityIcons name={isEditMode ? 'content-save' : 'plus-circle'} size={20} color="#fff" />
+                  <Text style={styles.submitBtnText}>
+                    {isEditMode ? (t('common.update') || 'Update') : t('addMedicine.submit')}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Bottom spacer */}
+          <View style={{ height: 32 }} />
+        </View>
+
+        {/* ─── Snackbar ────────────────────────────────────────────── */}
+        <Snackbar
+          visible={snackbar.visible}
+          onDismiss={() => setSnackbar({ visible: false, message: '', type: 'success' })}
+          duration={3000}
+          style={{ backgroundColor: snackbar.type === 'error' ? colors.error : colors.success }}
+        >
+          {snackbar.message}
+        </Snackbar>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+//   STYLES
+// ═══════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
-  content: {
-    padding: 16,
+  scrollContent: {
+    flexGrow: 1,
   },
-  header: {
-    marginBottom: 24,
+
+  // ── Page Header ────────────────────────────────────────────────────
+  pageHeader: {
+    paddingTop: Platform.OS === 'ios' ? 56 : 44,
+    paddingBottom: 28,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  subtitle: {
+  headerTextWrap: {
+    maxWidth: '75%',
+  },
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.3,
+  },
+  pageSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
   },
-  form: {
-    gap: 16,
+  headerIcon: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
   },
-  card: {
-    padding: 0,
-  },
-  cardContent: {
+
+  // ── Body ───────────────────────────────────────────────────────────
+  body: {
     padding: 16,
+    marginTop: -12,
   },
-  sectionTitle: {
-    fontSize: 18,
+
+  // ── Scan Card ──────────────────────────────────────────────────────
+  scanCard: {
+    borderRadius: 16,
+    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  scanInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+  },
+  scanLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  scanTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  scanHint: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  scanBtn: {
+    borderRadius: 10,
+  },
+  scanSuccess: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+    gap: 6,
+  },
+  scanSuccessText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 16,
+  },
+
+  // ── Section Card ───────────────────────────────────────────────────
+  sectionCard: {
+    borderRadius: 18,
+    marginBottom: 14,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+  },
+  sectionInner: {
+    padding: 18,
+  },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  // ── Inputs ─────────────────────────────────────────────────────────
+  input: {
+    marginBottom: 10,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   halfWidth: {
     flex: 1,
   },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  input: {
+  errorText: {
+    fontSize: 12,
+    marginTop: -6,
     marginBottom: 8,
+    marginLeft: 4,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  pickerContainer: {
+
+  // ── Picker ─────────────────────────────────────────────────────────
+  pickerWrapper: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    marginBottom: 14,
+    overflow: 'hidden',
   },
   picker: {
     height: 50,
   },
-  timeHeader: {
+
+  // ── Time Slots ─────────────────────────────────────────────────────
+  timeSection: {
+    marginBottom: 4,
+  },
+  timeSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  addTimeButton: {
-    paddingHorizontal: 12,
+  timeLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addTimeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 6,
+    borderRadius: 8,
+    gap: 4,
   },
-  addTimeText: {
-    color: '#374151',
+  addTimeBtnText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  timeSlot: {
+  timeSlotRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  timeInput: {
+  timeChip: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
     marginRight: 8,
   },
-  removeTimeButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#ef4444',
+  timeTextInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    padding: 0,
+    backgroundColor: 'transparent',
+  },
+  removeTimeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  removeTimeText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  buttonContainer: {
+
+  // ── Toggle Row ─────────────────────────────────────────────────────
+  toggleRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  cancelButton: {
-    flex: 1,
-  },
-  submitButton: {
-    flex: 1,
-    backgroundColor: '#0d9488',
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#ef4444',
-    marginTop: -4,
-    marginBottom: 8,
-  },
-  snackbar: {
-    backgroundColor: '#10b981',
-  },
-  snackbarError: {
-    backgroundColor: '#ef4444',
-  },
-  // Barcode scanner styles
-  scannerCard: {
-    marginBottom: 4,
-    borderRadius: 12,
-    backgroundColor: '#f0fdfa',
-  },
-  scannerContent: {
+    alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
   },
-  scannerLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0d9488',
-    marginBottom: 10,
-  },
-  scannerButtons: {
+  toggleLeft: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    flex: 1,
   },
-  scanButton: {
-    backgroundColor: '#0d9488',
-    borderRadius: 8,
+  toggleLabel: {
+    fontSize: 15,
+    fontWeight: '600',
   },
-  scanSuccess: {
-    marginTop: 8,
-    fontSize: 13,
-    color: '#0d9488',
-    fontWeight: '500',
+  toggleHint: {
+    fontSize: 12,
+    marginTop: 1,
   },
-  // Photo styles
+
+  // ── Info Box ───────────────────────────────────────────────────────
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 12,
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    gap: 10,
+    marginTop: 4,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+
+  // ── Photo ──────────────────────────────────────────────────────────
   photoSection: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 14,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+  },
+  photoLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
   },
   photoLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 4,
   },
   photoHint: {
     fontSize: 12,
-    color: '#9ca3af',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   photoButtons: {
     flexDirection: 'row',
@@ -761,44 +1265,82 @@ const styles = StyleSheet.create({
   photoButton: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 14,
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
+    justifyContent: 'center',
+    paddingVertical: 20,
+    borderWidth: 1.5,
+    borderRadius: 14,
     borderStyle: 'dashed',
-  },
-  photoButtonIcon: {
-    fontSize: 24,
-    marginBottom: 4,
+    gap: 6,
   },
   photoButtonText: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: 13,
     fontWeight: '500',
   },
   photoPreview: {
     position: 'relative',
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   photoImage: {
     width: '100%',
-    height: 180,
-    borderRadius: 12,
+    height: 200,
+    borderRadius: 14,
   },
-  removePhotoButton: {
+  removePhotoBtn: {
     position: 'absolute',
     top: 8,
     right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
+    gap: 4,
   },
   removePhotoText: {
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '500',
+  },
+
+  // ── Action Buttons ─────────────────────────────────────────────────
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  cancelBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 6,
+  },
+  cancelBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  submitBtn: {
+    flex: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 8,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  submitBtnText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

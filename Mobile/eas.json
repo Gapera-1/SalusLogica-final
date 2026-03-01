@@ -10,9 +10,12 @@
     },
     "preview": {
       "distribution": "internal",
-      "node": "18.19.0",
+      "node": "20.10.0",
       "env": {
         "EAS_BUILD_NPM_CACHE_URL": "https://registry.npmjs.org/"
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "production": {

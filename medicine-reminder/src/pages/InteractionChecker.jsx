@@ -155,7 +155,7 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
 
   return (
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-      <div className="px-4 py-6 sm:px-0">
+      <div>
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">{t("interactionChecker.title")}</h1>
           <p className="mt-2 text-gray-600">
@@ -215,7 +215,7 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
                   </div>
                 </div>
                 
-                <div className="flex space-x-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:space-x-4">
                   <button
                     type="button"
                     onClick={checkInteractions}
@@ -240,8 +240,8 @@ const InteractionChecker = ({ setIsAuthenticated, setUser, user }) => {
             {results && (
               <>
                 {/* Overall Risk Assessment */}
-                <div className={`mb-6 p-6 rounded-lg text-white ${getRiskColor(results.overallRisk.level)}`}>
-                  <div className="flex items-center justify-between">
+                <div className={`mb-6 p-4 sm:p-6 rounded-lg text-white ${getRiskColor(results.overallRisk.level)}`}>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
                       <h3 className="text-xl font-bold mb-2">Overall Risk Assessment</h3>
                       <p className="text-lg">{results.overallRisk.message}</p>

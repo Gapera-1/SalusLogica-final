@@ -87,7 +87,7 @@ const Dashboard = ({ setIsAuthenticated, user }) => {
 
   return (
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-      <div className="px-4 py-6 sm:px-0 lg:px-8">
+      <div>
 
         {/* Header */}
         <div className="mb-8">

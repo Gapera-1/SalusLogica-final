@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Card } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
@@ -92,16 +93,20 @@ const MoreScreen = () => {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>
+      {/* Hero Header */}
+      <View style={[styles.heroHeader, { backgroundColor: colors.primary }]}>
+        <View>
+          <Text style={styles.heroTitle}>
             {t('more.title') || 'More'}
           </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          <Text style={styles.heroSubtitle}>
             {t('more.subtitle') || 'Access all features'}
           </Text>
         </View>
+        <MaterialCommunityIcons name="apps" size={36} color="rgba(255,255,255,0.7)" />
+      </View>
+
+      <View style={styles.content}>
 
         {/* Menu Items */}
         <View style={styles.menuGrid}>
@@ -143,50 +148,61 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
-  header: {
-    marginBottom: 24,
-    marginTop: 8,
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 56 : 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
-  title: {
-    fontSize: 24,
+  heroTitle: {
+    fontSize: 26,
     fontWeight: 'bold',
-    marginBottom: 4,
+    color: '#fff',
+    marginBottom: 2,
   },
-  subtitle: {
-    fontSize: 16,
+  heroSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
   },
   menuGrid: {
-    gap: 12,
+    gap: 10,
   },
   menuItem: {
     width: '100%',
   },
   menuCard: {
-    borderRadius: 12,
+    borderRadius: 14,
+    elevation: 1,
+    overflow: 'hidden',
   },
   menuContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 14,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 14,
   },
   menuText: {
     flex: 1,
   },
   menuTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     marginBottom: 2,
   },
   menuSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
+    opacity: 0.7,
   },
 });
 

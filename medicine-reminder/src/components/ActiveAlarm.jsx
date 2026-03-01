@@ -83,6 +83,16 @@ const ActiveAlarm = ({ alarm, onTake, onSnooze, onDismiss }) => {
           </svg>
           Snooze
         </button>
+        
+        <button
+          onClick={() => onDismiss(alarm.group_id)}
+          className="flex-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
+        >
+          <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Dismiss
+        </button>
       </div>
 
       {/* Overdue Warning */}

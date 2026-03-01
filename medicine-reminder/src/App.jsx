@@ -402,7 +402,7 @@ function App() {
                 allowedRoles={["patient"]}
                 redirectPath="/pharmacy-admin/dashboard"
               >
-                <ContraIndicationsPage />
+                <ContraIndicationsPage setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />

@@ -316,7 +316,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
 
   return (
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-card p-8">
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-card p-4 sm:p-8">
         {/* Header */}
         <div className="text-center mb-8">
           <h2 className="text-gray-900 text-2xl font-bold mb-2">{t("addMedicine.title")}</h2>
@@ -325,7 +325,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
 
         {/* Toast Notification */}
         {toast && (
-          <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all duration-300 ${
+          <div className={`fixed top-4 right-4 left-4 sm:left-auto sm:right-6 sm:top-6 z-50 px-5 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all duration-300 ${
             toast.type === 'error' ? 'bg-red-500' : 'bg-teal-500'
           }`}>
             {toast.message}

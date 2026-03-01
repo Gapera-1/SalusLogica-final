@@ -80,7 +80,7 @@ const MedicineListAPI = () => {
   if (error) {
     return (
       <BaseLayout showNavigation={true}>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="text-red-600 text-xl mb-4">Error loading medicines</div>
             <p className="text-gray-600">{error}</p>
@@ -98,8 +98,8 @@ const MedicineListAPI = () => {
 
   return (
     <BaseLayout showNavigation={true}>
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div>
+        <div>
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
@@ -167,7 +167,7 @@ const MedicineListAPI = () => {
           {/* Search and Filter */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <div className="flex gap-4 mb-4 flex-wrap">
-              <div className="flex-1 min-w-64">
+              <div className="flex-1 min-w-0">
                 <MedicineSearchAutocomplete
                   onSelect={handleAutocompleteSelect}
                   placeholder="Search medicines by name or scientific name..."
@@ -176,7 +176,7 @@ const MedicineListAPI = () => {
                 />
               </div>
               
-              <div className="min-w-40">
+              <div className="w-full sm:w-auto sm:min-w-40">
                 <select 
                   value={filter} 
                   onChange={(e) => handleFilterChange(e.target.value)}

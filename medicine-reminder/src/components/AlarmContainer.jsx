@@ -13,25 +13,34 @@ const AlarmContainer = () => {
 
   const handleTake = async (groupId) => {
     try {
+      console.log('Handling Take action for group:', groupId);
       await markAlarmTaken(groupId);
+      console.log('Take action completed successfully');
     } catch (error) {
       console.error('Failed to mark alarm as taken:', error);
+      alert('Failed to mark as taken: ' + error.message);
     }
   };
 
   const handleSnooze = async (groupId) => {
     try {
+      console.log('Handling Snooze action for group:', groupId);
       await snoozeAlarm(groupId, 30); // Default 30 minutes
+      console.log('Snooze action completed successfully');
     } catch (error) {
       console.error('Failed to snooze alarm:', error);
+      alert('Failed to snooze: ' + error.message);
     }
   };
 
   const handleDismiss = async (groupId) => {
     try {
+      console.log('Handling Dismiss action for group:', groupId);
       await dismissAlarm(groupId);
+      console.log('Dismiss action completed successfully');
     } catch (error) {
       console.error('Failed to dismiss alarm:', error);
+      alert('Failed to dismiss: ' + error.message);
     }
   };
 

@@ -111,8 +111,8 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
   console.log('MedicineList: Rendering with medicines:', medicines.length);
   return (
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-      <div className="px-4 py-6 sm:px-0">
-        <div className="mb-6 flex justify-between items-center">
+      <div>
+        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{t('medicines.title')}</h1>
             <p className="mt-1 text-sm text-gray-600">
@@ -121,7 +121,7 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
           </div>
           <button
             onClick={handleAddMedicine}
-            className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center"
+            className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center flex-shrink-0"
           >
             <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -147,7 +147,7 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
         )}
 
         {/* Quick Actions */}
-        <div className="mb-6 bg-gradient-to-r from-teal-50 to-teal-50 border border-teal-200 rounded-lg p-6">
+        <div className="mb-6 bg-gradient-to-r from-teal-50 to-teal-50 border border-teal-200 rounded-lg p-4 sm:p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">{t('medicines.quickActions')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
@@ -183,7 +183,7 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
         {/* Search and Filter */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex gap-4 mb-4 flex-wrap">
-            <div className="relative flex-1 min-w-64">
+            <div className="relative flex-1 min-w-0">
               <input
                 type="text"
                 placeholder="Search medicines..."
@@ -267,19 +267,19 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
         </div>
 
         {/* Summary Stats */}
-        <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-6 border border-white border-opacity-20">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-            <div className="stat-item">
+        <div className="bg-gradient-to-r from-teal-600 to-teal-700 rounded-2xl p-6 shadow-lg">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+            <div>
               <span className="block text-white text-2xl font-bold mb-1">{medicines.length}</span>
-              <span className="text-gray-400 text-sm">Total Medicines</span>
+              <span className="text-teal-100 text-sm">Total Medicines</span>
             </div>
-            <div className="stat-item">
+            <div>
               <span className="block text-white text-2xl font-bold mb-1">{medicines.filter(m => m.stock < 20).length}</span>
-              <span className="text-gray-400 text-sm">Low Stock Items</span>
+              <span className="text-teal-100 text-sm">Low Stock Items</span>
             </div>
-            <div className="stat-item">
+            <div>
               <span className="block text-white text-2xl font-bold mb-1">{medicines.filter(m => m.stock < 10).length}</span>
-              <span className="text-gray-400 text-sm">Critical Stock</span>
+              <span className="text-teal-100 text-sm">Critical Stock</span>
             </div>
           </div>
         </div>

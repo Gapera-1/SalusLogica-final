@@ -180,8 +180,8 @@ const EditMedicine = ({ setIsAuthenticated, setUser, user }) => {
 
   return (
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div>
+        <div className="max-w-2xl mx-auto">
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <div className="flex items-center mb-6">

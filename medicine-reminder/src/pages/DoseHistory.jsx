@@ -148,8 +148,8 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
   if (error) {
     return (
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-        <div className="min-h-screen bg-gray-50 py-8">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div>
+          <div>
             <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
               <i className="fas fa-exclamation-circle text-red-600 text-3xl mb-3"></i>
               <h3 className="text-lg font-medium text-red-800 mb-2">{t("common.error")}</h3>
@@ -170,10 +170,10 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
 
   return (
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div>
+        <div>
           <div className="mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{t("doseHistory.title")}</h1>
                 <p className="mt-1 text-sm text-gray-500">{t("doseHistory.subtitle")}</p>
@@ -415,7 +415,7 @@ const DoseHistory = ({ setIsAuthenticated, setUser, user }) => {
           {/* Adherence Summary */}
           <div className="mt-8 bg-gradient-to-r from-teal-50 to-teal-50 border border-teal-200 rounded-lg p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Adherence Summary</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="text-3xl font-bold text-teal-600">
                   {statistics.total_doses > 0 ? 

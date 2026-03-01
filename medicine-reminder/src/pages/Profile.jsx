@@ -302,7 +302,7 @@ const Profile = ({ setIsAuthenticated }) => {
 
   return (
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
         {/* Header with Avatar */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6 border border-gray-200">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">

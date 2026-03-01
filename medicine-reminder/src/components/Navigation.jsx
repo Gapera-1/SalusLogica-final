@@ -13,8 +13,10 @@ const Navigation = ({ setIsAuthenticated }) => {
   const { activeAlarms = [] } = useAlarmManager(); // safe fallback
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
   const moreMenuRef = useRef(null);
+  const mobileMenuRef = useRef(null);
 
   // Get user from localStorage
   const getUser = () => {
@@ -45,11 +47,19 @@ const Navigation = ({ setIsAuthenticated }) => {
       if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
         setMoreMenuOpen(false);
       }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
+        setMobileMenuOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     console.log("Logout clicked");
@@ -75,8 +85,24 @@ const Navigation = ({ setIsAuthenticated }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
 
-          {/* Logo */}
+          {/* Left: Hamburger + Logo */}
           <div className="flex items-center">
+            {/* Mobile hamburger button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="sm:hidden inline-flex items-center justify-center p-2 mr-2 rounded-lg text-white/90 hover:text-white hover:bg-white/15 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
             <Logo className="h-9 w-auto" />
           </div>
 
@@ -355,6 +381,126 @@ const Navigation = ({ setIsAuthenticated }) => {
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu Panel */}
+      {mobileMenuOpen && (
+        <div ref={mobileMenuRef} className="sm:hidden border-t border-white/20 animate-fade-in">
+          <div className="px-4 py-3 space-y-1 max-h-[calc(100vh-4rem)] overflow-y-auto">
+
+            {/* Language Switcher */}
+            <div className="pb-2 mb-2 border-b border-white/20">
+              <LanguageSwitcher variant="compact" />
+            </div>
+
+            {/* Patient Mobile Links */}
+            {isPatient && (
+              <>
+                <Link to="/dashboard"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/dashboard") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                >
+                  {t('navigation.dashboard')}
+                </Link>
+                <Link to="/medicine-list"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/medicine-list") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                >
+                  {t('navigation.medicines')}
+                </Link>
+                <Link to="/analytics"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/analytics") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                >
+                  {t('navigation.analytics')}
+                </Link>
+                <Link to="/interaction-checker"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/interaction-checker") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                >
+                  {t('navigation.interactionChecker')}
+                </Link>
+                <Link to="/dose-history"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/dose-history") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                >
+                  {t('navigation.doseHistory')}
+                </Link>
+                <Link to="/safety-check"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/safety-check") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                >
+                  {t('navigation.safetyCheck')}
+                </Link>
+                <Link to="/food-advice"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/food-advice") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                >
+                  {t('navigation.foodAdvice')}
+                </Link>
+
+                {/* More section items shown inline on mobile */}
+                <div className="pt-2 mt-2 border-t border-white/20">
+                  <p className="px-3 py-1 text-xs font-semibold text-white/60 uppercase tracking-wider">{t('navigation.more') || 'More'}</p>
+                  <Link to="/side-effects"
+                    className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/side-effects") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                  >
+                    {t('navigation.sideEffects')}
+                  </Link>
+                  <Link to="/notifications"
+                    className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/notifications") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                  >
+                    {t('navigation.notifications')}
+                  </Link>
+                  <Link to="/export-reports"
+                    className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/export-reports") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                  >
+                    {t('navigation.exportReports')}
+                  </Link>
+                </div>
+              </>
+            )}
+
+            {/* Pharmacy Admin Mobile Links */}
+            {isPharmacyAdmin && (
+              <>
+                <Link to="/pharmacy-admin/dashboard"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/pharmacy-admin/dashboard") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                >
+                  {t('navigation.dashboard')}
+                </Link>
+                <Link to="/pharmacy-admin/patients"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/pharmacy-admin/patients") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                >
+                  {t('navigation.patients')}
+                </Link>
+                <Link to="/pharmacy-admin/adverse-reactions"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/pharmacy-admin/adverse-reactions") ? "bg-amber-400/30 text-amber-100" : "text-white/90 hover:text-amber-100 hover:bg-amber-400/20"}`}
+                >
+                  {t('navigation.adverseReactions')}
+                </Link>
+                <Link to="/export-reports"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/export-reports") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                >
+                  {t('navigation.exportReports')}
+                </Link>
+              </>
+            )}
+
+            {/* Mobile Profile Actions */}
+            <div className="pt-2 mt-2 border-t border-white/20">
+              <button onClick={handleViewProfile}
+                className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-white/90 hover:text-white hover:bg-white/15 transition-colors flex items-center space-x-2"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span>{t('navigation.viewProfile')}</span>
+              </button>
+              <button onClick={handleLogout}
+                className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-red-200 hover:text-red-100 hover:bg-red-500/20 transition-colors flex items-center space-x-2"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>{t('navigation.signOut')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

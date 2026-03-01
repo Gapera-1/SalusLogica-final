@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Platform } from 'react-native';
 import { Card, Button, TextInput, Avatar, Switch } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -282,38 +283,39 @@ const ProfileScreen = () => {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.content}>
-        {/* Header with Avatar */}
-        <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <TouchableOpacity onPress={handleSelectAvatar} activeOpacity={0.7}>
-            {avatarUri ? (
-              <Image
-                source={{ uri: avatarUri }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <Avatar.Text 
-                size={80} 
-                label={formData.username.substring(0, 2).toUpperCase()} 
-                style={[styles.avatar, { backgroundColor: colors.primary }]}
-              />
-            )}
-            <View style={[styles.cameraIconContainer, { backgroundColor: colors.primary }]}>
-              <Text style={styles.cameraIcon}>📷</Text>
-            </View>
-          </TouchableOpacity>
-          
-          {avatarUri && (
-            <TouchableOpacity onPress={handleRemoveAvatar} style={styles.removeAvatarButton}>
-              <Text style={[styles.removeAvatarText, { color: colors.error }]}>{t('profile.removePhoto')}</Text>
-            </TouchableOpacity>
+      {/* Hero Header */}
+      <View style={[styles.heroHeader, { backgroundColor: colors.primary }]}>
+        <TouchableOpacity onPress={handleSelectAvatar} activeOpacity={0.7} style={styles.avatarWrap}>
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+          ) : (
+            <Avatar.Text 
+              size={88} 
+              label={formData.username.substring(0, 2).toUpperCase()} 
+              style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+              labelStyle={{ fontSize: 32, fontWeight: '700' }}
+            />
           )}
-          
-          <Text style={[styles.username, { color: colors.text }]}>{formData.username}</Text>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={[styles.logoutText, { color: colors.error }]}>{t('profile.logout')}</Text>
+          <View style={styles.cameraIconContainer}>
+            <MaterialCommunityIcons name="camera" size={16} color="#fff" />
+          </View>
+        </TouchableOpacity>
+        
+        <Text style={styles.heroUsername}>{formData.username}</Text>
+        
+        {avatarUri && (
+          <TouchableOpacity onPress={handleRemoveAvatar} style={styles.removeAvatarButton}>
+            <Text style={styles.removeAvatarText}>{t('profile.removePhoto')}</Text>
           </TouchableOpacity>
-        </View>
+        )}
+
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutPill}>
+          <MaterialCommunityIcons name="logout" size={16} color="#fff" />
+          <Text style={styles.logoutPillText}>{t('profile.logout')}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.content}>
 
         {/* Profile Form */}
         <View style={styles.sections}>
@@ -321,7 +323,10 @@ const ProfileScreen = () => {
           <Card style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.cardContent}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('profile.personalInfo')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <MaterialCommunityIcons name="account-outline" size={20} color={colors.primary} />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('profile.personalInfo')}</Text>
+                </View>
                 {!editing && (
                   <TouchableOpacity onPress={handleEditProfile} style={[styles.editButton, { backgroundColor: colors.primaryLight }]}>
                     <Text style={[styles.editText, { color: colors.primary }]}>{t('profile.edit')}</Text>
@@ -419,7 +424,10 @@ const ProfileScreen = () => {
           {/* Medical Information */}
           <Card style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.cardContent}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('profile.medicalInfo')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                <MaterialCommunityIcons name="medical-bag" size={18} color={colors.primary} />{' '}
+                {t('profile.medicalInfo')}
+              </Text>
 
               <TextInput
                 label={t('profile.medicalConditions')}
@@ -452,7 +460,10 @@ const ProfileScreen = () => {
           {/* Preferences */}
           <Card style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.cardContent}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('profile.preferences')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                <MaterialCommunityIcons name="cog-outline" size={18} color={colors.primary} />{' '}
+                {t('profile.preferences')}
+              </Text>
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: colors.textSecondary }]}>{t('profile.timezone')}</Text>
@@ -594,71 +605,83 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   content: {
     padding: 16,
   },
-  header: {
+  heroHeader: {
     alignItems: 'center',
-    marginBottom: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 28,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-  avatar: {
+  avatarWrap: {
+    position: 'relative',
     marginBottom: 12,
   },
+  avatar: {
+    // backgroundColor set dynamically
+  },
   avatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     borderWidth: 3,
-    borderColor: '#14b8a6',
+    borderColor: 'rgba(255,255,255,0.5)',
   },
   cameraIconContainer: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#14b8a6',
-    borderRadius: 15,
-    width: 30,
-    height: 30,
+    bottom: 2,
+    right: 2,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 14,
+    width: 28,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#ffffff',
   },
-  cameraIcon: {
-    fontSize: 16,
+  heroUsername: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 4,
   },
   removeAvatarButton: {
-    marginTop: 8,
+    marginTop: 4,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 4,
   },
   removeAvatarText: {
-    color: '#ef4444',
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 12,
     fontWeight: '500',
   },
-  username: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 8,
-    marginTop: 8,
+  logoutPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginTop: 10,
   },
-  logoutButton: {
-    padding: 8,
-  },
-  logoutText: {
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '500',
+  logoutPillText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   sections: {
-    gap: 16,
+    gap: 14,
   },
   card: {
     padding: 0,
+    borderRadius: 14,
+    overflow: 'hidden',
+    elevation: 1,
   },
   cardContent: {
     padding: 16,
@@ -670,20 +693,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontSize: 17,
+    fontWeight: '700',
   },
   editButton: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 6,
+    borderRadius: 8,
   },
   editText: {
-    color: '#374151',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   row: {
     flexDirection: 'row',
@@ -699,16 +719,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
     marginBottom: 8,
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
+    borderRadius: 10,
   },
   picker: {
     height: 50,
@@ -720,9 +737,11 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
+    borderRadius: 10,
   },
   saveButton: {
     flex: 1,
+    borderRadius: 10,
   },
   themeToggleContainer: {
     flexDirection: 'row',
@@ -731,7 +750,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 4,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
     marginTop: 8,
   },
   themeToggleText: {
@@ -739,7 +757,6 @@ const styles = StyleSheet.create({
   },
   themeToggleSubtext: {
     fontSize: 12,
-    color: '#6b7280',
     marginTop: 2,
   },
   dangerCard: {
@@ -749,18 +766,19 @@ const styles = StyleSheet.create({
   deleteToggleButton: {
     borderColor: '#dc2626',
     marginTop: 8,
+    borderRadius: 10,
   },
   deleteSection: {
     marginTop: 8,
   },
   deleteWarning: {
-    color: '#dc2626',
     fontSize: 13,
     marginBottom: 12,
     lineHeight: 18,
   },
   deleteButton: {
     flex: 1,
+    borderRadius: 10,
   },
 });
 

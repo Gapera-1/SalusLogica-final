@@ -16,11 +16,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.saluslogica.app",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
-      }
+      "package": "com.saluslogica.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,6 +25,9 @@
       "eas": {
         "projectId": "d3facebc-abe9-4fac-9aa2-da37fe069eec"
       }
-    }
+    },
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }

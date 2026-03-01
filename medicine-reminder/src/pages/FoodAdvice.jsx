@@ -173,7 +173,7 @@ const FoodAdvice = ({ setIsAuthenticated }) => {
   if (loading) {
     return (
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-        <div className="max-w-6xl mx-auto p-6">
+        <div>
           <div className="bg-white rounded-lg shadow-lg p-6 text-center">
             <div className="animate-spin h-10 w-10 border-4 border-teal-600 border-t-transparent rounded-full mx-auto mb-4"></div>
             <p className="text-gray-600">Loading food advice for your medicines...</p>
@@ -186,7 +186,7 @@ const FoodAdvice = ({ setIsAuthenticated }) => {
   if (error) {
     return (
       <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-        <div className="max-w-6xl mx-auto p-6">
+        <div>
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
             <span className="text-4xl mb-3 block">⚠️</span>
             <h3 className="text-lg font-medium text-red-800 mb-2">Error Loading Food Advice</h3>
@@ -205,7 +205,7 @@ const FoodAdvice = ({ setIsAuthenticated }) => {
 
   return (
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-      <div className="max-w-6xl mx-auto p-6">
+      <div>
         {/* Header */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">

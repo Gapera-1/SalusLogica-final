@@ -236,19 +236,40 @@ const useAlarmManager = () => {
     lastCheck,
     checkActiveAlarms,
     markAlarmTaken: async (id) => {
-      await alarmAPI.markGroupTaken(id);
-      stopRepeatingAlarm(id);
-      setActiveAlarms((prev) => prev.filter((a) => a.group_id !== id));
+      try {
+        console.log('Marking alarm as taken:', id);
+        await alarmAPI.markGroupTaken(id);
+        console.log('Successfully marked as taken');
+        stopRepeatingAlarm(id);
+        setActiveAlarms((prev) => prev.filter((a) => a.group_id !== id));
+      } catch (error) {
+        console.error('Error marking alarm as taken:', error);
+        throw error;
+      }
     },
     snoozeAlarm: async (id, minutes) => {
-      await alarmAPI.snooze(id, minutes);
-      stopRepeatingAlarm(id);
-      setActiveAlarms((prev) => prev.filter((a) => a.group_id !== id));
+      try {
+        console.log('Snoozing alarm:', id, minutes, 'minutes');
+        await alarmAPI.snooze(id, minutes);
+        console.log('Successfully snoozed alarm');
+        stopRepeatingAlarm(id);
+        setActiveAlarms((prev) => prev.filter((a) => a.group_id !== id));
+      } catch (error) {
+        console.error('Error snoozing alarm:', error);
+        throw error;
+      }
     },
     dismissAlarm: async (id) => {
-      await alarmAPI.dismiss(id);
-      stopRepeatingAlarm(id);
-      setActiveAlarms((prev) => prev.filter((a) => a.group_id !== id));
+      try {
+        console.log('Dismissing alarm:', id);
+        await alarmAPI.dismiss(id);
+        console.log('Successfully dismissed alarm');
+        stopRepeatingAlarm(id);
+        setActiveAlarms((prev) => prev.filter((a) => a.group_id !== id));
+      } catch (error) {
+        console.error('Error dismissing alarm:', error);
+        throw error;
+      }
     },
     startListening,
     stopListening,

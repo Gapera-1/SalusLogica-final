@@ -5,9 +5,11 @@ import {
   StyleSheet, 
   ScrollView, 
   TouchableOpacity, 
-  RefreshControl
+  RefreshControl,
+  Platform
 } from 'react-native';
 import { Card, Button, Avatar, Snackbar } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SkeletonDashboard } from '../components/SkeletonLoaders';
 import SyncStatusBar, { OfflineBanner } from '../components/SyncStatusBar';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -225,15 +227,20 @@ export default function DashboardScreen() {
       {/* Offline Banner */}
       <OfflineBanner />
 
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>{t('dashboard.title')}</Text>
-          <Text style={[styles.welcome, { color: colors.textSecondary }]}>
+      {/* Header */}
+      <View style={[styles.heroHeader, { backgroundColor: colors.primary }]}>
+        <View style={styles.heroLeft}>
+          <Text style={styles.heroGreeting}>
             {t('dashboard.welcomeBack').replace('%(patient)s', user?.first_name || user?.username || 'User')}
           </Text>
+          <Text style={styles.heroTitle}>{t('dashboard.title')}</Text>
         </View>
+        <View style={styles.heroAvatar}>
+          <MaterialCommunityIcons name="account-circle" size={48} color="rgba(255,255,255,0.85)" />
+        </View>
+      </View>
 
+      <View style={styles.content}>
         {/* Sync Status */}
         <SyncStatusBar />
 
@@ -246,6 +253,9 @@ export default function DashboardScreen() {
           >
             <Card style={[styles.statCardInner, { backgroundColor: colors.surface }]}>
               <View style={styles.statContent}>
+                <View style={[styles.statIconWrap, { backgroundColor: colors.primary + '18' }]}>
+                  <MaterialCommunityIcons name="pill" size={22} color={colors.primary} />
+                </View>
                 <Text style={[styles.statNumber, { color: colors.primary }]}>{activeMedicines.length}</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('dashboard.totalMedicines')}</Text>
               </View>
@@ -258,7 +268,10 @@ export default function DashboardScreen() {
           >
             <Card style={[styles.statCardInner, { backgroundColor: colors.surface }]}>
               <View style={styles.statContent}>
-                <Text style={[styles.statNumber, { color: colors.primary }]}>{upcomingDoses.length}</Text>
+                <View style={[styles.statIconWrap, { backgroundColor: '#f59e0b18' }]}>
+                  <MaterialCommunityIcons name="clock-outline" size={22} color="#f59e0b" />
+                </View>
+                <Text style={[styles.statNumber, { color: '#f59e0b' }]}>{upcomingDoses.length}</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('dashboard.pending')}</Text>
               </View>
             </Card>
@@ -271,7 +284,10 @@ export default function DashboardScreen() {
           >
             <Card style={[styles.statCardInner, { backgroundColor: colors.surface }]}>
               <View style={styles.statContent}>
-                <Text style={[styles.statNumber, { color: colors.primary }]}>{adherenceRate}%</Text>
+                <View style={[styles.statIconWrap, { backgroundColor: '#10b98118' }]}>
+                  <MaterialCommunityIcons name="chart-arc" size={22} color="#10b981" />
+                </View>
+                <Text style={[styles.statNumber, { color: '#10b981' }]}>{adherenceRate}%</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('dashboard.adherenceRate')}</Text>
               </View>
             </Card>
@@ -282,7 +298,10 @@ export default function DashboardScreen() {
         {upcomingDoses.length > 0 && (
           <Card style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.sectionHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.upcomingReminders')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="bell-ring-outline" size={20} color="#f59e0b" />
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.upcomingReminders')}</Text>
+              </View>
             </View>
             {upcomingDoses.map((dose) => (
               <TouchableOpacity
@@ -290,6 +309,7 @@ export default function DashboardScreen() {
                 style={[styles.medicineItem, { borderBottomColor: colors.border }]}
                 onPress={() => handleMedicinePress(dose.medicine)}
               >
+                <View style={[styles.medDot, { backgroundColor: '#f59e0b' }]} />
                 <View style={styles.medicineInfo}>
                   <Text style={[styles.medicineName, { color: colors.text }]}>
                     {dose.medicine_name || dose.medicine?.name}
@@ -298,7 +318,7 @@ export default function DashboardScreen() {
                     {dose.dosage || dose.medicine?.dosage} • {formatTime(dose.alarm_time)}
                   </Text>
                 </View>
-                <Avatar.Icon size={24} icon="chevron-right" style={styles.iconBackground} color={colors.textSecondary} />
+                <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             ))}
           </Card>
@@ -308,7 +328,10 @@ export default function DashboardScreen() {
         {activeMedicines.length > 0 && (
           <Card style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.sectionHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('medicines.title')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="pill" size={20} color={colors.primary} />
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('medicines.title')}</Text>
+              </View>
               <TouchableOpacity onPress={handleViewAllMedicines}>
                 <Text style={[styles.viewAllText, { color: colors.primary }]}>{t('common.viewAll') || 'View All'}</Text>
               </TouchableOpacity>
@@ -319,13 +342,14 @@ export default function DashboardScreen() {
                 style={[styles.medicineItem, { borderBottomColor: colors.border }]}
                 onPress={() => handleMedicinePress(medicine)}
               >
+                <View style={[styles.medDot, { backgroundColor: colors.primary }]} />
                 <View style={styles.medicineInfo}>
                   <Text style={[styles.medicineName, { color: colors.text }]}>{medicine.name}</Text>
                   <Text style={[styles.medicineDetails, { color: colors.textSecondary }]}>
                     {medicine.dosage} • {medicine.frequency || t('addMedicine.asNeeded')}
                   </Text>
                 </View>
-                <Avatar.Icon size={24} icon="chevron-right" style={styles.iconBackground} color={colors.textSecondary} />
+                <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             ))}
           </Card>
@@ -352,6 +376,8 @@ export default function DashboardScreen() {
           onPress={handleAddMedicine}
           style={[styles.addButton, { backgroundColor: colors.primary }]}
           icon="plus"
+          labelStyle={{ fontSize: 15, fontWeight: '700', letterSpacing: 0.5 }}
+          contentStyle={{ height: 48 }}
         >
           {t('medicines.addMedicine')}
         </Button>
@@ -386,43 +412,75 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
   },
-  header: {
-    marginBottom: 24,
-    marginTop: 8,
+  heroHeader: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 56 : 20,
+    paddingBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  title: {
-    fontSize: 24,
+  heroLeft: {
+    flex: 1,
+  },
+  heroGreeting: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.75)',
+    marginBottom: 4,
+  },
+  heroTitle: {
+    fontSize: 26,
     fontWeight: 'bold',
-    marginBottom: 8,
+    color: '#fff',
   },
-  welcome: {
-    fontSize: 16,
+  heroAvatar: {
+    marginLeft: 16,
   },
   statsContainer: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+    gap: 10,
+    marginBottom: 20,
+    marginTop: 4,
   },
   statCard: {
     flex: 1,
   },
   statCardInner: {
-    padding: 16,
+    borderRadius: 14,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
   },
   statContent: {
     alignItems: 'center',
+    padding: 14,
+  },
+  statIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     textAlign: 'center',
   },
   sectionCard: {
     marginBottom: 16,
+    borderRadius: 14,
+    overflow: 'hidden',
+    elevation: 1,
   },
   sectionHeader: {
     padding: 16,
@@ -432,36 +490,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
   },
   viewAllText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
   },
   medicineItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 14,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
+  },
+  medDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 12,
   },
   medicineInfo: {
     flex: 1,
   },
   medicineName: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
   },
   medicineDetails: {
-    fontSize: 14,
-  },
-  iconBackground: {
-    backgroundColor: 'transparent',
+    fontSize: 13,
   },
   emptyCard: {
     marginBottom: 16,
     padding: 32,
+    borderRadius: 14,
   },
   emptyContent: {
     alignItems: 'center',
@@ -481,6 +544,7 @@ const styles = StyleSheet.create({
   },
   addButton: {
     marginVertical: 16,
+    borderRadius: 14,
   },
 });
 

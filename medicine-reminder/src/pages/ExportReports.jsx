@@ -171,7 +171,7 @@ const ExportReports = ({ setIsAuthenticated }) => {
 
   return (
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
-      <div className="px-4 py-6 sm:px-0">
+      <div>
         {/* Notification toast */}
         {notification && (
           <div
