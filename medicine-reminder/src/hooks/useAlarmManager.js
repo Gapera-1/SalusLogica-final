@@ -191,6 +191,13 @@ const useAlarmManager = () => {
   // =============================
   const checkActiveAlarms = useCallback(async () => {
     try {
+      // Don't poll if no token
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        stopListening();
+        return;
+      }
+
       const alarms = await alarmAPI.getActive();
       setLastCheck(new Date());
       const activeIds = new Set(alarms.map((a) => a.group_id));
@@ -216,6 +223,12 @@ const useAlarmManager = () => {
         return alarms;
       });
     } catch (err) {
+      // Stop polling on auth errors to avoid 401 spam
+      if (err.status === 401) {
+        console.warn('Alarm polling stopped: not authenticated');
+        stopListening();
+        return;
+      }
       console.error('Alarm check failed:', err);
     }
   }, [startRepeatingAlarm]);

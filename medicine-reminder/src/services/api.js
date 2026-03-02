@@ -90,6 +90,18 @@ const apiCall = async (endpoint, options = {}) => {
       let errorMessage = 'An error occurred';
       if (errorData.error && typeof errorData.error === 'object') {
         errorMessage = errorData.error.message || errorData.error.detail || JSON.stringify(errorData.error);
+        // Also check field-level errors (e.g. non_field_errors)
+        if (errorData.error.fields) {
+          const fieldErrors = errorData.error.fields;
+          if (fieldErrors.non_field_errors?.[0]) {
+            errorMessage = fieldErrors.non_field_errors[0];
+          } else {
+            const firstField = Object.keys(fieldErrors)[0];
+            if (firstField && Array.isArray(fieldErrors[firstField])) {
+              errorMessage = fieldErrors[firstField][0];
+            }
+          }
+        }
       } else if (errorData.error) {
         errorMessage = errorData.error;
       } else if (errorData.message) {

@@ -103,8 +103,17 @@ def get_error_message(exc, response):
             return str(response.data['detail'])
         elif 'message' in response.data:
             return str(response.data['message'])
-        # For validation errors, provide a generic message
+        # For validation errors, extract the actual messages
         elif response.data:
+            # Collect field error messages
+            messages = []
+            for key, value in response.data.items():
+                if isinstance(value, list):
+                    messages.extend([str(v) for v in value])
+                elif isinstance(value, str):
+                    messages.append(value)
+            if messages:
+                return '; '.join(messages)
             return 'Validation error. Please check your input.'
     
     # Fall back to exception message

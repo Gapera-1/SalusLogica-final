@@ -201,7 +201,7 @@ function App() {
       <ThemeProvider>
         <LanguageProvider>
           <Router>
-            <AlarmContainer />
+            {isAuthenticated && <AlarmContainer />}
             <RouteHistoryTracker isAuthenticated={isAuthenticated} />
 
         <Suspense
