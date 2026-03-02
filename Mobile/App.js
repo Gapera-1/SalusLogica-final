@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LanguageProvider } from './src/i18n/LanguageContext';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
@@ -114,6 +115,7 @@ function ProfileStackScreen() {
 // Main Tab Navigator for authenticated users
 function MainTabs() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   
   return (
     <Tab.Navigator
@@ -134,8 +136,8 @@ function MainTabs() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 60,
-          paddingBottom: 8,
+          height: 60 + insets.bottom,
+          paddingBottom: 8 + insets.bottom,
           paddingTop: 6,
           elevation: 8,
           shadowColor: '#000',
@@ -252,14 +254,18 @@ function Navigation() {
     <NavigationContainer>
       <StatusBar style={isDark ? "light" : "dark"} />
       {user ? (
-        <DataSyncProvider>
-          <AlarmProvider>
-            <MainTabs />
-            <AlarmModal />
-          </AlarmProvider>
-        </DataSyncProvider>
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+          <DataSyncProvider>
+            <AlarmProvider>
+              <MainTabs />
+              <AlarmModal />
+            </AlarmProvider>
+          </DataSyncProvider>
+        </SafeAreaView>
       ) : (
-        <AuthStackScreens />
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
+          <AuthStackScreens />
+        </SafeAreaView>
       )}
     </NavigationContainer>
   );
@@ -280,10 +286,12 @@ function ThemedApp() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <ThemedApp />
-      </LanguageProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <LanguageProvider>
+          <ThemedApp />
+        </LanguageProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

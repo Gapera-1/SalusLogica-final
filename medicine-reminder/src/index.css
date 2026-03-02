@@ -163,6 +163,33 @@ body {
 .shadow-lg { box-shadow: 0 10px 15px -3px var(--card-shadow), 0 4px 6px -4px var(--card-shadow) !important; }
 .shadow-md { box-shadow: 0 4px 6px -1px var(--card-shadow), 0 2px 4px -2px var(--card-shadow) !important; }
 
+/* ============ GLOBAL INPUT STYLING ============ */
+/* Prevent mobile browsers from overriding input colors in dark mode */
+input, select, textarea {
+  background-color: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--input-border);
+  color-scheme: light;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+.dark input,
+.dark select,
+.dark textarea {
+  color-scheme: dark;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
+}
+
 /* ============ HEALTHCARE COMPONENT CLASSES ============ */
 @layer components {
   /* Cards */

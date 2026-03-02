@@ -1,7 +1,9 @@
+import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import DrugInteraction, InteractionCheck, Contraindication, DrugDatabase
@@ -11,7 +13,9 @@ from .serializers import (
     ContraindicationSerializer,
     DrugDatabaseSerializer
 )
-from .tasks import check_drug_interactions, initialize_drug_database, add_common_interactions, add_common_contraindications
+from .tasks import initialize_drug_database, add_common_interactions, add_common_contraindications
+
+logger = logging.getLogger(__name__)
 
 
 class DrugInteractionViewSet(viewsets.ReadOnlyModelViewSet):
@@ -38,7 +42,17 @@ class InteractionCheckViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'])
     def check(self, request):
-        """Check for drug interactions between specified medicines"""
+        """
+        Synchronous interaction check using Rwanda FDA-first strategy.
+        
+        Checks:
+        1. Drug-drug interactions (local DB by generic name)
+        2. Drug-drug interactions from OpenFDA label data
+        3. Food interactions (Rwanda FDA -> OpenFDA -> pattern fallback)
+        4. Contraindications (Rwanda FDA -> OpenFDA)
+        
+        Returns results directly so the frontend can display them immediately.
+        """
         medicine_ids = request.data.get('medicine_ids', [])
         
         if len(medicine_ids) < 2:
@@ -47,12 +61,154 @@ class InteractionCheckViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Perform interaction check asynchronously
-        task = check_drug_interactions.delay(request.user.id, medicine_ids)
+        # Import medicine model and safety lookup utilities
+        from apps.medicines.models import Medicine
+        from apps.medicines.safety_lookup import (
+            get_generic_name_from_rwanda,
+            fetch_openfda_safety_info,
+            get_food_advice_rwanda_first,
+            check_contraindications_rwanda_first,
+        )
+        
+        # Get user's medicines
+        user_medicines = Medicine.objects.filter(
+            id__in=medicine_ids, user=request.user
+        )
+        
+        if user_medicines.count() < 2:
+            return Response(
+                {'error': 'At least 2 valid medicines are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        interactions = []
+        contraindications_list = []
+        food_interactions_list = []
+        medicine_generic_map = {}
+        
+        # ----- Step 1: Build generic name map using Rwanda FDA-first -----
+        for medicine in user_medicines:
+            generic_name = get_generic_name_from_rwanda(medicine.name)
+            medicine_generic_map[medicine.name] = {
+                'generic': generic_name or medicine.name,
+                'rwanda_match': generic_name is not None,
+            }
+        
+        # ----- Step 2: Check pairwise drug-drug interactions -----
+        medicine_list = list(user_medicines)
+        for i, med1 in enumerate(medicine_list):
+            for med2 in medicine_list[i + 1:]:
+                generic1 = medicine_generic_map[med1.name]['generic']
+                generic2 = medicine_generic_map[med2.name]['generic']
+                
+                # 2a. Check local interactions DB (apps.interactions.DrugInteraction)
+                local_interaction = DrugInteraction.objects.filter(
+                    Q(medicine1__icontains=generic1, medicine2__icontains=generic2) |
+                    Q(medicine1__icontains=generic2, medicine2__icontains=generic1) |
+                    Q(medicine1__icontains=med1.name, medicine2__icontains=med2.name) |
+                    Q(medicine1__icontains=med2.name, medicine2__icontains=med1.name)
+                ).order_by('-severity').first()
+                
+                if local_interaction:
+                    interactions.append({
+                        'medicine1': med1.name,
+                        'medicine2': med2.name,
+                        'severity': local_interaction.severity.upper(),
+                        'description': local_interaction.description,
+                        'recommendation': local_interaction.recommendation,
+                        'mechanism': f'{generic1} + {generic2} interaction',
+                        'source': 'local_database',
+                    })
+                    continue  # Skip OpenFDA if local match found
+                
+                # 2b. Check apps.medicines DrugInteraction (Rwanda FDA model)
+                try:
+                    from apps.medicines.models import DrugInteraction as MedDrugInteraction, DrugDatabase as MedDrugDB
+                    med_interaction = MedDrugInteraction.objects.filter(
+                        Q(drug1__generic_name__iexact=generic1, drug2__generic_name__iexact=generic2) |
+                        Q(drug1__generic_name__iexact=generic2, drug2__generic_name__iexact=generic1)
+                    ).first()
+                    
+                    if med_interaction:
+                        interactions.append({
+                            'medicine1': med1.name,
+                            'medicine2': med2.name,
+                            'severity': (med_interaction.severity or 'MODERATE').upper(),
+                            'description': med_interaction.description or '',
+                            'recommendation': med_interaction.management or '',
+                            'mechanism': med_interaction.mechanism or f'{generic1} + {generic2} interaction',
+                            'source': 'drug_database',
+                        })
+                        continue
+                except Exception as exc:
+                    logger.debug(f'Medicines DrugInteraction lookup skipped: {exc}')
+                
+                # 2c. Cross-reference OpenFDA drug_interactions text
+                try:
+                    safety1 = fetch_openfda_safety_info(generic1)
+                    drug_int_text = ' '.join(safety1.get('drug_interactions', []))
+                    if drug_int_text and generic2.lower() in drug_int_text.lower():
+                        interactions.append({
+                            'medicine1': med1.name,
+                            'medicine2': med2.name,
+                            'severity': 'MODERATE',
+                            'description': f'OpenFDA reports a potential interaction between {generic1} and {generic2}.',
+                            'recommendation': 'Consult your healthcare provider about taking these together.',
+                            'mechanism': f'Mentioned in {generic1} drug interaction labeling.',
+                            'source': 'openfda',
+                        })
+                except Exception as exc:
+                    logger.debug(f'OpenFDA cross-check failed: {exc}')
+        
+        # ----- Step 3: Food interactions for each medicine -----
+        for medicine in user_medicines:
+            try:
+                food_result = get_food_advice_rwanda_first(medicine.name)
+                for fi in food_result.get('food_interactions', []):
+                    food_interactions_list.append({
+                        'medicine': medicine.name,
+                        'food': fi.get('food', fi.get('description', '')),
+                        'severity': fi.get('severity', 'MINOR'),
+                        'description': fi.get('description', ''),
+                        'recommendation': fi.get('recommendation', ''),
+                        'source': food_result.get('source', 'pattern_fallback'),
+                    })
+            except Exception as exc:
+                logger.debug(f'Food advice lookup failed for {medicine.name}: {exc}')
+        
+        # ----- Step 4: Contraindications -----
+        for medicine in user_medicines:
+            try:
+                contra_result = check_contraindications_rwanda_first(medicine.name)
+                for c in contra_result.get('contraindications', []):
+                    contraindications_list.append({
+                        'medicine': medicine.name,
+                        'condition': c.get('condition', c.get('type', '')),
+                        'severity': c.get('severity', 'MODERATE'),
+                        'description': c.get('description', ''),
+                        'source': contra_result.get('source', 'openfda'),
+                    })
+            except Exception as exc:
+                logger.debug(f'Contraindication lookup failed for {medicine.name}: {exc}')
+        
+        # ----- Save check record -----
+        try:
+            InteractionCheck.objects.create(
+                user=request.user,
+                medicines=list(user_medicines.values_list('name', flat=True)),
+                interactions_found=interactions,
+            )
+        except Exception as exc:
+            logger.warning(f'Failed to save interaction check record: {exc}')
         
         return Response({
-            'message': 'Interaction check started',
-            'task_id': task.id
+            'interactions': interactions,
+            'food_interactions': food_interactions_list,
+            'contraindications': contraindications_list,
+            'total_interactions': len(interactions),
+            'medicines_checked': list(user_medicines.values_list('name', flat=True)),
+            'medicine_generic_map': medicine_generic_map,
+            'strategy': 'rwanda_fda_first',
         })
     
     @action(detail=False, methods=['get'])
@@ -169,9 +325,9 @@ class DrugDatabaseViewSet(viewsets.ReadOnlyModelViewSet):
             )
         
         drugs = self.get_queryset().filter(
-            models.Q(generic_name__icontains=query) |
-            models.Q(brand_names__icontains=query) |
-            models.Q(drug_class__icontains=query)
+            Q(generic_name__icontains=query) |
+            Q(brand_names__icontains=query) |
+            Q(drug_class__icontains=query)
         )
         
         serializer = self.get_serializer(drugs, many=True)
