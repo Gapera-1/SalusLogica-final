@@ -1,6 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { alarmAPI } from '../services/api';
 import useWebSocket from './useWebSocket';
+import en from '../i18n/en.json';
+import fr from '../i18n/fr.json';
+import rw from '../i18n/rw.json';
+
+const translations = { en, fr, rw };
+
+// Map app language codes to BCP-47 speech synthesis language tags
+const speechLangMap = { en: 'en-US', fr: 'fr-FR', rw: 'rw-RW' };
+
+const getAlarmTranslation = (key) => {
+  const lang = localStorage.getItem('preferredLanguage') || 'en';
+  const t = translations[lang]?.alarmSpeech || translations.en.alarmSpeech;
+  return t[key] || translations.en.alarmSpeech[key] || key;
+};
 
 const useAlarmManager = () => {
   const [activeAlarms, setActiveAlarms] = useState([]);
@@ -106,6 +120,8 @@ const useAlarmManager = () => {
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
+    const lang = localStorage.getItem('preferredLanguage') || 'en';
+    utterance.lang = speechLangMap[lang] || 'en-US';
     utterance.rate = 0.9;
     utterance.volume = 0.9;
     window.speechSynthesis.speak(utterance);
@@ -140,17 +156,33 @@ const useAlarmManager = () => {
   const showAlarmNotification = (alarm) => {
     const medicineNames = alarm.medicines
       ?.map((m) => m.name)
-      .join(', ') || 'your medicine';
+      .join(', ') || getAlarmTranslation('yourMedicine');
+
+    // Build multilingual speech text with dosage info
+    const ofWord = getAlarmTranslation('of');
+    const andWord = getAlarmTranslation('and');
+    const speechParts = alarm.medicines
+      ?.map((m) => {
+        if (m.dosage) {
+          return `${m.dosage} ${ofWord} ${m.name}`;
+        }
+        return m.name;
+      }) || [getAlarmTranslation('yourMedicine')];
+
+    const joinedParts = speechParts.length > 1
+      ? speechParts.slice(0, -1).join(', ') + ` ${andWord} ` + speechParts[speechParts.length - 1]
+      : speechParts[0];
+    const speechText = `${getAlarmTranslation('timeToTake')} ${getAlarmTranslation('pleaseTake')} ${joinedParts}`;
 
     showBrowserNotification(
-      'Medicine Reminder',
-      `Time to take ${medicineNames}`,
+      getAlarmTranslation('medicineReminder'),
+      `${getAlarmTranslation('timeToTakeShort')} ${medicineNames}`,
       {
         tag: `alarm-${alarm.group_id}`,
       }
     );
 
-    speakAlarm(`Please take ${medicineNames}`);
+    speakAlarm(speechText);
     playAlarmSound();
   };
 

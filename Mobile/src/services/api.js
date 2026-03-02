@@ -398,25 +398,26 @@ export const alarmAPI = {
   },
 
   // Mark dose group as taken
-  markGroupTaken: async (doseLogIds) => {
-    return await apiCall('/alarms/mark-group-taken/', {
+  markGroupTaken: async (groupId) => {
+    return await apiCall('/alarms/taken/', {
       method: 'POST',
-      body: JSON.stringify({ dose_log_ids: doseLogIds }),
+      body: JSON.stringify({ group_id: groupId }),
     });
   },
 
   // Dismiss alarm
-  dismiss: async (alarmId) => {
-    return await apiCall(`/alarms/${alarmId}/dismiss/`, {
+  dismiss: async (groupId) => {
+    return await apiCall('/alarms/dismiss/', {
       method: 'POST',
+      body: JSON.stringify({ group_id: groupId }),
     });
   },
 
   // Snooze alarm
-  snooze: async (alarmId, minutes = 5) => {
-    return await apiCall(`/alarms/${alarmId}/snooze/`, {
+  snooze: async (groupId, minutes = 5) => {
+    return await apiCall('/alarms/snooze/', {
       method: 'POST',
-      body: JSON.stringify({ minutes }),
+      body: JSON.stringify({ group_id: groupId, snooze_minutes: minutes }),
     });
   },
 

@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import serializers
 from django.db.models import Q
 from .models import (
@@ -6,6 +8,9 @@ from .models import (
 )
 from django.contrib.auth import get_user_model
 from apps.authentication.models import UserProfile
+from .safety_lookup import check_medicine_safety_comprehensive
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -191,6 +196,65 @@ class MedicineSerializer(serializers.ModelSerializer):
                     'source': 'Geriatric dosing guidelines'
                 })
         
+        # ── Rwanda-FDA-first / OpenFDA comprehensive check ──────────────
+        try:
+            user_allergies = list(
+                UserAllergy.objects.filter(user=user).values_list('allergen', flat=True)
+            )
+            comprehensive = check_medicine_safety_comprehensive(
+                medicine_name=medicine_name,
+                population_type=population_cat,
+                user_allergies=user_allergies,
+            )
+
+            # Merge contraindications from OpenFDA that aren't already captured
+            for contra in comprehensive.get('contraindications', []):
+                warnings.append({
+                    'type': 'contraindication',
+                    'severity': 'critical',
+                    'population': population_cat,
+                    'condition': 'See description',
+                    'message': contra.get('description', ''),
+                    'source': contra.get('source', 'openfda'),
+                })
+
+            # Merge OpenFDA warnings
+            for warn in comprehensive.get('warnings', []):
+                warnings.append({
+                    'type': 'warning',
+                    'severity': 'warning',
+                    'population': population_cat,
+                    'condition': 'See description',
+                    'message': warn.get('description', ''),
+                    'source': warn.get('source', 'openfda'),
+                })
+
+            # Allergy matches
+            for allergy_warn in comprehensive.get('allergy_warnings', []):
+                warnings.append({
+                    'type': 'allergy',
+                    'severity': 'critical',
+                    'population': population_cat,
+                    'condition': allergy_warn.get('allergen', ''),
+                    'message': allergy_warn.get('message', ''),
+                    'source': 'allergy_check',
+                })
+
+            # If the comprehensive check gave a high-level status, add it
+            if comprehensive.get('safety_status') == 'CONTRAINDICATED':
+                for alert in comprehensive.get('alerts', []):
+                    if alert.get('severity') == 'CRITICAL':
+                        warnings.append({
+                            'type': 'contraindication_alert',
+                            'severity': 'critical',
+                            'population': population_cat,
+                            'condition': 'Contraindicated',
+                            'message': alert.get('message', ''),
+                            'source': 'openfda',
+                        })
+        except Exception as exc:
+            logger.warning('Comprehensive safety check failed during validation: %s', exc)
+
         # Store warnings in data for later retrieval
         if warnings:
             data['_warnings'] = warnings

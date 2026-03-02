@@ -623,5 +623,14 @@
     "activeAlarms": "Active Alarms",
     "noActiveAlarms": "No active alarms",
     "offlineMode": "Offline Mode - Actions will sync when online"
+  },
+  "alarmSpeech": {
+    "timeToTake": "It's time to take your medicine.",
+    "pleaseTake": "Please take",
+    "of": "of",
+    "and": "and",
+    "yourMedicine": "your medicine",
+    "medicineReminder": "Medicine Reminder",
+    "timeToTakeShort": "Time to take"
   }
 }

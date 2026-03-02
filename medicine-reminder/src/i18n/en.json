@@ -789,5 +789,14 @@
     "hint": "Take a photo of your medicine for easy identification",
     "invalidType": "Please select a valid image file (JPEG, PNG, or WebP)",
     "tooLarge": "Image must be smaller than 10 MB"
+  },
+  "alarmSpeech": {
+    "timeToTake": "It's time to take your medicine.",
+    "pleaseTake": "Please take",
+    "of": "of",
+    "and": "and",
+    "yourMedicine": "your medicine",
+    "medicineReminder": "Medicine Reminder",
+    "timeToTakeShort": "Time to take"
   }
 }

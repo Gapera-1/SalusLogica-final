@@ -10,6 +10,7 @@ import {
   Alert,
   Switch,
   KeyboardAvoidingView,
+  Modal,
 } from 'react-native';
 import { Card, Button, TextInput, Snackbar, Chip, Divider } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
@@ -177,6 +178,7 @@ export default function AddMedicineScreen({ route }) {
   const [barcodeResult, setBarcodeResult] = useState(null);
   const [medicinePhoto, setMedicinePhoto] = useState(null);
   const [showClinical, setShowClinical] = useState(false);
+  const [disclaimerData, setDisclaimerData] = useState(null);
 
   // ── Load edit data ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -394,6 +396,14 @@ export default function AddMedicineScreen({ route }) {
             console.error('Photo upload failed:', e);
           }
         }
+
+        // Check for contraindication / safety warnings from backend
+        if (response.safety_warnings && response.safety_warnings.length > 0) {
+          setDisclaimerData(response.safety_warnings);
+          setLoading(false);
+          return; // Don't navigate yet — show disclaimer first
+        }
+
         showSnackbar(t('notifications.medicineAddSuccess'), 'success');
       }
 
@@ -985,6 +995,95 @@ export default function AddMedicineScreen({ route }) {
           {snackbar.message}
         </Snackbar>
       </ScrollView>
+
+      {/* ─── Contraindication Disclaimer Modal ────────────────────── */}
+      {disclaimerData && (
+        <Modal
+          visible={!!disclaimerData}
+          animationType="slide"
+          transparent={true}
+          statusBarTranslucent
+          onRequestClose={() => {
+            setDisclaimerData(null);
+            navigation.goBack();
+          }}
+        >
+          <View style={disclaimerStyles.overlay}>
+            <View style={[disclaimerStyles.modal, { backgroundColor: colors.surface }]}>
+              {/* Header */}
+              <View style={disclaimerStyles.header}>
+                <MaterialCommunityIcons name="alert-circle" size={32} color="#fff" />
+                <Text style={disclaimerStyles.headerTitle}>
+                  {t('safety.disclaimerTitle') || 'Safety Warning'}
+                </Text>
+                <Text style={disclaimerStyles.headerSubtitle}>
+                  {t('safety.disclaimerSubtitle') || 'Contraindications detected for your profile'}
+                </Text>
+              </View>
+
+              {/* Warning List */}
+              <ScrollView style={disclaimerStyles.content} showsVerticalScrollIndicator={false}>
+                {disclaimerData.map((warning, index) => {
+                  const isCritical = typeof warning === 'string'
+                    ? warning.toLowerCase().includes('contraindic') || warning.toLowerCase().includes('allerg')
+                    : false;
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        disclaimerStyles.warningCard,
+                        { borderLeftColor: isCritical ? '#dc2626' : '#f59e0b' },
+                      ]}
+                    >
+                      <Text style={disclaimerStyles.warningIcon}>
+                        {isCritical ? '🚨' : '⚠️'}
+                      </Text>
+                      <Text style={[disclaimerStyles.warningText, { color: colors.text }]}>
+                        {typeof warning === 'string' ? warning : warning.message || JSON.stringify(warning)}
+                      </Text>
+                    </View>
+                  );
+                })}
+
+                {/* Legal disclaimer */}
+                <View style={disclaimerStyles.legalBox}>
+                  <Text style={disclaimerStyles.legalText}>
+                    {t('safety.legalDisclaimer') ||
+                      'This information is for reference only. Always consult your healthcare provider before making changes to your medication.'}
+                  </Text>
+                </View>
+              </ScrollView>
+
+              {/* Action Buttons */}
+              <View style={disclaimerStyles.actions}>
+                <Button
+                  mode="contained"
+                  onPress={() => {
+                    setDisclaimerData(null);
+                    showSnackbar(t('notifications.medicineAddSuccess'), 'success');
+                    setTimeout(() => navigation.goBack(), 1200);
+                  }}
+                  style={[disclaimerStyles.primaryBtn, { backgroundColor: colors.primary }]}
+                  labelStyle={{ fontWeight: '700' }}
+                  icon="check"
+                >
+                  {t('safety.understand') || 'I Understand, Continue'}
+                </Button>
+                <Button
+                  mode="outlined"
+                  onPress={() => {
+                    setDisclaimerData(null);
+                  }}
+                  style={[disclaimerStyles.secondaryBtn, { borderColor: colors.primary }]}
+                  icon="pencil"
+                >
+                  {t('safety.reviewMedicines') || 'Review My Medicines'}
+                </Button>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -1342,5 +1441,94 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '700',
+  },
+});
+
+const disclaimerStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modal: {
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '85%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  header: {
+    backgroundColor: '#dc2626',
+    padding: 24,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  content: {
+    padding: 16,
+    maxHeight: 300,
+  },
+  warningCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 12,
+    borderLeftWidth: 4,
+    backgroundColor: '#fef2f2',
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  warningIcon: {
+    fontSize: 18,
+    marginRight: 10,
+    marginTop: 1,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  legalBox: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+  },
+  legalText: {
+    fontSize: 11,
+    color: '#6b7280',
+    fontStyle: 'italic',
+    lineHeight: 16,
+    textAlign: 'center',
+  },
+  actions: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    gap: 10,
+  },
+  primaryBtn: {
+    borderRadius: 12,
+    paddingVertical: 4,
+  },
+  secondaryBtn: {
+    borderRadius: 12,
   },
 });

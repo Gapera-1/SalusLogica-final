@@ -600,23 +600,25 @@ export const alarmAPI = {
 
   // Mark group as taken
   markGroupTaken: async (groupId) => {
-    return await apiCall(`/alarms/${groupId}/taken/`, {
+    return await apiCall('/alarms/taken/', {
       method: 'POST',
+      body: JSON.stringify({ group_id: groupId }),
     });
   },
 
   // Dismiss alarm
   dismiss: async (groupId) => {
-    return await apiCall(`/alarms/${groupId}/dismiss/`, {
+    return await apiCall('/alarms/dismiss/', {
       method: 'POST',
+      body: JSON.stringify({ group_id: groupId }),
     });
   },
 
   // Snooze alarm
   snooze: async (groupId, minutes = 30) => {
-    return await apiCall(`/alarms/${groupId}/snooze/`, {
+    return await apiCall('/alarms/snooze/', {
       method: 'POST',
-      body: JSON.stringify({ snooze_minutes: minutes }),
+      body: JSON.stringify({ group_id: groupId, snooze_minutes: minutes }),
     });
   },
 

@@ -290,7 +290,7 @@ function App() {
                 allowedRoles={["patient"]}
                 redirectPath="/pharmacy-admin/dashboard"
               >
-                <Dashboard user={user} handleLogout={handleLogout} />
+                <Dashboard user={user} handleLogout={handleLogout} setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -304,7 +304,7 @@ function App() {
                 allowedRoles={["patient"]}
                 redirectPath="/pharmacy-admin/dashboard"
               >
-                <MedicineList user={user} />
+                <MedicineList user={user} setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -318,7 +318,7 @@ function App() {
                 allowedRoles={["patient"]}
                 redirectPath="/pharmacy-admin/dashboard"
               >
-                <AddMedicine user={user} />
+                <AddMedicine user={user} setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -346,7 +346,7 @@ function App() {
                 allowedRoles={["patient"]}
                 redirectPath="/pharmacy-admin/dashboard"
               >
-                <AnalyticsDashboard user={user} />
+                <AnalyticsDashboard user={user} setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -360,7 +360,7 @@ function App() {
                 allowedRoles={["patient"]}
                 redirectPath="/pharmacy-admin/dashboard"
               >
-                <InteractionChecker />
+                <InteractionChecker setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -374,7 +374,7 @@ function App() {
                 allowedRoles={["patient"]}
                 redirectPath="/pharmacy-admin/dashboard"
               >
-                <DoseHistory />
+                <DoseHistory setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -388,7 +388,7 @@ function App() {
                 allowedRoles={["patient"]}
                 redirectPath="/pharmacy-admin/dashboard"
               >
-                <EditMedicine />
+                <EditMedicine setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -416,7 +416,7 @@ function App() {
                 allowedRoles={["patient"]}
                 redirectPath="/pharmacy-admin/dashboard"
               >
-                <FoodAdvice />
+                <FoodAdvice setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -430,7 +430,7 @@ function App() {
                 allowedRoles={["patient"]}
                 redirectPath="/pharmacy-admin/dashboard"
               >
-                <SafetyCheck />
+                <SafetyCheck setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -488,7 +488,7 @@ function App() {
                 allowedRoles={["pharmacy_admin"]}
                 redirectPath="/dashboard"
               >
-                <PharmacyAdminDashboard user={user} />
+                <PharmacyAdminDashboard user={user} setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -502,7 +502,7 @@ function App() {
                 allowedRoles={["pharmacy_admin"]}
                 redirectPath="/dashboard"
               >
-                <PharmacyAdminPatients />
+                <PharmacyAdminPatients setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />
@@ -516,7 +516,7 @@ function App() {
                 allowedRoles={["pharmacy_admin"]}
                 redirectPath="/dashboard"
               >
-                <PharmacyAdminAdverseReactions />
+                <PharmacyAdminAdverseReactions setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />

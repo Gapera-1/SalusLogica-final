@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ActivityIndicator, Text, StyleSheet, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -163,17 +163,89 @@ function MainTabs() {
   );
 }
 
+// Splash screen component
+function SplashScreen() {
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  return (
+    <View style={splashStyles.container}>
+      <Animated.View style={[splashStyles.content, { opacity: fadeAnim }]}>  
+        <View style={splashStyles.logoCircle}>
+          <Text style={splashStyles.logoEmoji}>💊</Text>
+        </View>
+        <Text style={splashStyles.appName}>SalusLogica</Text>
+        <Text style={splashStyles.tagline}>Your Health Companion</Text>
+        <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" style={{ marginTop: 32 }} />
+        <Text style={splashStyles.poweredBy}>powered by MF HealthTech</Text>
+      </Animated.View>
+    </View>
+  );
+}
+
+const splashStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0d9488',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  content: {
+    alignItems: 'center',
+  },
+  logoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoEmoji: {
+    fontSize: 48,
+  },
+  appName: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 1,
+  },
+  tagline: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 6,
+    letterSpacing: 0.5,
+  },
+  poweredBy: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 48,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+});
+
 // Navigation component that handles auth state
 function Navigation() {
   const { user, isLoading } = useAuth();
   const { currentTheme, isDark } = useTheme();
+  const [showSplash, setShowSplash] = useState(true);
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: currentTheme.colors.background }}>
-        <ActivityIndicator size="large" color={currentTheme.colors.primary} />
-      </View>
-    );
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash || isLoading) {
+    return <SplashScreen />;
   }
 
   return (

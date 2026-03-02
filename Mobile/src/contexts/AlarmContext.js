@@ -6,6 +6,20 @@ import NetInfo from '@react-native-community/netinfo';
 import { alarmAPI, medicineAPI, doseAPI } from '../services/api';
 import { Platform, Vibration, AppState } from 'react-native';
 
+// Alarm speech translations
+import enTranslations from '../i18n/translations/en.json';
+import frTranslations from '../i18n/translations/fr.json';
+import rwTranslations from '../i18n/translations/rw.json';
+
+const alarmTranslations = {
+  en: enTranslations.alarmSpeech,
+  fr: frTranslations.alarmSpeech,
+  rw: rwTranslations.alarmSpeech,
+};
+
+// Map app language codes to BCP-47 speech synthesis language tags
+const speechLangMap = { en: 'en-US', fr: 'fr-FR', rw: 'rw-RW' };
+
 // Storage keys
 const STORAGE_KEYS = {
   CACHED_MEDICINES: '@alarms/cached_medicines',
@@ -295,12 +309,14 @@ export const AlarmProvider = ({ children }) => {
    */
   const sendImmediateNotification = useCallback(async (alarm) => {
     try {
-      const medicineNames = alarm.medicines?.map(m => m.name).join(', ') || 'Medicine';
+      const lang = await AsyncStorage.getItem('language') || 'en';
+      const t = alarmTranslations[lang] || alarmTranslations.en;
+      const medicineNames = alarm.medicines?.map(m => m.name).join(', ') || t.yourMedicine;
       
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '💊 Medicine Reminder',
-          body: `Time to take: ${medicineNames}`,
+          title: `💊 ${t.medicineReminder}`,
+          body: `${t.timeToTakeShort} ${medicineNames}`,
           data: { alarm },
           badge: 1,
           sound: true,
@@ -314,7 +330,7 @@ export const AlarmProvider = ({ children }) => {
   }, []);
 
   /**
-   * Text-to-speech announcement
+   * Text-to-speech announcement (multilingual)
    */
   const announceAlarm = useCallback(async (medicines) => {
     if (isSpeakingRef.current) {
@@ -323,20 +339,33 @@ export const AlarmProvider = ({ children }) => {
 
     try {
       isSpeakingRef.current = true;
+
+      // Get the user's current language
+      const lang = await AsyncStorage.getItem('language') || 'en';
+      const t = alarmTranslations[lang] || alarmTranslations.en;
+      const speechLang = speechLangMap[lang] || 'en-US';
       
-      let medicineNames;
+      let speechParts;
       if (Array.isArray(medicines)) {
-        medicineNames = medicines.map(m => m.name).join(', and ') || 'your medicine';
+        speechParts = medicines.map(m => {
+          if (m.dosage) {
+            return `${m.dosage} ${t.of} ${m.name}`;
+          }
+          return m.name;
+        });
       } else if (medicines?.name) {
-        medicineNames = medicines.name;
+        speechParts = [medicines.dosage ? `${medicines.dosage} ${t.of} ${medicines.name}` : medicines.name];
       } else {
-        medicineNames = 'your medicine';
+        speechParts = [t.yourMedicine];
       }
-      
-      const announcement = `It's time to take your medicine. Please take ${medicineNames}.`;
+
+      const joinedParts = speechParts.length > 1
+        ? speechParts.slice(0, -1).join(', ') + ` ${t.and} ` + speechParts[speechParts.length - 1]
+        : speechParts[0];
+      const announcement = `${t.timeToTake} ${t.pleaseTake} ${joinedParts}.`;
 
       await Speech.speak(announcement, {
-        language: 'en',
+        language: speechLang,
         rate: 0.85,
         pitch: 1.0,
         onDone: () => {

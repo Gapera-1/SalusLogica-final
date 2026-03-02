@@ -66,7 +66,11 @@ const Navigation = ({ setIsAuthenticated }) => {
     localStorage.removeItem("loggedIn");
     localStorage.removeItem("user");
     localStorage.removeItem("access_token");
-    setIsAuthenticated(false);
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("lastVisitedRoute");
+    if (typeof setIsAuthenticated === "function") {
+      setIsAuthenticated(false);
+    }
     setProfileDropdownOpen(false);
     navigate("/");
   };

@@ -129,9 +129,42 @@ class AlarmViewSet(viewsets.ViewSet):
                 )
         
         count = doses.count()
+        now = timezone.now()
+        
+        # Reduce stock for each medicine in the group
+        import re
+        processed_medicines = set()  # Avoid double-decrementing same medicine
+        for dose in doses.select_related('medicine'):
+            medicine = dose.medicine
+            if medicine.id in processed_medicines:
+                continue
+            processed_medicines.add(medicine.id)
+            
+            if medicine.stock_count is not None and medicine.stock_count > 0:
+                dosage_text = medicine.dosage or ""
+                dose_quantity = 1
+                try:
+                    match = re.search(r'(\d+)', dosage_text)
+                    if match:
+                        parsed_qty = int(match.group(1))
+                        if parsed_qty > 0:
+                            dose_quantity = parsed_qty
+                except Exception:
+                    dose_quantity = 1
+                
+                decrement = min(dose_quantity, medicine.stock_count)
+                medicine.stock_count -= decrement
+                
+                if medicine.stock_count <= 0:
+                    medicine.stock_count = 0
+                    medicine.is_active = False
+                    medicine.completed = True
+                
+                medicine.save(update_fields=['stock_count', 'is_active', 'completed', 'updated_at'])
+        
         doses.update(
             status='taken',
-            taken_at=timezone.now()
+            taken_at=now
         )
         
         # Mark associated medication schedule as acknowledged to stop repeat alarms

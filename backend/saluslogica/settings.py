@@ -269,7 +269,7 @@ CELERY_BEAT_SCHEDULE = {
     # New alarm system tasks
     'check-medication-schedules': {
         'task': 'apps.alarms.tasks.check_medication_schedules',
-        'schedule': 60.0,  # Every minute - check for upcoming doses
+        'schedule': 10.0,  # Every 10 seconds - check for upcoming doses (precision matters)
     },
     'repeat-unacknowledged-alarms': {
         'task': 'apps.alarms.tasks.repeat_unacknowledged_alarms',

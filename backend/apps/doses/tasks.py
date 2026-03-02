@@ -11,31 +11,53 @@ User = get_user_model()
 
 @shared_task
 def create_dose_schedules():
-    """Create dose schedules for all active medicines"""
+    """Create dose schedules for all active medicines with proper timezone conversion.
+    
+    Medicine.times stores times in the user's LOCAL timezone (e.g. '14:00' means 2 PM local).
+    We must convert to UTC before storing scheduled_time so alarms fire at the correct moment.
+    """
     from django.utils import timezone
     from datetime import time, date
+    import pytz
     
     today = timezone.now().date()
-    active_medicines = Medicine.objects.filter(is_active=True, completed=False)
+    active_medicines = Medicine.objects.filter(
+        is_active=True, completed=False
+    ).select_related('user')
     
     for medicine in active_medicines:
         if medicine.start_date <= today <= medicine.end_date:
+            # Get user's timezone for proper conversion
+            user_tz_str = getattr(medicine.user, 'timezone', None) or 'UTC'
+            try:
+                user_tz = pytz.timezone(user_tz_str)
+            except pytz.exceptions.UnknownTimeZoneError:
+                user_tz = pytz.UTC
+                user_tz_str = 'UTC'
+            
             for dose_time in medicine.times:
-                hour, minute = map(int, dose_time.split(':'))
-                scheduled_time = timezone.make_aware(
-                    datetime.combine(today, time(hour, minute))
-                )
-                
-                # Create dose log if it doesn't exist
-                DoseLog.objects.get_or_create(
-                    medicine=medicine,
-                    scheduled_time=scheduled_time,
-                    defaults={
-                        'local_time': scheduled_time,
-                        'user_timezone': medicine.user.timezone,
-                        'status': 'pending'
-                    }
-                )
+                try:
+                    hour, minute = map(int, dose_time.split(':'))
+                    
+                    # Create naive local datetime and localize to user's timezone
+                    naive_local = datetime.combine(today, time(hour, minute))
+                    local_datetime = user_tz.localize(naive_local)
+                    
+                    # Convert to UTC for storage
+                    utc_scheduled_time = local_datetime.astimezone(pytz.UTC)
+                    
+                    # Create dose log if it doesn't exist
+                    DoseLog.objects.get_or_create(
+                        medicine=medicine,
+                        scheduled_time=utc_scheduled_time,
+                        defaults={
+                            'local_time': local_datetime,
+                            'user_timezone': user_tz_str,
+                            'status': 'pending'
+                        }
+                    )
+                except (ValueError, IndexError):
+                    continue
 
 
 @shared_task

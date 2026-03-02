@@ -31,6 +31,7 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
   const [barcodeLookupLoading, setBarcodeLookupLoading] = useState(false);
   const [barcodeResult, setBarcodeResult] = useState(null);
   const [toast, setToast] = useState(null);
+  const [disclaimerData, setDisclaimerData] = useState(null); // safety warnings modal
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -275,22 +276,13 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
       
       // Check for safety warnings
       if (response.safety_warnings && response.safety_warnings.length > 0) {
-        const warnings = response.safety_warnings;
-        const criticalWarnings = warnings.filter(w => 
-          w.severity === 'absolute' || w.severity === 'critical'
-        );
-        
-        if (criticalWarnings.length > 0) {
-          const warningMessage = criticalWarnings.map(w => 
-            `⚠️ ${w.type?.toUpperCase()}: ${w.message}\n${w.recommendation || ''}`
-          ).join('\n\n');
-          alert(`${t("addMedicine.criticalSafetyWarning")}\n\n${warningMessage}\n\n${t("addMedicine.consultDoctor")}`);
-        } else {
-          const warningMessage = warnings.map(w => 
-            `ℹ️ ${w.message}`
-          ).join('\n\n');
-          alert(`${t("addMedicine.safetyInformation")}\n\n${warningMessage}`);
-        }
+        // Show disclaimer modal instead of a plain alert
+        setDisclaimerData({
+          medicineName: formData.name,
+          warnings: response.safety_warnings,
+        });
+        // Don't navigate yet – user must acknowledge the disclaimer first
+        return;
       }
       
       alert(t("addMedicine.success"));
@@ -316,6 +308,100 @@ const AddMedicine = ({ setIsAuthenticated, setUser }) => {
 
   return (
     <BaseLayout showNavigation={true} setIsAuthenticated={setIsAuthenticated}>
+      {/* ── Contraindication Disclaimer Modal ── */}
+      {disclaimerData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-red-600 rounded-t-2xl px-6 py-4 flex items-center gap-3">
+              <svg className="w-8 h-8 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+              </svg>
+              <div>
+                <h2 className="text-white text-lg font-bold">Safety Disclaimer</h2>
+                <p className="text-red-100 text-sm">Important safety information for {disclaimerData.medicineName}</p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-gray-700 text-sm leading-relaxed">
+                The following contraindication(s) and/or warnings were detected based on your patient profile. Please review carefully before continuing.
+              </p>
+
+              {disclaimerData.warnings.map((w, idx) => {
+                const isCritical = w.severity === 'critical' || w.severity === 'absolute';
+                return (
+                  <div
+                    key={idx}
+                    className={`rounded-lg border p-4 ${
+                      isCritical
+                        ? 'bg-red-50 border-red-300'
+                        : 'bg-yellow-50 border-yellow-300'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="text-xl flex-shrink-0">{isCritical ? '🚫' : '⚠️'}</span>
+                      <div className="min-w-0">
+                        <span
+                          className={`inline-block text-xs font-semibold uppercase px-2 py-0.5 rounded-full mb-1 ${
+                            isCritical
+                              ? 'bg-red-200 text-red-800'
+                              : 'bg-yellow-200 text-yellow-800'
+                          }`}
+                        >
+                          {w.severity || 'warning'}
+                        </span>
+                        <p className={`text-sm font-medium ${
+                          isCritical ? 'text-red-800' : 'text-yellow-800'
+                        }`}>
+                          {w.message}
+                        </p>
+                        {w.recommendation && (
+                          <p className="text-xs mt-1 text-gray-600">
+                            <strong>Recommendation:</strong> {w.recommendation}
+                          </p>
+                        )}
+                        {w.source && (
+                          <p className="text-xs mt-0.5 text-gray-400">Source: {w.source}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  <strong>Disclaimer:</strong> This information is for educational purposes only and is not a substitute for professional medical advice. Always consult your healthcare provider or pharmacist before starting a new medication.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => {
+                  setDisclaimerData(null);
+                  navigate('/medicine-list');
+                }}
+                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors"
+              >
+                I understand, continue
+              </button>
+              <button
+                onClick={() => {
+                  setDisclaimerData(null);
+                }}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors"
+              >
+                Review my medicines
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-card p-4 sm:p-8">
         {/* Header */}
         <div className="text-center mb-8">

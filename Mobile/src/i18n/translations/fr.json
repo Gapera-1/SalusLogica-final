@@ -568,5 +568,14 @@
     "testPushError": "Échec de l'envoi de la notification push de test",
     "deleteSuccess": "Notification supprimée",
     "deleteError": "Échec de la suppression de la notification"
+  },
+  "alarmSpeech": {
+    "timeToTake": "C'est l'heure de prendre votre médicament.",
+    "pleaseTake": "Veuillez prendre",
+    "of": "de",
+    "and": "et",
+    "yourMedicine": "votre médicament",
+    "medicineReminder": "Rappel de médicament",
+    "timeToTakeShort": "Il est temps de prendre"
   }
 }

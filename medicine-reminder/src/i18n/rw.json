@@ -860,5 +860,14 @@
     "hint": "Fata ifoto y'umuti wawe kugira ngo umenye byoroshye",
     "invalidType": "Nyamuneka hitamo ifoto iboneye (JPEG, PNG, cyangwa WebP)",
     "tooLarge": "Ifoto igomba kuba munsi ya 10 MB"
+  },
+  "alarmSpeech": {
+    "timeToTake": "Igihe cyo gufata umuti wawe kirageze.",
+    "pleaseTake": "Nyamuneka fata",
+    "of": "ya",
+    "and": "na",
+    "yourMedicine": "umuti wawe",
+    "medicineReminder": "Ikibutsa cy'umuti",
+    "timeToTakeShort": "Igihe cyo gufata"
   }
 }
