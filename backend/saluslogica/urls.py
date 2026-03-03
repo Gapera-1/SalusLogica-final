@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/analytics/', include('apps.analytics.urls')),
     path('api/interactions/', include('apps.interactions.urls')),
     path('api/alarms/', include('apps.alarms.urls')),
+    path('api/chat/', include('apps.chatbot.urls')),
     path('api/pharmacy-admin/', include(pharmacy_urls)),
     
     # Patient-facing side effect tracking (reuses AdverseReaction model)

@@ -798,5 +798,15 @@
     "yourMedicine": "votre médicament",
     "medicineReminder": "Rappel de médicament",
     "timeToTakeShort": "Il est temps de prendre"
+  },
+  "chatbot": {
+    "title": "SalusLogica IA",
+    "subtitle": "Assistant Santé",
+    "toggle": "Discuter avec l'IA",
+    "welcome": "Bonjour ! \ud83d\udc4b Je suis SalusLogica IA, votre assistant santé. Comment puis-je vous aider ?",
+    "placeholder": "Posez-moi une question sur la santé...",
+    "newChat": "Nouvelle conversation",
+    "error": "Désolé, je n'ai pas pu traiter votre demande. Veuillez réessayer.",
+    "disclaimer": "Les réponses de l'IA sont à titre informatif uniquement. Consultez toujours votre professionnel de santé."
   }
 }

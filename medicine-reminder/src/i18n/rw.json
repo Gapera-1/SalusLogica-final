@@ -869,5 +869,15 @@
     "yourMedicine": "umuti wawe",
     "medicineReminder": "Ikibutsa cy'umuti",
     "timeToTakeShort": "Igihe cyo gufata"
+  },
+  "chatbot": {
+    "title": "SalusLogica AI",
+    "subtitle": "Umufasha w'Ubuzima",
+    "toggle": "Ganira na AI",
+    "welcome": "Muraho! \ud83d\udc4b Ndi SalusLogica AI, umufasha wawe w'ubuzima. Nagufasha iki uyu munsi?",
+    "placeholder": "Mbaza ikibazo ku buzima...",
+    "newChat": "Ikiganiro gishya",
+    "error": "Ihangane, sinashoboye gukemura icyo usaba. Nyamuneka gerageza nanone.",
+    "disclaimer": "Ibisubizo bya AI ni iby'amakuru gusa. Buri gihe ganira na muganga wawe."
   }
 }

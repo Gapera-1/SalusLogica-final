@@ -57,6 +57,7 @@ const PharmacyAdminAdverseReactions = React.lazy(
 
 /* ============ COMPONENTS ============ */
 import AlarmContainer from "./components/AlarmContainer";
+import ChatBot from "./components/ChatBot";
 
 /* ================= ROLE HELPERS ================= */
 const isPharmacyAdmin = (user) =>
@@ -202,6 +203,7 @@ function App() {
         <LanguageProvider>
           <Router>
             {isAuthenticated && <AlarmContainer />}
+            {isAuthenticated && <ChatBot />}
             <RouteHistoryTracker isAuthenticated={isAuthenticated} />
 
         <Suspense

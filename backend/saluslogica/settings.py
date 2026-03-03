@@ -41,6 +41,7 @@ LOCAL_APPS = [
     'apps.analytics',
     'apps.interactions',
     'apps.alarms',
+    'apps.chatbot',
     'saluslogica',  # Add the pharmacy admin app
 ]
 
@@ -287,6 +288,12 @@ CELERY_BEAT_SCHEDULE = {
 
 # Custom User Model
 AUTH_USER_MODEL = 'authentication.User'
+
+# OpenAI Settings (for AI chatbot)
+# Set OPENAI_API_KEY in your .env to enable GPT-powered responses.
+# Without it the chatbot falls back to a built-in rule-based engine.
+OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-3.5-turbo')
 
 # Email configuration (for notifications)
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
