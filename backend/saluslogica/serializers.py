@@ -229,9 +229,31 @@ class PharmacyAdminPatientSerializer(serializers.ModelSerializer):
     email = serializers.CharField(read_only=True)
     first_name = serializers.CharField(read_only=True)
     last_name = serializers.CharField(read_only=True)
-    assigned_date = serializers.DateTimeField(source='pharmacy_associations__assigned_date', read_only=True)
-    is_active_association = serializers.BooleanField(source='pharmacy_associations__is_active', read_only=True)
-    consent_given = serializers.BooleanField(source='pharmacy_associations__consent_given', read_only=True)
+    assigned_date = serializers.SerializerMethodField()
+    is_active_association = serializers.SerializerMethodField()
+    consent_given = serializers.SerializerMethodField()
+
+    def _get_association(self, obj):
+        """Get the PatientPharmacyAssociation for the current pharmacy admin context."""
+        request = self.context.get('request')
+        if request and hasattr(request.user, 'pharmacy_admin'):
+            from .models import PatientPharmacyAssociation
+            return PatientPharmacyAssociation.objects.filter(
+                patient=obj, pharmacy_admin=request.user.pharmacy_admin
+            ).first()
+        return None
+
+    def get_assigned_date(self, obj):
+        assoc = self._get_association(obj)
+        return assoc.assigned_date if assoc else None
+
+    def get_is_active_association(self, obj):
+        assoc = self._get_association(obj)
+        return assoc.is_active if assoc else None
+
+    def get_consent_given(self, obj):
+        assoc = self._get_association(obj)
+        return assoc.consent_given if assoc else None
     
     class Meta:
         model = User

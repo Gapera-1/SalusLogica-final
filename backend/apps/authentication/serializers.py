@@ -6,20 +6,44 @@ from .models import User, UserProfile
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
+    pharmacy_admin_id = serializers.CharField(write_only=True, required=False, allow_blank=True)
     
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'phone', 'user_type')
+        fields = ('username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'phone', 'user_type', 'pharmacy_admin_id')
     
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError("Passwords don't match")
+        
+        # Validate pharmacy_admin_id if provided
+        pharmacy_admin_id = attrs.get('pharmacy_admin_id', '').strip()
+        if pharmacy_admin_id:
+            from saluslogica.models import PharmacyAdmin
+            if not PharmacyAdmin.objects.filter(pharmacy_id=pharmacy_admin_id).exists():
+                raise serializers.ValidationError({'pharmacy_admin_id': 'No pharmacy found with this ID. Please check and try again.'})
+        
         return attrs
     
     def create(self, validated_data):
         validated_data.pop('password_confirm')
+        pharmacy_admin_id = validated_data.pop('pharmacy_admin_id', '').strip()
         user = User.objects.create_user(**validated_data)
         UserProfile.objects.create(user=user)
+        
+        # Link patient to pharmacy admin if a valid pharmacy_admin_id was provided
+        if pharmacy_admin_id:
+            from saluslogica.models import PharmacyAdmin, PatientPharmacyAssociation
+            try:
+                pharmacy_admin = PharmacyAdmin.objects.get(pharmacy_id=pharmacy_admin_id)
+                PatientPharmacyAssociation.objects.create(
+                    patient=user,
+                    pharmacy_admin=pharmacy_admin,
+                    consent_given=True,
+                )
+            except PharmacyAdmin.DoesNotExist:
+                pass  # Silently skip if pharmacy admin was deleted between validate and create
+        
         return user
 
 

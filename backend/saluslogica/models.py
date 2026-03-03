@@ -100,12 +100,12 @@ class PharmacyAdmin(models.Model):
     @property
     def patient_count(self):
         """Get number of patients associated with this pharmacy admin"""
-        return self.patients.count()
+        return self.patient_associations.count()
     
     @property
     def active_patient_count(self):
         """Get number of active patients"""
-        return self.patients.filter(is_active=True).count()
+        return self.patient_associations.filter(is_active=True).count()
 
 
 class PatientPharmacyAssociation(models.Model):

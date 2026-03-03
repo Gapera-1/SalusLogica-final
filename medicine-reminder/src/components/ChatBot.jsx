@@ -3,6 +3,18 @@ import { chatbotAPI } from "../services/api";
 import { useLanguage } from "../i18n";
 import { useTheme } from "../contexts/ThemeContext";
 
+/* ──────────────────────── responsive breakpoint hook ─────────────────────── */
+const useIsMobile = (breakpoint = 640) => {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [breakpoint]);
+  return isMobile;
+};
+
 /* ──────────────────────────── inline keyframes ──────────────────────────── */
 const injectStyles = (() => {
   let injected = false;
@@ -10,11 +22,17 @@ const injectStyles = (() => {
     if (injected) return;
     injected = true;
     const css = `
-      /* chatbot open / close */
+      /* chatbot open / close — desktop */
       @keyframes cb-slide-up   { from{opacity:0;transform:translateY(24px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
       @keyframes cb-slide-down { from{opacity:1;transform:translateY(0) scale(1)}   to{opacity:0;transform:translateY(24px) scale(.96)} }
       .cb-enter { animation:cb-slide-up .32s cubic-bezier(.22,1,.36,1) forwards }
       .cb-exit  { animation:cb-slide-down .22s cubic-bezier(.55,.06,.68,.19) forwards }
+
+      /* chatbot open / close — mobile (slide from bottom) */
+      @keyframes cb-mobile-up   { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
+      @keyframes cb-mobile-down { from{opacity:1;transform:translateY(0)}    to{opacity:0;transform:translateY(100%)} }
+      .cb-enter-mobile { animation:cb-mobile-up .35s cubic-bezier(.22,1,.36,1) forwards }
+      .cb-exit-mobile  { animation:cb-mobile-down .25s cubic-bezier(.55,.06,.68,.19) forwards }
 
       /* FAB pulse ring */
       @keyframes cb-ring { 0%{box-shadow:0 0 0 0 rgba(20,184,166,.45)} 70%{box-shadow:0 0 0 12px rgba(20,184,166,0)} 100%{box-shadow:0 0 0 0 rgba(20,184,166,0)} }
@@ -58,6 +76,7 @@ const QUICK_PROMPTS = [
 const ChatBot = () => {
   const { t } = useLanguage();
   const { isDark } = useTheme();
+  const isMobile = useIsMobile();
 
   const [isOpen, setIsOpen] = useState(false);
   const [closing, setClosing] = useState(false);       // exit animation flag
@@ -191,85 +210,109 @@ const ChatBot = () => {
   };
 
   /* ═══════════════════════════════ RENDER ════════════════════════════════ */
+  /* sizing tokens */
+  const fabSize = isMobile ? 52 : 60;
+  const fabPos  = isMobile ? { bottom: 16, right: 16 } : { bottom: 24, right: 24 };
+
+  const windowStyle = isMobile
+    ? { inset: 0, borderRadius: 0, width: "100%", height: "100%" }           /* full-screen on mobile */
+    : {
+        bottom: 88, right: 24,
+        width: 400, maxWidth: "calc(100vw - 2rem)",
+        height: "min(600px, calc(100vh - 7rem))",
+        borderRadius: 20,
+      };
+
+  const animEnter = isMobile ? "cb-enter-mobile" : "cb-enter";
+  const animExit  = isMobile ? "cb-exit-mobile"  : "cb-exit";
+
   return (
     <>
       {/* =================== FLOATING ACTION BUTTON =================== */}
-      <button
-        onClick={toggleChat}
-        aria-label={t("chatbot.toggle") || "Chat with AI"}
-        className={`fixed bottom-6 right-6 z-[9999] group focus:outline-none ${!isOpen ? "cb-fab-ring" : ""}`}
-        style={{ width: 60, height: 60 }}
-      >
-        {/* glow layer */}
-        <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-             style={{ background: "radial-gradient(circle, rgba(20,184,166,.25) 0%, transparent 70%)", transform: "scale(1.7)" }} />
-
-        {/* main circle */}
-        <div
-          className="relative w-full h-full rounded-full flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl group-active:scale-95"
-          style={{ background: "linear-gradient(145deg, #0d9488, #14b8a6)" }}
+      {/* Hide FAB when chat is open on mobile (chat is full-screen) */}
+      {!(isMobile && isOpen) && (
+        <button
+          onClick={toggleChat}
+          aria-label={t("chatbot.toggle") || "Chat with AI"}
+          className={`fixed z-[9999] group focus:outline-none ${!isOpen ? "cb-fab-ring" : ""}`}
+          style={{ ...fabPos, width: fabSize, height: fabSize }}
         >
-          <div className="transition-transform duration-300" style={{ transform: isOpen ? "rotate(90deg)" : "rotate(0)" }}>
-            {isOpen ? (
-              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-7 h-7 text-white drop-shadow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.556 0 8.25-3.358 8.25-7.5S16.556 5.25 12 5.25 3.75 8.608 3.75 12.75c0 1.632.563 3.14 1.523 4.353L3.75 20.25l3.176-.94A9.137 9.137 0 0012 20.25z" />
-                <circle cx="8.5" cy="12.75" r="1" fill="currentColor" />
-                <circle cx="12"  cy="12.75" r="1" fill="currentColor" />
-                <circle cx="15.5" cy="12.75" r="1" fill="currentColor" />
-              </svg>
-            )}
-          </div>
-        </div>
+          {/* glow layer */}
+          <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+               style={{ background: "radial-gradient(circle, rgba(20,184,166,.25) 0%, transparent 70%)", transform: "scale(1.7)" }} />
 
-        {/* notification badge */}
-        {hasNewMessage && !isOpen && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white" />
-          </span>
-        )}
-      </button>
+          {/* main circle */}
+          <div
+            className="relative w-full h-full rounded-full flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl group-active:scale-95"
+            style={{ background: "linear-gradient(145deg, #0d9488, #14b8a6)" }}
+          >
+            <div className="transition-transform duration-300" style={{ transform: isOpen ? "rotate(90deg)" : "rotate(0)" }}>
+              {isOpen ? (
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 sm:w-7 sm:h-7 text-white drop-shadow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.556 0 8.25-3.358 8.25-7.5S16.556 5.25 12 5.25 3.75 8.608 3.75 12.75c0 1.632.563 3.14 1.523 4.353L3.75 20.25l3.176-.94A9.137 9.137 0 0012 20.25z" />
+                  <circle cx="8.5" cy="12.75" r="1" fill="currentColor" />
+                  <circle cx="12"  cy="12.75" r="1" fill="currentColor" />
+                  <circle cx="15.5" cy="12.75" r="1" fill="currentColor" />
+                </svg>
+              )}
+            </div>
+          </div>
+
+          {/* notification badge */}
+          {hasNewMessage && !isOpen && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white" />
+            </span>
+          )}
+        </button>
+      )}
 
       {/* =================== CHAT WINDOW =================== */}
       {isOpen && (
         <div
-          className={`fixed z-[9998] flex flex-col overflow-hidden ${closing ? "cb-exit" : "cb-enter"}`}
+          className={`fixed z-[9998] flex flex-col overflow-hidden ${closing ? animExit : animEnter}`}
           style={{
-            bottom: 88,
-            right: 24,
-            width: 400,
-            maxWidth: "calc(100vw - 2rem)",
-            height: "min(600px, calc(100vh - 7rem))",
-            borderRadius: 20,
+            ...windowStyle,
             background: c.pageBg,
-            boxShadow: isDark
+            boxShadow: isMobile ? "none" : (isDark
               ? "0 25px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.06)"
-              : "0 25px 60px rgba(0,0,0,.12), 0 0 0 1px rgba(0,0,0,.04)",
+              : "0 25px 60px rgba(0,0,0,.12), 0 0 0 1px rgba(0,0,0,.04)"),
           }}
         >
           {/* ──── HEADER ──── */}
-          <div className="shrink-0 relative overflow-hidden" style={{ padding: "16px 18px 14px" }}>
+          <div className="shrink-0 relative overflow-hidden" style={{ padding: isMobile ? "14px 16px 12px" : "16px 18px 14px" }}>
             {/* gradient bg */}
             <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)" }} />
             {/* subtle pattern */}
             <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #fff 1px, transparent 1px), radial-gradient(circle at 80% 20%, #fff 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
 
-            <div className="relative flex items-center justify-between">
+            {/* safe-area padding on mobile (notch / dynamic island) */}
+            <div className="relative flex items-center justify-between" style={isMobile ? { paddingTop: "env(safe-area-inset-top, 0px)" } : undefined}>
               <div className="flex items-center gap-3">
-                {/* avatar */}
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,.18)", backdropFilter: "blur(8px)" }}>
-                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                {/* back arrow on mobile instead of avatar */}
+                {isMobile ? (
+                  <button onClick={closeChat} className="w-9 h-9 -ml-1 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-all">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                     </svg>
+                  </button>
+                ) : (
+                  /* avatar (desktop only) */
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,.18)", backdropFilter: "blur(8px)" }}>
+                      <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                      </svg>
+                    </div>
+                    {/* online dot */}
+                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 rounded-full border-2 border-teal-700" />
                   </div>
-                  {/* online dot */}
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 rounded-full border-2 border-teal-700" />
-                </div>
+                )}
 
                 <div>
                   <h3 className="text-white font-bold text-[15px] leading-tight tracking-tight">
@@ -287,17 +330,20 @@ const ChatBot = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
                   </svg>
                 </button>
-                <button onClick={closeChat} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all">
-                  <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </button>
+                {/* close chevron — desktop only (mobile uses the back arrow) */}
+                {!isMobile && (
+                  <button onClick={closeChat} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all">
+                    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
           {/* ──── MESSAGES ──── */}
-          <div className="flex-1 overflow-y-auto cb-scroll" style={{ padding: "14px 16px 8px" }}>
+          <div className="flex-1 overflow-y-auto cb-scroll" style={{ padding: isMobile ? "12px 12px 8px" : "14px 16px 8px" }}>
             {messages.map((msg, idx) => {
               const isUser = msg.role === "user";
               return (
@@ -314,10 +360,10 @@ const ChatBot = () => {
                   <div
                     className="relative group"
                     style={{
-                      maxWidth: "82%",
+                      maxWidth: isMobile ? "88%" : "82%",
                       borderRadius: isUser ? "18px 18px 6px 18px" : "18px 18px 18px 6px",
-                      padding: "10px 14px",
-                      fontSize: 13.5,
+                      padding: isMobile ? "10px 12px" : "10px 14px",
+                      fontSize: isMobile ? 14 : 13.5,
                       lineHeight: 1.55,
                       ...(isUser
                         ? { background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff" }
@@ -354,7 +400,7 @@ const ChatBot = () => {
 
             {/* quick prompts (only visible when chat is fresh) */}
             {showQuickPrompts && messages.length <= 1 && !loading && (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className={`mt-3 flex flex-wrap items-center gap-2 ${isMobile ? "px-1" : ""}`}>
                 {QUICK_PROMPTS.map((qp, i) => (
                   <button
                     key={i}
@@ -373,7 +419,7 @@ const ChatBot = () => {
           </div>
 
           {/* ──── INPUT ──── */}
-          <div className="shrink-0" style={{ padding: "0 14px 12px" }}>
+          <div className="shrink-0" style={{ padding: isMobile ? "0 10px 10px" : "0 14px 12px", paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 8px) + 8px)" : 12 }}>
             <form onSubmit={sendMessage} className="flex items-end gap-2 rounded-2xl p-1.5" style={{ background: c.surfaceBg, border: `1px solid ${c.surfaceBorder}` }}>
               <input
                 ref={inputRef}
@@ -383,7 +429,7 @@ const ChatBot = () => {
                 placeholder={t("chatbot.placeholder") || "Ask me anything about health..."}
                 disabled={loading}
                 maxLength={2000}
-                className="flex-1 bg-transparent border-none outline-none text-[13.5px] placeholder:text-sm"
+                className="flex-1 bg-transparent border-none outline-none text-sm sm:text-[13.5px] placeholder:text-sm"
                 style={{ padding: "8px 10px", color: c.textPrimary }}
               />
               <button
