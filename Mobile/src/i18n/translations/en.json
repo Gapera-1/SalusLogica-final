@@ -632,5 +632,17 @@
     "yourMedicine": "your medicine",
     "medicineReminder": "Medicine Reminder",
     "timeToTakeShort": "Time to take"
+  },
+  "chatbot": {
+    "title": "SalusLogica AI",
+    "subtitle": "Health Assistant",
+    "toggle": "Chat with AI",
+    "welcome": "Hello! \ud83d\udc4b I'm SalusLogica AI, your health assistant. How can I help you today?",
+    "placeholder": "Ask me anything about health...",
+    "newChat": "New chat",
+    "error": "Sorry, I couldn't process your request. Please try again.",
+    "disclaimer": "AI responses are informational only. Always consult your healthcare provider.",
+    "menuTitle": "AI Chat",
+    "menuSubtitle": "Ask health questions"
   }
 }

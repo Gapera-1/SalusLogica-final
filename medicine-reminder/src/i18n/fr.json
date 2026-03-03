@@ -807,6 +807,11 @@
     "placeholder": "Posez-moi une question sur la santé...",
     "newChat": "Nouvelle conversation",
     "error": "Désolé, je n'ai pas pu traiter votre demande. Veuillez réessayer.",
-    "disclaimer": "Les réponses de l'IA sont à titre informatif uniquement. Consultez toujours votre professionnel de santé."
+    "disclaimer": "Les réponses de l'IA sont à titre informatif uniquement. Consultez toujours votre professionnel de santé.",
+    "online": "En ligne",
+    "qMeds": "Info médicaments",
+    "qInter": "Interactions",
+    "qHealth": "Conseils santé",
+    "qRemind": "Rappels"
   }
 }

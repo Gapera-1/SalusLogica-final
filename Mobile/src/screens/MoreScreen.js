@@ -85,6 +85,15 @@ const MoreScreen = () => {
       color: '#06b6d4',
       bgColor: '#ecfeff',
     },
+    {
+      id: 'chatbot',
+      title: t('chatbot.menuTitle') || 'AI Chat',
+      subtitle: t('chatbot.menuSubtitle') || 'Ask health questions',
+      icon: 'chatbubble-ellipses',
+      screen: 'ChatBot',
+      color: '#0d9488',
+      bgColor: '#f0fdfa',
+    },
   ];
 
   const handlePress = (screen) => {

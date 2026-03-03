@@ -13,6 +13,7 @@ import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { AlarmProvider } from './src/contexts/AlarmContext';
 import { DataSyncProvider } from './src/contexts/DataSyncContext';
 import AlarmModal from './src/components/AlarmModal';
+import ChatBotFAB from './src/components/ChatBotFAB';
 
 // Import screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -33,6 +34,7 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ExportReportsScreen from './src/screens/ExportReportsScreen';
 import SideEffectTrackerScreen from './src/screens/SideEffectTrackerScreen';
 import MoreScreen from './src/screens/MoreScreen';
+import ChatBotScreen from './src/screens/ChatBotScreen';
 
 const Tab = createBottomTabNavigator();
 const AuthStack = createNativeStackNavigator();
@@ -61,6 +63,7 @@ function DashboardStackScreen() {
     <DashboardStack.Navigator screenOptions={{ headerShown: false }}>
       <DashboardStack.Screen name="DashboardMain" component={DashboardScreen} />
       <DashboardStack.Screen name="AddMedicine" component={AddMedicineScreen} />
+      <DashboardStack.Screen name="ChatBot" component={ChatBotScreen} />
     </DashboardStack.Navigator>
   );
 }
@@ -71,6 +74,7 @@ function MedicinesStackScreen() {
     <MedicinesStack.Navigator screenOptions={{ headerShown: false }}>
       <MedicinesStack.Screen name="MedicinesMain" component={MedicinesScreen} />
       <MedicinesStack.Screen name="AddMedicine" component={AddMedicineScreen} />
+      <MedicinesStack.Screen name="ChatBot" component={ChatBotScreen} />
     </MedicinesStack.Navigator>
   );
 }
@@ -81,6 +85,7 @@ function AnalyticsStackScreen() {
     <AnalyticsStack.Navigator screenOptions={{ headerShown: false }}>
       <AnalyticsStack.Screen name="AnalyticsMain" component={AnalyticsDashboard} />
       <AnalyticsStack.Screen name="DoseHistory" component={DoseHistory} />
+      <AnalyticsStack.Screen name="ChatBot" component={ChatBotScreen} />
     </AnalyticsStack.Navigator>
   );
 }
@@ -98,6 +103,7 @@ function MoreStackScreen() {
       <MoreStack.Screen name="SideEffects" component={SideEffectTrackerScreen} />
       <MoreStack.Screen name="ExportReports" component={ExportReportsScreen} />
       <MoreStack.Screen name="Notifications" component={NotificationCenter} />
+      <MoreStack.Screen name="ChatBot" component={ChatBotScreen} />
     </MoreStack.Navigator>
   );
 }
@@ -108,6 +114,7 @@ function ProfileStackScreen() {
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="Notifications" component={NotificationCenter} />
+      <ProfileStack.Screen name="ChatBot" component={ChatBotScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -258,6 +265,7 @@ function Navigation() {
           <DataSyncProvider>
             <AlarmProvider>
               <MainTabs />
+              <ChatBotFAB />
               <AlarmModal />
             </AlarmProvider>
           </DataSyncProvider>

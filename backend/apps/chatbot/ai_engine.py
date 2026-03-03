@@ -62,16 +62,48 @@ def _openai_response(api_key: str, messages_history: list[dict]) -> str:
             })
 
         response = client.chat.completions.create(
-            model=getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo'),
+            model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini'),
             messages=api_messages,
-            max_tokens=800,
+            max_tokens=1024,
             temperature=0.7,
         )
 
         return response.choices[0].message.content.strip()
 
+    except ImportError:
+        logger.error("openai package is not installed. Run: pip install openai")
+        return _fallback_response(messages_history)
     except Exception as e:
+        error_str = str(e).lower()
         logger.error(f"OpenAI API error: {e}")
+
+        # Give the user a helpful hint depending on the error type
+        if "authentication" in error_str or "invalid api key" in error_str or "401" in error_str:
+            return (
+                "⚠️ The AI service could not authenticate. "
+                "The API key may be invalid or expired. "
+                "I'll still try to help with my built-in knowledge.\n\n"
+            ) + _fallback_response(messages_history)
+
+        if "quota" in error_str or "rate" in error_str or "429" in error_str:
+            return (
+                "⚠️ The AI service is temporarily rate-limited or out of quota. "
+                "I'll answer with my built-in knowledge for now.\n\n"
+            ) + _fallback_response(messages_history)
+
+        if "model" in error_str and ("not found" in error_str or "does not exist" in error_str):
+            # Retry with a known-good model
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=api_messages,
+                    max_tokens=1024,
+                    temperature=0.7,
+                )
+                return response.choices[0].message.content.strip()
+            except Exception:
+                pass
+
         return _fallback_response(messages_history)
 
 

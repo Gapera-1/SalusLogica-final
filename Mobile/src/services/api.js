@@ -687,6 +687,45 @@ export const interactionAPI = {
   },
 };
 
+// ============ CHATBOT API ============
+export const chatbotAPI = {
+  // Send message to chatbot
+  sendMessage: async (message, sessionId = null) => {
+    return await apiCall('/chat/send/', {
+      method: 'POST',
+      body: JSON.stringify({
+        message: message,
+        session_id: sessionId,
+      }),
+    });
+  },
+
+  // Get chat history
+  getHistory: async (sessionId = null) => {
+    const query = sessionId ? `?session_id=${sessionId}` : '';
+    return await apiCall(`/chat/history/${query}`);
+  },
+
+  // Get chat sessions
+  getSessions: async () => {
+    return await apiCall('/chat/');
+  },
+
+  // Start a new chat session
+  newSession: async () => {
+    return await apiCall('/chat/new/', {
+      method: 'POST',
+    });
+  },
+
+  // Delete a chat session
+  deleteSession: async (sessionId) => {
+    return await apiCall(`/chat/delete/${sessionId}/`, {
+      method: 'DELETE',
+    });
+  },
+};
+
 export default {
   authAPI,
   medicineAPI,
@@ -702,4 +741,5 @@ export default {
   dashboardAPI,
   safetyAPI,
   interactionAPI,
+  chatbotAPI,
 };

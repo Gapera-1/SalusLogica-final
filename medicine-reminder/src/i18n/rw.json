@@ -878,6 +878,11 @@
     "placeholder": "Mbaza ikibazo ku buzima...",
     "newChat": "Ikiganiro gishya",
     "error": "Ihangane, sinashoboye gukemura icyo usaba. Nyamuneka gerageza nanone.",
-    "disclaimer": "Ibisubizo bya AI ni iby'amakuru gusa. Buri gihe ganira na muganga wawe."
+    "disclaimer": "Ibisubizo bya AI ni iby'amakuru gusa. Buri gihe ganira na muganga wawe.",
+    "online": "Kuri interineti",
+    "qMeds": "Amakuru y'imiti",
+    "qInter": "Ibihurirana",
+    "qHealth": "Inama z'ubuzima",
+    "qRemind": "Ibiwibutsa"
   }
 }

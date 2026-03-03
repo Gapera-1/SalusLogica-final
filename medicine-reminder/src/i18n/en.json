@@ -807,6 +807,11 @@
     "placeholder": "Ask me anything about health...",
     "newChat": "New chat",
     "error": "Sorry, I couldn't process your request. Please try again.",
-    "disclaimer": "AI responses are informational only. Always consult your healthcare provider."
+    "disclaimer": "AI responses are informational only. Always consult your healthcare provider.",
+    "online": "Online",
+    "qMeds": "Medication info",
+    "qInter": "Drug interactions",
+    "qHealth": "Health tips",
+    "qRemind": "Reminders"
   }
 }
