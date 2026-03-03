@@ -19,6 +19,8 @@ urlpatterns = [
     # Patient Management
     path('link-patient/', views.link_patient_to_pharmacy, name='link_patient_to_pharmacy'),
     path('patients/', views.PharmacyAdminPatientsView.as_view(), name='pharmacy_admin_patients'),
+    path('patients/<int:patient_id>/', views.pharmacy_admin_patient_detail, name='pharmacy_admin_patient_detail'),
+    path('patients/<int:patient_id>/medicines/', views.pharmacy_admin_patient_medicines, name='pharmacy_admin_patient_medicines'),
     
     # Adverse Reactions
     path('adverse-reactions/', views.AdverseReactionListCreateView.as_view(), name='adverse_reactions'),

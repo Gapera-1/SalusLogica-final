@@ -198,7 +198,9 @@ class AdverseReaction(models.Model):
         choices=[
             ('recovered', 'Fully Recovered'),
             ('recovering', 'Recovering'),
+            ('not_recovered', 'Not Recovered'),
             ('ongoing', 'Ongoing'),
+            ('unknown', 'Unknown'),
             ('permanent', 'Permanent Damage'),
             ('death', 'Death'),
         ],

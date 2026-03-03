@@ -261,12 +261,21 @@ class AdverseReactionListCreateView(generics.ListCreateAPIView):
         """Create adverse reaction with appropriate pharmacy admin"""
         user = self.request.user
         
-        # Try to get pharmacy admin for the user
+        # First check if the user IS a pharmacy admin
         try:
             pharmacy_admin = PharmacyAdmin.objects.get(user=user)
             serializer.save(patient=user, pharmacy_admin=pharmacy_admin)
+            return
         except PharmacyAdmin.DoesNotExist:
-            # Regular user - no pharmacy admin
+            pass
+        
+        # For regular patients, find their associated pharmacy admin
+        assoc = PatientPharmacyAssociation.objects.filter(
+            patient=user, is_active=True
+        ).first()
+        if assoc:
+            serializer.save(patient=user, pharmacy_admin=assoc.pharmacy_admin)
+        else:
             serializer.save(patient=user)
 
 
@@ -287,6 +296,86 @@ class AdverseReactionDetailView(generics.RetrieveUpdateAPIView):
             ).distinct()
         except PharmacyAdmin.DoesNotExist:
             return AdverseReaction.objects.filter(patient=user)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def pharmacy_admin_patient_detail(request, patient_id):
+    """Get detailed info for a specific patient managed by this pharmacy admin"""
+    try:
+        pharmacy_admin = PharmacyAdmin.objects.get(user=request.user)
+    except PharmacyAdmin.DoesNotExist:
+        return Response({'error': 'Not a pharmacy admin'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Verify this patient belongs to this pharmacy admin
+    assoc = PatientPharmacyAssociation.objects.filter(
+        pharmacy_admin=pharmacy_admin, patient_id=patient_id
+    ).first()
+    if not assoc:
+        return Response({'error': 'Patient not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    patient = assoc.patient
+    # Get side effects for this patient
+    reactions = AdverseReaction.objects.filter(patient=patient)
+
+    return Response({
+        'id': patient.id,
+        'username': patient.username,
+        'email': patient.email,
+        'first_name': patient.first_name,
+        'last_name': patient.last_name,
+        'date_joined': patient.date_joined,
+        'is_active': patient.is_active,
+        'assigned_date': assoc.assigned_date,
+        'is_active_association': assoc.is_active,
+        'consent_given': assoc.consent_given,
+        'side_effects_count': reactions.count(),
+        'unresolved_side_effects': reactions.filter(is_resolved=False).count(),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def pharmacy_admin_patient_medicines(request, patient_id):
+    """Get medicines for a specific patient managed by this pharmacy admin"""
+    from apps.medicines.models import Medicine
+
+    try:
+        pharmacy_admin = PharmacyAdmin.objects.get(user=request.user)
+    except PharmacyAdmin.DoesNotExist:
+        return Response({'error': 'Not a pharmacy admin'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Verify this patient belongs to this pharmacy admin
+    assoc = PatientPharmacyAssociation.objects.filter(
+        pharmacy_admin=pharmacy_admin, patient_id=patient_id
+    ).first()
+    if not assoc:
+        return Response({'error': 'Patient not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    medicines = Medicine.objects.filter(user_id=patient_id).order_by('-is_active', 'name')
+    data = []
+    for med in medicines:
+        data.append({
+            'id': med.id,
+            'name': med.name,
+            'scientific_name': med.scientific_name or '',
+            'dosage': med.dosage,
+            'frequency': med.get_frequency_display(),
+            'times': med.times,
+            'start_date': med.start_date,
+            'end_date': med.end_date,
+            'is_active': med.is_active,
+            'prescribed_for': med.prescribed_for or '',
+            'prescribing_doctor': med.prescribing_doctor or '',
+            'instructions': med.instructions or '',
+        })
+
+    return Response({
+        'patient_id': patient_id,
+        'patient_username': assoc.patient.username,
+        'medicines': data,
+        'total': len(data),
+    })
 
 
 @api_view(['GET'])

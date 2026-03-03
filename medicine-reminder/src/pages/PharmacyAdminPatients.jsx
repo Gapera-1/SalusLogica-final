@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Search, Filter, Users, UserCheck, UserX, Eye, Pill,
   ArrowLeft, ChevronDown, Mail, Calendar, CircleDot,
+  X, AlertTriangle, Clock, FileText, Shield,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import BaseLayout from "../components/BaseLayout";
@@ -17,6 +18,10 @@ if (typeof document !== "undefined" && !document.getElementById(STYLE_ID)) {
   s.textContent = `
     @keyframes pa-fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .pa-fade-up { animation: pa-fade-up .45s ease both }
+    @keyframes pa-slide-in { from{opacity:0;transform:translateX(100%)} to{opacity:1;transform:translateX(0)} }
+    @keyframes pa-fade-overlay { from{opacity:0} to{opacity:1} }
+    .pa-slide-in { animation: pa-slide-in .3s ease both }
+    .pa-fade-overlay { animation: pa-fade-overlay .2s ease both }
   `;
   document.head.appendChild(s);
 }
@@ -31,6 +36,13 @@ const PharmacyAdminPatients = ({ setIsAuthenticated }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterActive, setFilterActive] = useState("all");
 
+  /* ─── modal state ─── */
+  const [detailModal, setDetailModal] = useState(null);   // patient detail data
+  const [medicinesModal, setMedicinesModal] = useState(null); // { patient, medicines }
+
+  const token = localStorage.getItem("access_token");
+  const headers = { "Content-Type": "application/json", Authorization: `Token ${token}` };
+
   /* ─── theme tokens ─── */
   const c = isDark
     ? {
@@ -40,6 +52,8 @@ const PharmacyAdminPatients = ({ setIsAuthenticated }) => {
         rowHover: "hover:bg-gray-800/60", headBg: "bg-gray-800/60",
         errorBg: "bg-red-900/30", errorBorder: "border-red-800", errorText: "text-red-300",
         badge: { active: "bg-emerald-900/50 text-emerald-300", inactive: "bg-red-900/40 text-red-300" },
+        modalBg: "bg-gray-900", overlayBg: "bg-black/60",
+        infoBg: "bg-gray-800/60",
       }
     : {
         pageBg: "bg-gray-50", surfaceBg: "bg-white", surfaceBorder: "border-gray-200",
@@ -48,9 +62,11 @@ const PharmacyAdminPatients = ({ setIsAuthenticated }) => {
         rowHover: "hover:bg-gray-50", headBg: "bg-gray-50",
         errorBg: "bg-red-50", errorBorder: "border-red-200", errorText: "text-red-700",
         badge: { active: "bg-emerald-100 text-emerald-700", inactive: "bg-red-100 text-red-700" },
+        modalBg: "bg-white", overlayBg: "bg-black/40",
+        infoBg: "bg-gray-50",
       };
 
-  /* ─── fetch ─── */
+  /* ─── fetch patients ─── */
   useEffect(() => {
     const fetchPatients = async () => {
       try {
@@ -62,7 +78,7 @@ const PharmacyAdminPatients = ({ setIsAuthenticated }) => {
 
         const response = await fetch(
           `${API_BASE_URL}/pharmacy-admin/patients/?${params}`,
-          { headers: { "Content-Type": "application/json", Authorization: `Token ${localStorage.getItem("access_token")}` } }
+          { headers }
         );
         if (!response.ok) throw new Error("Failed to fetch patients");
         const data = await response.json();
@@ -75,7 +91,46 @@ const PharmacyAdminPatients = ({ setIsAuthenticated }) => {
       }
     };
     fetchPatients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterActive]);
+
+  /* ─── View patient detail ─── */
+  const handleViewPatient = async (patient) => {
+    setDetailModal({ ...patient, loading: true });
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/pharmacy-admin/patients/${patient.id}/`,
+        { headers }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setDetailModal({ ...data, loading: false });
+      } else {
+        setDetailModal({ ...patient, loading: false, side_effects_count: "—", unresolved_side_effects: "—" });
+      }
+    } catch {
+      setDetailModal({ ...patient, loading: false, side_effects_count: "—", unresolved_side_effects: "—" });
+    }
+  };
+
+  /* ─── View patient medicines ─── */
+  const handleViewMedicines = async (patient) => {
+    setMedicinesModal({ patient, medicines: [], loading: true });
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/pharmacy-admin/patients/${patient.id}/medicines/`,
+        { headers }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setMedicinesModal({ patient, medicines: data.medicines || [], loading: false });
+      } else {
+        setMedicinesModal({ patient, medicines: [], loading: false, error: "Failed to load medicines" });
+      }
+    } catch {
+      setMedicinesModal({ patient, medicines: [], loading: false, error: "Failed to load medicines" });
+    }
+  };
 
   const filteredPatients = patients.filter(
     (p) =>
@@ -252,14 +307,14 @@ const PharmacyAdminPatients = ({ setIsAuthenticated }) => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => alert(`View details for ${patient.username}`)}
+                              onClick={() => handleViewPatient(patient)}
                               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium
                                          bg-teal-500/10 text-teal-600 dark:text-teal-400 hover:bg-teal-500/20 transition-colors"
                             >
                               <Eye size={13} /> {t("pharmacyAdminPatients.view")}
                             </button>
                             <button
-                              onClick={() => alert(`View medicines for ${patient.username}`)}
+                              onClick={() => handleViewMedicines(patient)}
                               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium
                                          bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                             >
@@ -303,6 +358,229 @@ const PharmacyAdminPatients = ({ setIsAuthenticated }) => {
           )}
         </div>
       </div>
+
+      {/* ═══════════ PATIENT DETAIL SLIDE-OVER ═══════════ */}
+      {detailModal && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className={`absolute inset-0 ${c.overlayBg} pa-fade-overlay`} onClick={() => setDetailModal(null)} />
+          <div className={`relative w-full max-w-md ${c.modalBg} shadow-2xl pa-slide-in overflow-y-auto`}>
+            {/* header */}
+            <div className="sticky top-0 z-10 bg-gradient-to-r from-teal-600 to-emerald-500 p-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Eye size={20} />
+                  {t("pharmacyAdminPatients.patientDetails") || "Patient Details"}
+                </h2>
+                <button onClick={() => setDetailModal(null)}
+                  className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {detailModal.loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-10 h-10 border-4 border-transparent border-t-teal-500 rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="p-5 space-y-5">
+                {/* avatar + name */}
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500
+                                  flex items-center justify-center text-white text-xl font-bold">
+                    {detailModal.username?.charAt(0)?.toUpperCase() || "?"}
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-bold ${c.textH}`}>{detailModal.username}</h3>
+                    <p className={`text-sm ${c.textP}`}>
+                      {[detailModal.first_name, detailModal.last_name].filter(Boolean).join(" ") || "—"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* info rows */}
+                {[
+                  { icon: Mail, label: t("pharmacyAdminPatients.email"), value: detailModal.email || "—" },
+                  { icon: Calendar, label: t("pharmacyAdminPatients.joinedDate"),
+                    value: detailModal.date_joined ? new Date(detailModal.date_joined).toLocaleDateString() : "—" },
+                  { icon: Clock, label: t("pharmacyAdminPatients.assignedDate") || "Assigned Date",
+                    value: detailModal.assigned_date ? new Date(detailModal.assigned_date).toLocaleDateString() : "—" },
+                  { icon: Shield, label: t("pharmacyAdminPatients.consent") || "Consent",
+                    value: detailModal.consent_given ? "Yes" : "No" },
+                // eslint-disable-next-line no-unused-vars
+                ].map(({ icon: Icon, label, value }, i) => (
+                  <div key={i} className={`flex items-center gap-3 p-3.5 rounded-xl ${c.infoBg}`}>
+                    <Icon size={16} className="text-teal-500 shrink-0" />
+                    <div className="min-w-0">
+                      <p className={`text-xs font-semibold uppercase tracking-wider ${c.textMuted}`}>{label}</p>
+                      <p className={`text-sm font-medium ${c.textH} truncate`}>{value}</p>
+                    </div>
+                  </div>
+                ))}
+
+                {/* status */}
+                <div className={`flex items-center gap-3 p-3.5 rounded-xl ${c.infoBg}`}>
+                  {detailModal.is_active ? <UserCheck size={16} className="text-emerald-500" /> : <UserX size={16} className="text-red-500" />}
+                  <div>
+                    <p className={`text-xs font-semibold uppercase tracking-wider ${c.textMuted}`}>{t("pharmacyAdminPatients.status")}</p>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold mt-0.5
+                                     ${detailModal.is_active ? c.badge.active : c.badge.inactive}`}>
+                      {detailModal.is_active ? t("pharmacyAdminPatients.active") : t("pharmacyAdminPatients.inactive")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* side effects summary */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`p-4 rounded-xl text-center ${c.infoBg}`}>
+                    <AlertTriangle size={18} className="mx-auto mb-1 text-amber-500" />
+                    <p className={`text-xl font-bold ${c.textH}`}>{detailModal.side_effects_count ?? "—"}</p>
+                    <p className={`text-xs ${c.textMuted}`}>{t("pharmacyAdminPatients.totalSideEffects") || "Total Side Effects"}</p>
+                  </div>
+                  <div className={`p-4 rounded-xl text-center ${c.infoBg}`}>
+                    <FileText size={18} className="mx-auto mb-1 text-red-500" />
+                    <p className={`text-xl font-bold ${c.textH}`}>{detailModal.unresolved_side_effects ?? "—"}</p>
+                    <p className={`text-xs ${c.textMuted}`}>{t("pharmacyAdminPatients.unresolvedEffects") || "Unresolved"}</p>
+                  </div>
+                </div>
+
+                {/* view medicines CTA */}
+                <button
+                  onClick={() => { setDetailModal(null); handleViewMedicines(detailModal); }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl
+                             bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium
+                             hover:from-emerald-600 hover:to-teal-600 transition-all shadow-sm"
+                >
+                  <Pill size={16} />
+                  {t("pharmacyAdminPatients.viewMedicines") || "View Medicines"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════ MEDICINES SLIDE-OVER ═══════════ */}
+      {medicinesModal && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className={`absolute inset-0 ${c.overlayBg} pa-fade-overlay`} onClick={() => setMedicinesModal(null)} />
+          <div className={`relative w-full max-w-lg ${c.modalBg} shadow-2xl pa-slide-in overflow-y-auto`}>
+            {/* header */}
+            <div className="sticky top-0 z-10 bg-gradient-to-r from-emerald-600 to-green-500 p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Pill size={20} />
+                    {t("pharmacyAdminPatients.patientMedicines") || "Patient Medicines"}
+                  </h2>
+                  <p className="text-emerald-100 text-sm mt-0.5">{medicinesModal.patient?.username}</p>
+                </div>
+                <button onClick={() => setMedicinesModal(null)}
+                  className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {medicinesModal.loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-10 h-10 border-4 border-transparent border-t-emerald-500 rounded-full animate-spin" />
+              </div>
+            ) : medicinesModal.error ? (
+              <div className="p-5">
+                <div className={`rounded-xl border ${c.errorBorder} ${c.errorBg} p-4 flex items-center gap-3`}>
+                  <CircleDot className="text-red-500 shrink-0" size={18} />
+                  <p className={`${c.errorText} text-sm`}>{medicinesModal.error}</p>
+                </div>
+              </div>
+            ) : medicinesModal.medicines.length === 0 ? (
+              <div className="p-8 text-center">
+                <Pill size={40} className={`mx-auto mb-3 ${c.textMuted}`} />
+                <h3 className={`text-lg font-semibold ${c.textH} mb-1`}>
+                  {t("pharmacyAdminPatients.noMedicines") || "No Medicines"}
+                </h3>
+                <p className={`text-sm ${c.textP}`}>
+                  {t("pharmacyAdminPatients.noMedicinesDesc") || "This patient has no medicines recorded."}
+                </p>
+              </div>
+            ) : (
+              <div className="p-5 space-y-3">
+                {medicinesModal.medicines.map((med, i) => (
+                  <div key={med.id || i}
+                    className={`rounded-xl border ${c.surfaceBorder} p-4 ${c.infoBg}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0
+                                        ${med.is_active
+                                          ? "bg-emerald-500/20 text-emerald-500"
+                                          : (isDark ? "bg-gray-700 text-gray-400" : "bg-gray-200 text-gray-400")}`}>
+                          <Pill size={16} />
+                        </div>
+                        <div>
+                          <h4 className={`text-sm font-semibold ${c.textH}`}>{med.name}</h4>
+                          {med.scientific_name && (
+                            <p className={`text-xs ${c.textMuted} italic`}>{med.scientific_name}</p>
+                          )}
+                        </div>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold
+                                       ${med.is_active ? c.badge.active : c.badge.inactive}`}>
+                        {med.is_active ? t("pharmacyAdminPatients.active") : t("pharmacyAdminPatients.inactive")}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className={`${c.textMuted} font-semibold uppercase`}>
+                          {t("pharmacyAdminPatients.dosage") || "Dosage"}
+                        </span>
+                        <p className={`${c.textH} font-medium`}>{med.dosage}</p>
+                      </div>
+                      <div>
+                        <span className={`${c.textMuted} font-semibold uppercase`}>
+                          {t("pharmacyAdminPatients.frequency") || "Frequency"}
+                        </span>
+                        <p className={`${c.textH} font-medium`}>{med.frequency}</p>
+                      </div>
+                      <div>
+                        <span className={`${c.textMuted} font-semibold uppercase`}>
+                          {t("pharmacyAdminPatients.startDate") || "Start"}
+                        </span>
+                        <p className={`${c.textH} font-medium`}>
+                          {med.start_date ? new Date(med.start_date).toLocaleDateString() : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className={`${c.textMuted} font-semibold uppercase`}>
+                          {t("pharmacyAdminPatients.endDate") || "End"}
+                        </span>
+                        <p className={`${c.textH} font-medium`}>
+                          {med.end_date ? new Date(med.end_date).toLocaleDateString() : "—"}
+                        </p>
+                      </div>
+                      {med.prescribing_doctor && (
+                        <div className="col-span-2">
+                          <span className={`${c.textMuted} font-semibold uppercase`}>
+                            {t("pharmacyAdminPatients.doctor") || "Doctor"}
+                          </span>
+                          <p className={`${c.textH} font-medium`}>{med.prescribing_doctor}</p>
+                        </div>
+                      )}
+                      {med.instructions && (
+                        <div className="col-span-2">
+                          <span className={`${c.textMuted} font-semibold uppercase`}>
+                            {t("pharmacyAdminPatients.instructions") || "Instructions"}
+                          </span>
+                          <p className={`${c.textP} leading-relaxed`}>{med.instructions}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </BaseLayout>
   );
 };

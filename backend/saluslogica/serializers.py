@@ -229,6 +229,8 @@ class PharmacyAdminPatientSerializer(serializers.ModelSerializer):
     email = serializers.CharField(read_only=True)
     first_name = serializers.CharField(read_only=True)
     last_name = serializers.CharField(read_only=True)
+    date_joined = serializers.DateTimeField(read_only=True)
+    is_active = serializers.BooleanField(read_only=True)
     assigned_date = serializers.SerializerMethodField()
     is_active_association = serializers.SerializerMethodField()
     consent_given = serializers.SerializerMethodField()
@@ -259,5 +261,6 @@ class PharmacyAdminPatientSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
+            'date_joined', 'is_active',
             'assigned_date', 'is_active_association', 'consent_given'
         ]
