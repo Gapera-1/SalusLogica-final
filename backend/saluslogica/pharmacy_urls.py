@@ -32,6 +32,9 @@ urlpatterns = [
     # Dashboard
     path('dashboard/', views.pharmacy_admin_dashboard, name='pharmacy_admin_dashboard'),
     
+    # Reports
+    path('reports/', views.pharmacy_admin_reports, name='pharmacy_admin_reports'),
+    
     # Location Options
     path('location-options/', views.get_location_options, name='get_location_options'),
 ]

@@ -54,6 +54,9 @@ const PharmacyAdminPatients = React.lazy(
 const PharmacyAdminAdverseReactions = React.lazy(
   () => import("./pages/PharmacyAdminAdverseReactions"),
 );
+const PharmacyAdminReports = React.lazy(
+  () => import("./pages/PharmacyAdminReports"),
+);
 
 /* ============ COMPONENTS ============ */
 import AlarmContainer from "./components/AlarmContainer";
@@ -519,6 +522,20 @@ function App() {
                 redirectPath="/dashboard"
               >
                 <PharmacyAdminAdverseReactions setIsAuthenticated={setIsAuthenticated} />
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/pharmacy-admin/reports"
+            element={
+              <RoleProtectedRoute
+                isAuthenticated={isAuthenticated}
+                user={user}
+                allowedRoles={["pharmacy_admin"]}
+                redirectPath="/dashboard"
+              >
+                <PharmacyAdminReports setIsAuthenticated={setIsAuthenticated} />
               </RoleProtectedRoute>
             }
           />

@@ -298,14 +298,14 @@ const Navigation = ({ setIsAuthenticated }) => {
                 </Link>
 
                 <Link
-                  to="/export-reports"
+                  to="/pharmacy-admin/reports"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive("/export-reports")
+                    isActive("/pharmacy-admin/reports")
                       ? "bg-white/25 text-white"
                       : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
-                  {t('navigation.exportReports')}
+                  {t('navigation.reports') || 'Reports'}
                 </Link>
               </>
             )}
@@ -475,10 +475,10 @@ const Navigation = ({ setIsAuthenticated }) => {
                 >
                   {t('navigation.adverseReactions')}
                 </Link>
-                <Link to="/export-reports"
-                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/export-reports") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
+                <Link to="/pharmacy-admin/reports"
+                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive("/pharmacy-admin/reports") ? "bg-white/25 text-white" : "text-white/90 hover:text-white hover:bg-white/15"}`}
                 >
-                  {t('navigation.exportReports')}
+                  {t('navigation.reports') || 'Reports'}
                 </Link>
               </>
             )}

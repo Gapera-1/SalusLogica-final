@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q
+from django.db.models import Q, Count, F
 from django.shortcuts import render
 
 User = get_user_model()
@@ -650,3 +650,185 @@ def drug_info_lookup(request):
     }
     
     return Response(result)
+
+
+# ============================================================
+# Pharmacy Admin Reports
+# ============================================================
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def pharmacy_admin_reports(request):
+    """
+    Comprehensive reports data for pharmacy admin.
+    Returns aggregated statistics on patients, adverse reactions,
+    medications, and trends over time.
+    """
+    from apps.medicines.models import Medicine
+    from collections import defaultdict
+    from datetime import timedelta
+    from django.utils import timezone
+
+    try:
+        pharmacy_admin = PharmacyAdmin.objects.get(user=request.user)
+    except PharmacyAdmin.DoesNotExist:
+        return Response({'error': 'Not a pharmacy admin'}, status=status.HTTP_403_FORBIDDEN)
+
+    now = timezone.now()
+
+    # ── patient associations ──
+    associations = PatientPharmacyAssociation.objects.filter(pharmacy_admin=pharmacy_admin)
+    patient_ids = list(associations.values_list('patient_id', flat=True))
+    active_assocs = associations.filter(is_active=True)
+    inactive_assocs = associations.filter(is_active=False)
+    consent_count = associations.filter(consent_given=True).count()
+
+    # ── adverse reactions queryset (only from linked patients) ──
+    reactions = AdverseReaction.objects.filter(
+        patient__pharmacy_associations__pharmacy_admin=pharmacy_admin
+    ).distinct()
+
+    total_reactions = reactions.count()
+    resolved_reactions = reactions.filter(is_resolved=True).count()
+    unresolved_reactions = reactions.filter(is_resolved=False).count()
+    follow_up_needed = reactions.filter(requires_follow_up=True, is_resolved=False).count()
+
+    # severity breakdown
+    severity_counts = dict(
+        reactions.values_list('severity')
+        .annotate(cnt=Count('id'))
+        .values_list('severity', 'cnt')
+    )
+
+    # reaction type breakdown
+    reaction_type_counts = dict(
+        reactions.values_list('reaction_type')
+        .annotate(cnt=Count('id'))
+        .values_list('reaction_type', 'cnt')
+    )
+
+    # outcome breakdown
+    outcome_counts = dict(
+        reactions.values_list('outcome')
+        .annotate(cnt=Count('id'))
+        .values_list('outcome', 'cnt')
+    )
+
+    # top medications by adverse-reaction count
+    top_medications_rx = list(
+        reactions.values('medication_name')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:10]
+    )
+
+    # monthly trend (last 12 months)
+    monthly_reactions = []
+    for i in range(11, -1, -1):
+        start = (now - timedelta(days=30 * (i + 1))).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = (now - timedelta(days=30 * i)).replace(hour=0, minute=0, second=0, microsecond=0)
+        month_label = end.strftime('%b %Y')
+        cnt = reactions.filter(reported_date__gte=start, reported_date__lt=end).count()
+        monthly_reactions.append({'month': month_label, 'count': cnt})
+
+    # recent reactions (last 10)
+    recent_reactions = []
+    for rx in reactions.order_by('-reported_date')[:10]:
+        full_name = f"{rx.patient.first_name} {rx.patient.last_name}".strip() or rx.patient.username
+        recent_reactions.append({
+            'id': rx.id,
+            'patient_name': full_name,
+            'medication_name': rx.medication_name,
+            'severity': rx.severity,
+            'reaction_type': rx.reaction_type,
+            'outcome': rx.outcome,
+            'is_resolved': rx.is_resolved,
+            'reported_date': rx.reported_date,
+            'symptoms': rx.symptoms[:120] if rx.symptoms else '',
+        })
+
+    # ── patients with most side effects ──
+    patients_top_rx = list(
+        reactions.values('patient__id', 'patient__username', 'patient__first_name', 'patient__last_name')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:10]
+    )
+    patients_top_rx_list = []
+    for p in patients_top_rx:
+        full_name = f"{p['patient__first_name'] or ''} {p['patient__last_name'] or ''}".strip()
+        patients_top_rx_list.append({
+            'id': p['patient__id'],
+            'username': p['patient__username'],
+            'full_name': full_name or p['patient__username'],
+            'reaction_count': p['count'],
+        })
+
+    # ── medication stats across all patients ──
+    all_medicines = Medicine.objects.filter(user_id__in=patient_ids)
+    total_medicines = all_medicines.count()
+    active_medicines = all_medicines.filter(is_active=True).count()
+    inactive_medicines = all_medicines.filter(is_active=False).count()
+
+    # most common medications prescribed to patients
+    top_medications_prescribed = list(
+        all_medicines.values('name')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:10]
+    )
+
+    # patients by medicine count
+    patients_by_med_count = list(
+        all_medicines.values('user__id', 'user__username', 'user__first_name', 'user__last_name')
+        .annotate(med_count=Count('id'))
+        .order_by('-med_count')[:10]
+    )
+    patients_med_list = []
+    for p in patients_by_med_count:
+        full_name = f"{p['user__first_name'] or ''} {p['user__last_name'] or ''}".strip()
+        patients_med_list.append({
+            'id': p['user__id'],
+            'username': p['user__username'],
+            'full_name': full_name or p['user__username'],
+            'medicine_count': p['med_count'],
+        })
+
+    # ── build response ──
+    return Response({
+        'patients': {
+            'total': len(patient_ids),
+            'active': active_assocs.count(),
+            'inactive': inactive_assocs.count(),
+            'with_consent': consent_count,
+            'top_by_reactions': patients_top_rx_list,
+            'top_by_medicines': patients_med_list,
+        },
+        'adverse_reactions': {
+            'total': total_reactions,
+            'resolved': resolved_reactions,
+            'unresolved': unresolved_reactions,
+            'follow_up_needed': follow_up_needed,
+            'by_severity': {
+                'mild': severity_counts.get('mild', 0),
+                'moderate': severity_counts.get('moderate', 0),
+                'severe': severity_counts.get('severe', 0),
+                'life_threatening': severity_counts.get('life_threatening', 0),
+            },
+            'by_type': {
+                'allergic': reaction_type_counts.get('allergic', 0),
+                'side_effect': reaction_type_counts.get('side_effect', 0),
+                'adverse_event': reaction_type_counts.get('adverse_event', 0),
+                'medication_error': reaction_type_counts.get('medication_error', 0),
+                'other': reaction_type_counts.get('other', 0),
+            },
+            'by_outcome': outcome_counts,
+            'top_medications': top_medications_rx,
+            'monthly_trend': monthly_reactions,
+            'recent': recent_reactions,
+        },
+        'medications': {
+            'total': total_medicines,
+            'active': active_medicines,
+            'inactive': inactive_medicines,
+            'top_prescribed': top_medications_prescribed,
+        },
+        'generated_at': now.isoformat(),
+    })
