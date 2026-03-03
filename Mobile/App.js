@@ -36,6 +36,12 @@ import SideEffectTrackerScreen from './src/screens/SideEffectTrackerScreen';
 import MoreScreen from './src/screens/MoreScreen';
 import ChatBotScreen from './src/screens/ChatBotScreen';
 
+// Pharmacy Admin screens
+import PharmacyAdminDashboardScreen from './src/screens/PharmacyAdminDashboardScreen';
+import PharmacyAdminPatientsScreen from './src/screens/PharmacyAdminPatientsScreen';
+import PharmacyAdminAdverseReactionsScreen from './src/screens/PharmacyAdminAdverseReactionsScreen';
+import PharmacyAdminReportsScreen from './src/screens/PharmacyAdminReportsScreen';
+
 const Tab = createBottomTabNavigator();
 const AuthStack = createNativeStackNavigator();
 
@@ -45,6 +51,13 @@ const MedicinesStack = createNativeStackNavigator();
 const AnalyticsStack = createNativeStackNavigator();
 const MoreStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
+
+// Pharmacy Admin stacks
+const PADashboardStack = createNativeStackNavigator();
+const PAPatientsStack = createNativeStackNavigator();
+const PAReactionsStack = createNativeStackNavigator();
+const PAReportsStack = createNativeStackNavigator();
+const PAProfileStack = createNativeStackNavigator();
 
 // Auth Stack for login/signup
 function AuthStackScreens() {
@@ -116,6 +129,92 @@ function ProfileStackScreen() {
       <ProfileStack.Screen name="Notifications" component={NotificationCenter} />
       <ProfileStack.Screen name="ChatBot" component={ChatBotScreen} />
     </ProfileStack.Navigator>
+  );
+}
+
+// ── Pharmacy Admin Stack Screens ──
+function PADashboardStackScreen() {
+  return (
+    <PADashboardStack.Navigator screenOptions={{ headerShown: false }}>
+      <PADashboardStack.Screen name="PADashboardMain" component={PharmacyAdminDashboardScreen} />
+      <PADashboardStack.Screen name="PharmacyAdminPatients" component={PharmacyAdminPatientsScreen} />
+      <PADashboardStack.Screen name="PharmacyAdminAdverseReactions" component={PharmacyAdminAdverseReactionsScreen} />
+      <PADashboardStack.Screen name="PharmacyAdminReports" component={PharmacyAdminReportsScreen} />
+    </PADashboardStack.Navigator>
+  );
+}
+function PAPatientsStackScreen() {
+  return (
+    <PAPatientsStack.Navigator screenOptions={{ headerShown: false }}>
+      <PAPatientsStack.Screen name="PAPatientsMain" component={PharmacyAdminPatientsScreen} />
+    </PAPatientsStack.Navigator>
+  );
+}
+function PAReactionsStackScreen() {
+  return (
+    <PAReactionsStack.Navigator screenOptions={{ headerShown: false }}>
+      <PAReactionsStack.Screen name="PAReactionsMain" component={PharmacyAdminAdverseReactionsScreen} />
+    </PAReactionsStack.Navigator>
+  );
+}
+function PAReportsStackScreen() {
+  return (
+    <PAReportsStack.Navigator screenOptions={{ headerShown: false }}>
+      <PAReportsStack.Screen name="PAReportsMain" component={PharmacyAdminReportsScreen} />
+    </PAReportsStack.Navigator>
+  );
+}
+function PAProfileStackScreen() {
+  return (
+    <PAProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <PAProfileStack.Screen name="PAProfileMain" component={ProfileScreen} />
+      <PAProfileStack.Screen name="Notifications" component={NotificationCenter} />
+    </PAProfileStack.Navigator>
+  );
+}
+
+// Pharmacy Admin Tab Navigator
+function PharmacyAdminTabs() {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+          if (route.name === 'PADashboard') iconName = focused ? 'grid' : 'grid-outline';
+          else if (route.name === 'PAPatients') iconName = focused ? 'people' : 'people-outline';
+          else if (route.name === 'PAReactions') iconName = focused ? 'shield-checkmark' : 'shield-checkmark-outline';
+          else if (route.name === 'PAReports') iconName = focused ? 'bar-chart' : 'bar-chart-outline';
+          else if (route.name === 'PAProfile') iconName = focused ? 'person' : 'person-outline';
+          else iconName = 'help';
+          return <Ionicons name={iconName} size={22} color={color} />;
+        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted || '#94a3b8',
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          height: 60 + insets.bottom,
+          paddingBottom: 8 + insets.bottom,
+          paddingTop: 6,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        headerShown: false,
+      })}
+    >
+      <Tab.Screen name="PADashboard" component={PADashboardStackScreen} options={{ tabBarLabel: 'Dashboard' }} />
+      <Tab.Screen name="PAPatients" component={PAPatientsStackScreen} options={{ tabBarLabel: 'Patients' }} />
+      <Tab.Screen name="PAReactions" component={PAReactionsStackScreen} options={{ tabBarLabel: 'Reactions' }} />
+      <Tab.Screen name="PAReports" component={PAReportsStackScreen} options={{ tabBarLabel: 'Reports' }} />
+      <Tab.Screen name="PAProfile" component={PAProfileStackScreen} options={{ tabBarLabel: 'Profile' }} />
+    </Tab.Navigator>
   );
 }
 
@@ -264,7 +363,7 @@ function Navigation() {
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
           <DataSyncProvider>
             <AlarmProvider>
-              <MainTabs />
+              {user.user_type === 'pharmacy_admin' ? <PharmacyAdminTabs /> : <MainTabs />}
               <ChatBotFAB />
               <AlarmModal />
             </AlarmProvider>

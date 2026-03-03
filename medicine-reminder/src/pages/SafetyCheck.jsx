@@ -128,8 +128,7 @@ const SafetyCheck = ({ setIsAuthenticated }) => {
               <option value="young">Young Adult (18-35)</option>
               <option value="pregnant">Pregnant</option>
               <option value="elderly">Elderly (65+)</option>
-              <option value="child">Child (2-12)</option>
-              <option value="infant_toddler">Infant/Toddler (0-2)</option>
+              <option value="extreme">Extreme Age (Pediatric / Very Old)</option>
             </select>
           </div>
 

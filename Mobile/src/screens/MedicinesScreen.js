@@ -407,6 +407,37 @@ export default function MedicinesScreen() {
             colors={[colors.primary]}
           />
         }
+        ListHeaderComponent={
+          <View style={[styles.quickActionsContainer, { backgroundColor: colors.primaryLight ? colors.primaryLight + '12' : '#f0fdfa', borderColor: colors.primary + '30' }]}>
+            <Text style={[styles.quickActionsTitle, { color: colors.text }]}>{t('medicines.quickActions') || 'Quick Actions'}</Text>
+            <View style={styles.quickActionsRow}>
+              <TouchableOpacity
+                style={[styles.quickActionBtn, { backgroundColor: colors.surface }]}
+                onPress={() => navigation.getParent()?.navigate('Analytics')}
+              >
+                <MaterialCommunityIcons name="chart-line" size={24} color={colors.primary} />
+                <Text style={[styles.quickActionLabel, { color: colors.text }]}>{t('medicines.analyticsDashboard') || 'Analytics'}</Text>
+                <Text style={[styles.quickActionDesc, { color: colors.textSecondary }]}>{t('medicines.analyticsDesc') || 'Adherence trends'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.quickActionBtn, { backgroundColor: colors.surface }]}
+                onPress={() => navigation.getParent()?.navigate('More', { screen: 'InteractionChecker' })}
+              >
+                <MaterialCommunityIcons name="pill" size={24} color={colors.success || '#16a34a'} />
+                <Text style={[styles.quickActionLabel, { color: colors.text }]}>{t('medicines.interactionChecker') || 'Interactions'}</Text>
+                <Text style={[styles.quickActionDesc, { color: colors.textSecondary }]}>{t('medicines.interactionDesc') || 'Drug interactions'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.quickActionBtn, { backgroundColor: colors.surface }]}
+                onPress={() => navigation.getParent()?.navigate('More', { screen: 'DoseHistory' })}
+              >
+                <MaterialCommunityIcons name="history" size={24} color={colors.primary} />
+                <Text style={[styles.quickActionLabel, { color: colors.text }]}>{t('medicines.doseHistory') || 'Dose History'}</Text>
+                <Text style={[styles.quickActionDesc, { color: colors.textSecondary }]}>{t('medicines.doseHistoryDesc') || 'Medication history'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -619,6 +650,45 @@ const styles = StyleSheet.create({
     height: 36,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  quickActionsContainer: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  quickActionsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  quickActionBtn: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+  },
+  quickActionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  quickActionDesc: {
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
   },
   addButtonContainer: {
     padding: 16,

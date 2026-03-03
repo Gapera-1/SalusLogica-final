@@ -1,5 +1,15 @@
 import { Platform } from 'react-native';
+import { DeviceEventEmitter } from 'react-native';
 import { tokenStorage, userStorage } from './storage';
+
+// ============ AUTH EVENT EMITTER ============
+// Fires 'auth:forceLogout' when a 401 is received after token refresh fails,
+// so AuthContext can clear state and redirect to login.
+export const AUTH_FORCE_LOGOUT_EVENT = 'auth:forceLogout';
+
+const emitForceLogout = (reason = 'Session expired') => {
+  DeviceEventEmitter.emit(AUTH_FORCE_LOGOUT_EVENT, { reason });
+};
 
 // ============ API CONFIGURATION ============
 // For web: use localhost, for Android emulator: use 10.0.2.2, for iOS simulator/physical devices: use your computer's IP
@@ -72,8 +82,9 @@ const apiCall = async (endpoint, options = {}) => {
             }
             response = await fetch(url, config);
           } else {
-            // Refresh failed - clear tokens
+            // Refresh failed - clear tokens and force logout
             await clearAuthData();
+            emitForceLogout('Session expired');
             const err = new Error('Session expired');
             err.status = 401;
             throw err;
@@ -81,6 +92,7 @@ const apiCall = async (endpoint, options = {}) => {
         } catch (refreshError) {
           console.error('Token refresh failed:', refreshError);
           await clearAuthData();
+          emitForceLogout('Session expired');
           const err = new Error('Session expired');
           err.status = 401;
           throw err;
@@ -88,6 +100,7 @@ const apiCall = async (endpoint, options = {}) => {
       } else {
         // No refresh token available
         await clearAuthData();
+        emitForceLogout('Unauthorized');
         const err = new Error('Unauthorized');
         err.status = 401;
         throw err;
@@ -627,6 +640,75 @@ export const sideEffectAPI = {
   },
 };
 
+// ============ PHARMACY ADMIN API ============
+export const pharmacyAdminAPI = {
+  // Pharmacy admin signup
+  signup: async (data) => {
+    return await apiCall('/pharmacy-admin/signup/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Location options for signup dropdowns
+  getLocationOptions: async () => {
+    return await apiCall('/pharmacy-admin/location-options/');
+  },
+
+  // Dashboard stats
+  getDashboard: async () => {
+    return await apiCall('/pharmacy-admin/dashboard/');
+  },
+
+  // Patients list
+  getPatients: async (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return await apiCall(`/pharmacy-admin/patients/${query ? '?' + query : ''}`);
+  },
+
+  // Patient detail
+  getPatientDetail: async (patientId) => {
+    return await apiCall(`/pharmacy-admin/patients/${patientId}/`);
+  },
+
+  // Patient medicines
+  getPatientMedicines: async (patientId) => {
+    return await apiCall(`/pharmacy-admin/patients/${patientId}/medicines/`);
+  },
+
+  // Adverse reactions list
+  getAdverseReactions: async (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return await apiCall(`/pharmacy-admin/adverse-reactions/${query ? '?' + query : ''}`);
+  },
+
+  // Adverse reaction detail
+  getAdverseReactionDetail: async (id) => {
+    return await apiCall(`/pharmacy-admin/adverse-reactions/${id}/`);
+  },
+
+  // Mark adverse reaction as resolved
+  resolveAdverseReaction: async (id) => {
+    return await apiCall(`/pharmacy-admin/adverse-reactions/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_resolved: true, resolved_date: new Date().toISOString() }),
+    });
+  },
+
+  // Reports data
+  getReports: async () => {
+    return await apiCall('/pharmacy-admin/reports/');
+  },
+
+  // Link patient
+  linkPatient: async (data) => {
+    return await apiCall('/pharmacy-admin/link-patient/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
 // ============ EXPORT REPORTS API ============
 export const exportReportAPI = {
   // Download PDF report (returns blob-like response)
@@ -737,6 +819,7 @@ export default {
   notificationAPI,
   fcmDeviceAPI,
   sideEffectAPI,
+  pharmacyAdminAPI,
   exportReportAPI,
   dashboardAPI,
   safetyAPI,

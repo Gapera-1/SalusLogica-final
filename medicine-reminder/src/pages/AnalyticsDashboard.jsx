@@ -1,51 +1,217 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import BaseLayout from "../components/BaseLayout";
 import { SkeletonDashboard } from "../components/SkeletonLoaders";
 import useLanguage from "../i18n/useLanguage";
+import { medicineAPI, analyticsAPI } from "../services/api";
+
+// ─── SVG Pie Chart Component ────────────────────────────────────────────────
+const PieChart = ({ data, size = 220 }) => {
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  if (total === 0) return null;
+  const cx = size / 2, cy = size / 2, r = size / 2 - 10;
+  let cumulative = 0;
+
+  const slices = data.map((d, i) => {
+    const fraction = d.value / total;
+    const startAngle = cumulative * 2 * Math.PI - Math.PI / 2;
+    cumulative += fraction;
+    const endAngle = cumulative * 2 * Math.PI - Math.PI / 2;
+    const largeArc = fraction > 0.5 ? 1 : 0;
+    const x1 = cx + r * Math.cos(startAngle);
+    const y1 = cy + r * Math.sin(startAngle);
+    const x2 = cx + r * Math.cos(endAngle);
+    const y2 = cy + r * Math.sin(endAngle);
+    // If there's only one slice (100%), draw a full circle
+    if (fraction >= 0.9999) {
+      return (
+        <circle key={i} cx={cx} cy={cy} r={r} fill={d.color} stroke="white" strokeWidth="2" />
+      );
+    }
+    return (
+      <path
+        key={i}
+        d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`}
+        fill={d.color}
+        stroke="white"
+        strokeWidth="2"
+      >
+        <title>{d.label}: {d.value} ({(fraction * 100).toFixed(1)}%)</title>
+      </path>
+    );
+  });
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {slices}
+      </svg>
+      <div className="flex flex-wrap justify-center gap-3 mt-4">
+        {data.map((d, i) => (
+          <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
+            <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
+            {d.label} ({d.value})
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── SVG Bar Chart (Histogram) Component ────────────────────────────────────
+const BarChart = ({ data, height = 260, barColor = "#0d9488", label = "%" }) => {
+  if (!data.length) return null;
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  const barWidth = Math.min(48, Math.max(24, Math.floor(500 / data.length) - 8));
+  const chartWidth = data.length * (barWidth + 12) + 40;
+
+  return (
+    <div className="overflow-x-auto">
+      <svg width={Math.max(chartWidth, 300)} height={height + 50} className="mx-auto">
+        {/* Y-axis labels */}
+        {[0, 25, 50, 75, 100].map(pct => {
+          const y = height - (pct / 100) * height + 10;
+          return (
+            <g key={pct}>
+              <text x="30" y={y + 4} textAnchor="end" className="fill-gray-400" fontSize="11">{pct}{label}</text>
+              <line x1="35" y1={y} x2={chartWidth} y2={y} stroke="#e5e7eb" strokeDasharray="3,3" />
+            </g>
+          );
+        })}
+        {/* Bars */}
+        {data.map((d, i) => {
+          const barH = (d.value / maxVal) * height;
+          const x = 40 + i * (barWidth + 12);
+          const y = height - barH + 10;
+          const color = d.color || barColor;
+          return (
+            <g key={i}>
+              <rect x={x} y={y} width={barWidth} height={barH} rx="4" fill={color} opacity="0.85">
+                <title>{d.label}: {d.value}{label}</title>
+              </rect>
+              <text x={x + barWidth / 2} y={y - 6} textAnchor="middle" className="fill-gray-700" fontSize="11" fontWeight="600">
+                {d.value}{label === "%" ? "%" : ""}
+              </text>
+              <text x={x + barWidth / 2} y={height + 28} textAnchor="middle" className="fill-gray-500" fontSize="10" transform={`rotate(-20, ${x + barWidth / 2}, ${height + 28})`}>
+                {d.label.length > 10 ? d.label.slice(0, 10) + '…' : d.label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
+
+// ─── Palette ────────────────────────────────────────────────────────────────
+const CHART_COLORS = ['#0d9488', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#3b82f6', '#ec4899', '#10b981', '#f97316', '#6366f1'];
 
 const AnalyticsDashboard = ({ setIsAuthenticated, setUser, user }) => {
   const { t } = useLanguage();
   const [userRole, setUserRole] = useState("PATIENT");
-  const [adherenceData, setAdherenceData] = useState({
-    average_adherence: 92.5,
-    current_trend: "IMPROVING",
-    risk_score: 15,
-    active_medications: 5
-  });
-  const [medicinePerformance, setMedicinePerformance] = useState([
-    { name: "Aspirin", adherence: 95, doses_taken: 285, total_doses: 300 },
-    { name: "Metformin", adherence: 88, doses_taken: 264, total_doses: 300 },
-    { name: "Lisinopril", adherence: 92, doses_taken: 276, total_doses: 300 },
-    { name: "Atorvastatin", adherence: 85, doses_taken: 255, total_doses: 300 },
-    { name: "Vitamin D", adherence: 98, doses_taken: 294, total_doses: 300 }
-  ]);
+  const [medicines, setMedicines] = useState([]);
+  const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      setUserRole(user.role?.toUpperCase() || "PATIENT");
-      setLoading(false);
-    }, 1000);
+    const loadData = async () => {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        setUserRole(storedUser.role?.toUpperCase() || storedUser.user_type?.toUpperCase() || "PATIENT");
 
-    return () => clearTimeout(timer);
+        // Fetch real data in parallel
+        const [medsResponse, dashResponse] = await Promise.allSettled([
+          medicineAPI.getAll(),
+          analyticsAPI.getDashboard(),
+        ]);
+
+        if (medsResponse.status === 'fulfilled') {
+          const medsData = Array.isArray(medsResponse.value) ? medsResponse.value : (medsResponse.value?.results || []);
+          setMedicines(medsData);
+        }
+        if (dashResponse.status === 'fulfilled') {
+          setDashboardData(dashResponse.value);
+        }
+      } catch (err) {
+        console.error("Failed to load analytics:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
-  const getTrendColor = (trend) => {
-    switch (trend) {
-      case "IMPROVING": return "adherence-good";
-      case "DECLINING": return "adherence-danger";
-      default: return "adherence-warning";
-    }
-  };
+  // ── Computed chart data from real medicines ──────────────────────────────
+  const frequencyPieData = useMemo(() => {
+    const counts = {};
+    medicines.forEach(m => {
+      const freq = m.frequency || 'unknown';
+      counts[freq] = (counts[freq] || 0) + 1;
+    });
+    const labels = {
+      once_daily: t('analytics.onceDaily') || 'Once Daily',
+      twice_daily: t('analytics.twiceDaily') || 'Twice Daily',
+      three_times_daily: t('analytics.threeTimesDaily') || '3x Daily',
+      four_times_daily: t('analytics.fourTimesDaily') || '4x Daily',
+      as_needed: t('analytics.asNeeded') || 'As Needed',
+      weekly: t('analytics.weekly') || 'Weekly',
+      monthly: t('analytics.monthly') || 'Monthly',
+    };
+    return Object.entries(counts).map(([key, val], i) => ({
+      label: labels[key] || key,
+      value: val,
+      color: CHART_COLORS[i % CHART_COLORS.length],
+    }));
+  }, [medicines, t]);
 
-  const getTrendIcon = (trend) => {
-    switch (trend) {
-      case "IMPROVING": return "fas fa-trending-up";
-      case "DECLINING": return "fas fa-trending-down";
-      default: return "fas fa-minus";
-    }
+  const statusPieData = useMemo(() => {
+    let active = 0, completed = 0, inactive = 0;
+    medicines.forEach(m => {
+      if (m.completed) completed++;
+      else if (m.is_active) active++;
+      else inactive++;
+    });
+    return [
+      { label: t('analytics.active') || 'Active', value: active, color: '#10b981' },
+      { label: t('analytics.completed') || 'Completed', value: completed, color: '#6366f1' },
+      { label: t('analytics.inactive') || 'Inactive', value: inactive, color: '#94a3b8' },
+    ].filter(d => d.value > 0);
+  }, [medicines, t]);
+
+  const stockBarData = useMemo(() => {
+    return medicines
+      .filter(m => m.is_active && !m.completed)
+      .sort((a, b) => (a.stock_count || 0) - (b.stock_count || 0))
+      .slice(0, 12)
+      .map(m => ({
+        label: m.name,
+        value: m.stock_count || 0,
+        color: (m.stock_count || 0) < 10 ? '#ef4444' : (m.stock_count || 0) < 30 ? '#f59e0b' : '#10b981',
+      }));
+  }, [medicines]);
+
+  const adherenceTrends = useMemo(() => {
+    if (!dashboardData?.adherence_trends?.length) return [];
+    return dashboardData.adherence_trends.slice(-14).map(t => ({
+      label: new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      value: Math.round(t.adherence_percentage || 0),
+    }));
+  }, [dashboardData]);
+
+  const stats = useMemo(() => {
+    const activeMeds = medicines.filter(m => m.is_active && !m.completed);
+    const completedMeds = medicines.filter(m => m.completed);
+    const lowStock = activeMeds.filter(m => (m.stock_count || 0) < 10);
+    const avgAdherence = dashboardData?.stats?.adherence_rate ?? null;
+    return { total: medicines.length, active: activeMeds.length, completed: completedMeds.length, lowStock: lowStock.length, avgAdherence };
+  }, [medicines, dashboardData]);
+
+  // ── Frequency label helper ──────────────────────────────────────────────
+  const freqLabel = (f) => {
+    const map = { once_daily: 'Once Daily', twice_daily: 'Twice Daily', three_times_daily: '3× Daily', four_times_daily: '4× Daily', as_needed: 'As Needed', weekly: 'Weekly', monthly: 'Monthly' };
+    return map[f] || f;
   };
 
   if (loading) {
@@ -64,445 +230,187 @@ const AnalyticsDashboard = ({ setIsAuthenticated, setUser, user }) => {
           <p className="mt-2 text-gray-600">
             {userRole === "PATIENT" ? t('analytics.patientSubtitle') : userRole === "PHARMACY_ADMIN" ? t('analytics.pharmacyAdminSubtitle') : t('analytics.adminSubtitle')}
           </p>
+          {error && (
+            <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+              {t('analytics.loadError') || 'Some data could not be loaded.'}
+            </div>
+          )}
         </div>
 
-        {userRole === "PATIENT" && (
-          <>
-            {/* PATIENT DASHBOARD */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="stat-card" style={{
-                background: "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)",
-                color: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "20px",
-                transition: "transform 0.3s ease"
-              }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-sm">{t('analytics.overallAdherence')}</p>
-                    <p className="text-3xl font-bold">{adherenceData.average_adherence}%</p>
-                    <p className="text-white/60 text-xs mt-1">{t('analytics.last30Days')}</p>
-                  </div>
-                  <div className="text-white/20">
-                    <i className="fas fa-chart-line text-4xl"></i>
-                  </div>
+        {/* ─── KPI Stat Cards ──────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="stat-card" style={{ background: "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)", color: "white", borderRadius: "12px", padding: "20px", transition: "transform 0.3s ease" }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white/80 text-sm">{t('analytics.totalMedicines') || 'Total Medicines'}</p>
+                <p className="text-3xl font-bold">{stats.total}</p>
+                <p className="text-white/60 text-xs mt-1">{t('analytics.allTime') || 'All time'}</p>
+              </div>
+              <div className="text-white/20"><i className="fas fa-capsules text-4xl"></i></div>
+            </div>
+          </div>
+
+          <div className="stat-card" style={{ background: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)", color: "white", borderRadius: "12px", padding: "20px", transition: "transform 0.3s ease" }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white/80 text-sm">{t('analytics.activeMedications') || 'Active Medications'}</p>
+                <p className="text-3xl font-bold">{stats.active}</p>
+                <p className="text-white/60 text-xs mt-1">{t('analytics.currentlyTracking') || 'Currently tracking'}</p>
+              </div>
+              <div className="text-white/20"><i className="fas fa-pills text-4xl"></i></div>
+            </div>
+          </div>
+
+          <div className="stat-card" style={{ background: "linear-gradient(135deg, #5eead4 0%, #14b8a6 100%)", color: "white", borderRadius: "12px", padding: "20px", transition: "transform 0.3s ease" }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white/80 text-sm">{t('analytics.overallAdherence') || 'Adherence Rate'}</p>
+                <p className="text-3xl font-bold">{stats.avgAdherence != null ? `${Math.round(stats.avgAdherence)}%` : '—'}</p>
+                <p className="text-white/60 text-xs mt-1">{t('analytics.last30Days') || 'Last 30 days'}</p>
+              </div>
+              <div className="text-white/20"><i className="fas fa-chart-line text-4xl"></i></div>
+            </div>
+          </div>
+
+          <div className="stat-card" style={{ background: stats.lowStock > 0 ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)" : "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)", color: "white", borderRadius: "12px", padding: "20px", transition: "transform 0.3s ease" }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white/80 text-sm">{t('analytics.lowStock') || 'Low Stock'}</p>
+                <p className="text-3xl font-bold">{stats.lowStock}</p>
+                <p className="text-white/60 text-xs mt-1">{t('analytics.medicinesBelow10') || 'Medicines below 10'}</p>
+              </div>
+              <div className="text-white/20"><i className="fas fa-exclamation-triangle text-4xl"></i></div>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Charts Row: Pie Charts ──────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Frequency Distribution Pie Chart */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <i className="fas fa-chart-pie text-teal-600 mr-2"></i>
+              {t('analytics.frequencyDistribution') || 'Medicine Frequency Distribution'}
+            </h2>
+            {frequencyPieData.length > 0 ? (
+              <PieChart data={frequencyPieData} size={220} />
+            ) : (
+              <div className="flex items-center justify-center h-48 text-gray-400">
+                <div className="text-center">
+                  <i className="fas fa-chart-pie text-5xl mb-2"></i>
+                  <p>{t('analytics.noMedicines') || 'No medicines added yet'}</p>
                 </div>
               </div>
-              
-              <div className={`stat-card ${getTrendColor(adherenceData.current_trend)}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-sm">{t('analytics.currentTrend')}</p>
-                    <p className="text-2xl font-bold">{adherenceData.current_trend}</p>
-                    <p className="text-white/60 text-xs mt-1">{t('analytics.riskScore')}: {adherenceData.risk_score}</p>
-                  </div>
-                  <div className="text-white/20">
-                    <i className={`${getTrendIcon(adherenceData.current_trend)} text-4xl`}></i>
-                  </div>
+            )}
+          </div>
+
+          {/* Status Pie Chart */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <i className="fas fa-chart-pie text-indigo-600 mr-2"></i>
+              {t('analytics.statusDistribution') || 'Medicine Status Overview'}
+            </h2>
+            {statusPieData.length > 0 ? (
+              <PieChart data={statusPieData} size={220} />
+            ) : (
+              <div className="flex items-center justify-center h-48 text-gray-400">
+                <div className="text-center">
+                  <i className="fas fa-chart-pie text-5xl mb-2"></i>
+                  <p>{t('analytics.noMedicines') || 'No medicines added yet'}</p>
                 </div>
               </div>
-              
-              <div className="stat-card" style={{
-                background: "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)",
-                color: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "20px",
-                transition: "transform 0.3s ease"
-              }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-sm">{t('analytics.activeMedications')}</p>
-                    <p className="text-3xl font-bold">{adherenceData.active_medications}</p>
-                    <p className="text-white/60 text-xs mt-1">{t('analytics.currentlyTracking')}</p>
-                  </div>
-                  <div className="text-white/20">
-                    <i className="fas fa-pills text-4xl"></i>
-                  </div>
-                </div>
+            )}
+          </div>
+        </div>
+
+        {/* ─── Adherence Trend Histogram ───────────────────────────────── */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            <i className="fas fa-chart-bar text-teal-600 mr-2"></i>
+            {t('analytics.adherenceTrend') || 'Adherence Trend (Last 14 Days)'}
+          </h2>
+          {adherenceTrends.length > 0 ? (
+            <BarChart data={adherenceTrends} height={220} barColor="#0d9488" label="%" />
+          ) : (
+            <div className="flex items-center justify-center h-48 text-gray-400">
+              <div className="text-center">
+                <i className="fas fa-chart-bar text-5xl mb-2"></i>
+                <p>{t('analytics.noAdherenceData') || 'No adherence data available yet'}</p>
+                <p className="text-sm mt-1">{t('analytics.startTakingDoses') || 'Start taking your doses to see trends'}</p>
               </div>
             </div>
+          )}
+        </div>
 
-            {/* Adherence Chart */}
-            <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">{t('analytics.adherenceTrend')}</h2>
-              <div className="chart-container" style={{
-                position: "relative",
-                height: "300px",
-                margin: "20px 0"
-              }}>
-                <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg">
-                  <div className="text-center">
-                    <i className="fas fa-chart-line text-6xl text-gray-300 mb-4"></i>
-                    <p className="text-gray-500">{t('analytics.chartPlaceholder')}</p>
-                    <p className="text-sm text-gray-400 mt-2">{t('analytics.chartIntegration')}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* ─── Stock Levels Bar Chart ──────────────────────────────────── */}
+        {stockBarData.length > 0 && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <i className="fas fa-boxes text-amber-600 mr-2"></i>
+              {t('analytics.stockLevels') || 'Stock Levels'}
+            </h2>
+            <BarChart data={stockBarData} height={200} label="" />
+          </div>
+        )}
 
-            {/* Medicine Performance */}
-            <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">{t('analytics.medicinePerformance')}</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('analytics.medicine')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('analytics.adherence')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('analytics.dosesTaken')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('analytics.totalDoses')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('analytics.status')}
-                      </th>
+        {/* ─── Medicine List Table ─────────────────────────────────────── */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            <i className="fas fa-list text-teal-600 mr-2"></i>
+            {t('analytics.medicinePerformance') || 'Your Medicines'}
+          </h2>
+          {medicines.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('analytics.medicine') || 'Medicine'}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('analytics.dosage') || 'Dosage'}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('analytics.frequency') || 'Frequency'}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('analytics.stock') || 'Stock'}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('analytics.status') || 'Status'}</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {medicines.map((med, index) => (
+                    <tr key={med.id || index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{med.name}</div>
+                        {med.scientific_name && <div className="text-xs text-gray-500 italic">{med.scientific_name}</div>}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{med.dosage || '—'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{freqLabel(med.frequency)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`text-sm font-semibold ${(med.stock_count || 0) < 10 ? 'text-red-600' : (med.stock_count || 0) < 30 ? 'text-amber-600' : 'text-green-600'}`}>
+                          {med.stock_count ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          med.completed ? 'bg-indigo-100 text-indigo-800' :
+                          med.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {med.completed ? (t('analytics.completed') || 'Completed') :
+                           med.is_active ? (t('analytics.active') || 'Active') : (t('analytics.inactive') || 'Inactive')}
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {medicinePerformance.map((medicine, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {medicine.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center">
-                            <span className="mr-2">{medicine.adherence}%</span>
-                            <div className="w-16 bg-gray-200 rounded-full h-2">
-                              <div 
-                                className={`h-2 rounded-full ${
-                                  medicine.adherence >= 90 ? 'bg-green-500' : 
-                                  medicine.adherence >= 70 ? 'bg-yellow-500' : 'bg-red-500'
-                                }`}
-                                style={{ width: `${medicine.adherence}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {medicine.doses_taken}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {medicine.total_doses}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            medicine.adherence >= 90 ? 'bg-green-100 text-green-800' : 
-                            medicine.adherence >= 70 ? 'bg-yellow-100 text-yellow-800' : 
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {medicine.adherence >= 90 ? t('analytics.excellent') : 
-                             medicine.adherence >= 70 ? t('analytics.good') : t('analytics.needsAttention')}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
-
-            {/* Quick Insights */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-gradient-to-r from-teal-50 to-teal-50 border border-teal-200 rounded-lg p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">{t('analytics.insightsTitle')}</h3>
-                <ul className="space-y-3">
-                  <li className="flex items-start">
-                    <i className="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{t('analytics.bestPerformingMedicine')}</p>
-                      <p className="text-xs text-gray-600">{t('analytics.bestPerformingDetail')}</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start">
-                    <i className="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-3"></i>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{t('analytics.needsAttention')}</p>
-                      <p className="text-xs text-gray-600">{t('analytics.needsAttentionDetail')}</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start">
-                    <i className="fas fa-trending-up text-green-500 mt-1 mr-3"></i>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{t('analytics.positiveTrend')}</p>
-                      <p className="text-xs text-gray-600">{t('analytics.positiveTrendDetail')}</p>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">{t('analytics.recommendation')}</h3>
-                <ul className="space-y-3">
-                  <li className="flex items-start">
-                    <i className="fas fa-lightbulb text-yellow-500 mt-1 mr-3"></i>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{t('analytics.optimizeTiming')}</p>
-                      <p className="text-xs text-gray-600">{t('analytics.optimizeTimingDetail')}</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start">
-                    <i className="fas fa-calendar-check text-teal-500 mt-1 mr-3"></i>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{t('analytics.scheduleReview')}</p>
-                      <p className="text-xs text-gray-600">{t('analytics.scheduleReviewDetail')}</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start">
-                    <i className="fas fa-bell text-purple-500 mt-1 mr-3"></i>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{t('analytics.enhancedReminders')}</p>
-                      <p className="text-xs text-gray-600">{t('analytics.enhancedRemindersDetail')}</p>
-                    </div>
-                  </li>
-                </ul>
-              </div>
+          ) : (
+            <div className="text-center py-8 text-gray-400">
+              <i className="fas fa-prescription-bottle text-5xl mb-3"></i>
+              <p>{t('analytics.noMedicines') || 'No medicines added yet'}</p>
             </div>
-          </>
-        )}
-
-        {userRole === "PHARMACY_ADMIN" && (
-          <>
-            {/* PHARMACY ADMIN DASHBOARD */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="stat-card" style={{
-                background: "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)",
-                color: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "20px",
-                transition: "transform 0.3s ease"
-              }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-sm">{t('analytics.totalPatients')}</p>
-                    <p className="text-3xl font-bold">156</p>
-                    <p className="text-white/60 text-xs mt-1">{t('analytics.activePatients')}</p>
-                  </div>
-                  <div className="text-white/20">
-                    <i className="fas fa-users text-4xl"></i>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="stat-card" style={{
-                background: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
-                color: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "20px",
-                transition: "transform 0.3s ease"
-              }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-sm">{t('analytics.avgAdherence')}</p>
-                    <p className="text-3xl font-bold">87.3%</p>
-                    <p className="text-white/60 text-xs mt-1">{t('analytics.acrossAllPatients')}</p>
-                  </div>
-                  <div className="text-white/20">
-                    <i className="fas fa-chart-line text-4xl"></i>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="stat-card" style={{
-                background: "linear-gradient(135deg, #5eead4 0%, #14b8a6 100%)",
-                color: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "20px",
-                transition: "transform 0.3s ease"
-              }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-sm">{t('analytics.riskPatients')}</p>
-                    <p className="text-3xl font-bold">12</p>
-                    <p className="text-white/60 text-xs mt-1">{t('analytics.needIntervention')}</p>
-                  </div>
-                  <div className="text-white/20">
-                    <i className="fas fa-exclamation-triangle text-4xl"></i>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="stat-card" style={{
-                background: "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)",
-                color: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "20px",
-                transition: "transform 0.3s ease"
-              }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-sm">{t('analytics.totalPrescriptions')}</p>
-                    <p className="text-3xl font-bold">892</p>
-                    <p className="text-white/60 text-xs mt-1">{t('analytics.thisMonth')}</p>
-                  </div>
-                  <div className="text-white/20">
-                    <i className="fas fa-prescription text-4xl"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Patient Performance Overview */}
-            <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">{t('analytics.patientPerformance')}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">{t('analytics.topPerformingPatients')}</h3>
-                  <div className="space-y-3">
-                    {["John Doe", "Jane Smith", "Robert Johnson"].map((name, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                            <i className="fas fa-user text-green-600"></i>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{name}</p>
-                            <p className="text-xs text-gray-600">{95 - index * 2}% {t('analytics.adherence')}</p>
-                          </div>
-                        </div>
-                        <i className="fas fa-trophy text-yellow-500"></i>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">{t('analytics.patientsNeedingAttention')}</h3>
-                  <div className="space-y-3">
-                    {["Alice Brown", "Charlie Wilson", "Diana Prince"].map((name, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                            <i className="fas fa-user text-red-600"></i>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{name}</p>
-                            <p className="text-xs text-gray-600">{65 - index * 5}% {t('analytics.adherence')}</p>
-                          </div>
-                        </div>
-                        <button className="px-3 py-1 bg-red-600 text-white text-xs rounded-full hover:bg-red-700">
-                          {t('analytics.contact')}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {userRole === "ADMIN" && (
-          <>
-            {/* SYSTEM ADMIN DASHBOARD */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="stat-card" style={{
-                background: "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)",
-                color: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "20px",
-                transition: "transform 0.3s ease"
-              }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-sm">{t('analytics.totalUsers')}</p>
-                    <p className="text-3xl font-bold">2,847</p>
-                    <p className="text-white/60 text-xs mt-1">{t('analytics.allRoles')}</p>
-                  </div>
-                  <div className="text-white/20">
-                    <i className="fas fa-users text-4xl"></i>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="stat-card" style={{
-                background: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
-                color: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "20px",
-                transition: "transform 0.3s ease"
-              }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-sm">{t('analytics.systemHealth')}</p>
-                    <p className="text-3xl font-bold">99.8%</p>
-                    <p className="text-white/60 text-xs mt-1">{t('analytics.uptime')}</p>
-                  </div>
-                  <div className="text-white/20">
-                    <i className="fas fa-server text-4xl"></i>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="stat-card" style={{
-                background: "linear-gradient(135deg, #5eead4 0%, #14b8a6 100%)",
-                color: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "20px",
-                transition: "transform 0.3s ease"
-              }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-sm">{t('analytics.dailyActiveUsers')}</p>
-                    <p className="text-3xl font-bold">1,234</p>
-                    <p className="text-white/60 text-xs mt-1">{t('analytics.last24Hours')}</p>
-                  </div>
-                  <div className="text-white/20">
-                    <i className="fas fa-chart-bar text-4xl"></i>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="stat-card" style={{
-                background: "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)",
-                color: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "20px",
-                transition: "transform 0.3s ease"
-              }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-sm">{t('analytics.dataProcessed')}</p>
-                    <p className="text-3xl font-bold">45.2TB</p>
-                    <p className="text-white/60 text-xs mt-1">{t('analytics.thisMonth')}</p>
-                  </div>
-                  <div className="text-white/20">
-                    <i className="fas fa-database text-4xl"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
 
       <style jsx>{`
         .stat-card:hover {
           transform: translateY(-5px);
-        }
-        .adherence-good { 
-          background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); 
-        }
-        .adherence-warning { 
-          background: linear-gradient(135deg, #5eead4 0%, #14b8a6 100%); 
-        }
-        .adherence-danger { 
-          background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); 
         }
       `}</style>
     </BaseLayout>

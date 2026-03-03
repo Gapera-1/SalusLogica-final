@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { authAPI, userAPI, storeAuthTokens, clearAuthData } from '../services/api';
+import { DeviceEventEmitter } from 'react-native';
+import { authAPI, userAPI, storeAuthTokens, clearAuthData, AUTH_FORCE_LOGOUT_EVENT } from '../services/api';
 import { userStorage, tokenStorage, clearAllStorage } from '../services/storage';
 
 /**
@@ -24,7 +25,29 @@ export const AuthProvider = ({ children }) => {
         ]);
 
         if (savedUser && accessToken) {
-          setUser(savedUser);
+          // Verify the account still exists on the server
+          try {
+            const freshUser = await authAPI.getCurrentUser();
+            if (freshUser) {
+              await userStorage.setUser(freshUser);
+              setUser(freshUser);
+            } else {
+              // User no longer exists
+              await clearAllStorage();
+              setUser(null);
+            }
+          } catch (verifyError) {
+            console.warn('Session verification failed:', verifyError.message);
+            // If 401/403/404, account is deleted or token invalid
+            const status = verifyError.status || verifyError.response?.status;
+            if (status === 401 || status === 403 || status === 404) {
+              await clearAllStorage();
+              setUser(null);
+            } else {
+              // Network error or server down — use cached data
+              setUser(savedUser);
+            }
+          }
         }
       } catch (e) {
         console.error('Failed to restore session:', e);
@@ -34,6 +57,21 @@ export const AuthProvider = ({ children }) => {
     };
 
     bootstrapAsync();
+  }, []);
+
+  // Listen for forced logout events (e.g., account deleted, token invalidated)
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener(
+      AUTH_FORCE_LOGOUT_EVENT,
+      async ({ reason }) => {
+        console.warn('Force logout triggered:', reason);
+        await clearAllStorage();
+        setUser(null);
+        setIsSignout(true);
+      }
+    );
+
+    return () => subscription.remove();
   }, []);
 
   /**

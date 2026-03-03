@@ -150,31 +150,31 @@ const MedicineList = ({ setIsAuthenticated, setUser }) => {
         <div className="mb-6 bg-gradient-to-r from-teal-50 to-teal-50 border border-teal-200 rounded-lg p-4 sm:p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">{t('medicines.quickActions')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+            <button onClick={() => navigate('/analytics')} className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer">
               <div className="flex-shrink-0">
                 <i className="fas fa-chart-line text-2xl text-teal-600"></i>
               </div>
-              <div className="ml-4">
-                <h4 className="text-sm font-medium text-gray-900">Analytics Dashboard</h4>
-                <p className="text-xs text-gray-500">View your medication adherence trends</p>
+              <div className="ml-4 text-left">
+                <h4 className="text-sm font-medium text-gray-900">{t('medicines.analyticsDashboard') || 'Analytics Dashboard'}</h4>
+                <p className="text-xs text-gray-500">{t('medicines.analyticsDesc') || 'View your medication adherence trends'}</p>
               </div>
             </button>
-            <button className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+            <button onClick={() => navigate('/interaction-checker')} className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer">
               <div className="flex-shrink-0">
                 <i className="fas fa-pills text-2xl text-green-600"></i>
               </div>
-              <div className="ml-4">
-                <h4 className="text-sm font-medium text-gray-900">Interaction Checker</h4>
-                <p className="text-xs text-gray-500">Check for drug interactions</p>
+              <div className="ml-4 text-left">
+                <h4 className="text-sm font-medium text-gray-900">{t('medicines.interactionChecker') || 'Interaction Checker'}</h4>
+                <p className="text-xs text-gray-500">{t('medicines.interactionDesc') || 'Check for drug interactions'}</p>
               </div>
             </button>
-            <button className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+            <button onClick={() => navigate('/dose-history')} className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer">
               <div className="flex-shrink-0">
                 <i className="fas fa-history text-2xl text-teal-600"></i>
               </div>
-              <div className="ml-4">
-                <h4 className="text-sm font-medium text-gray-900">Dose History</h4>
-                <p className="text-xs text-gray-500">View your medication history</p>
+              <div className="ml-4 text-left">
+                <h4 className="text-sm font-medium text-gray-900">{t('medicines.doseHistory') || 'Dose History'}</h4>
+                <p className="text-xs text-gray-500">{t('medicines.doseHistoryDesc') || 'View your medication history'}</p>
               </div>
             </button>
           </div>
