@@ -78,6 +78,8 @@
     "exportReports": "Export Reports",
     "sideEffects": "Side Effects",
     "contraIndications": "Contraindications",
+    "patients": "Patients",
+    "adverseReactions": "Adverse Reactions",
     "more": "More"
   },
   "more": {

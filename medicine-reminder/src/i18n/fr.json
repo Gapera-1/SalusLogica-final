@@ -18,7 +18,9 @@
     "tryAgain": "Réessayer",
     "or": "Ou",
     "na": "N/D",
-    "unknown": "Inconnu"
+    "unknown": "Inconnu",
+    "refresh": "Actualiser",
+    "refreshing": "Actualisation…"
   },
   "navigation": {
     "dashboard": "Tableau de bord",
@@ -38,6 +40,8 @@
     "exportReports": "Rapports",
     "reports": "Rapports",
     "sideEffects": "Effets secondaires",
+    "patients": "Patients",
+    "adverseReactions": "Effets indésirables",
     "more": "Plus"
   },
   "home": {

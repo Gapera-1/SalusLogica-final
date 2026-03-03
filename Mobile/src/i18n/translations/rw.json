@@ -33,7 +33,10 @@
     "alarms": "Ibyibutsa by'amasaha",
     "profileMenu": "Menyu y'umwirondoro",
     "exportReports": "Kohereza raporo",
-    "sideEffects": "Ingaruka z'umuti"
+    "sideEffects": "Ingaruka z'umuti",
+    "patients": "Abarwayi",
+    "adverseReactions": "Ingaruka mbi z'imiti",
+    "more": "Ibindi"
   },
   "sync": {
     "syncing": "Guhuzanya amakuru...",

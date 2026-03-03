@@ -18,7 +18,9 @@
     "tryAgain": "Try Again",
     "or": "Or",
     "na": "N/A",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -38,6 +40,8 @@
     "exportReports": "Reports",
     "reports": "Reports",
     "sideEffects": "Side Effects",
+    "patients": "Patients",
+    "adverseReactions": "Adverse Reactions",
     "more": "More"
   },
   "home": {

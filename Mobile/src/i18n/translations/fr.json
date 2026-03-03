@@ -33,7 +33,10 @@
     "alarms": "Alarmes",
     "profileMenu": "Menu de profil",
     "exportReports": "Exporter des rapports",
-    "sideEffects": "Effets secondaires"
+    "sideEffects": "Effets secondaires",
+    "patients": "Patients",
+    "adverseReactions": "Effets indésirables",
+    "more": "Plus"
   },
   "sync": {
     "syncing": "Synchronisation...",

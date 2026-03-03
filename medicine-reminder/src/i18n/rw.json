@@ -23,7 +23,9 @@
     "yes": "Yego",
     "no": "Oya",
     "somethingWentWrong": "Hari ikibazo cyabaye",
-    "noDataAvailable": "Nta makuru ahari"
+    "noDataAvailable": "Nta makuru ahari",
+    "refresh": "Kuvugurura",
+    "refreshing": "Birimo kuvugururwa…"
   },
   "navigation": {
     "dashboard": "Imbonerahamwe y'ibikorwa",
@@ -43,6 +45,8 @@
     "exportReports": "Raporo",
     "reports": "Raporo",
     "sideEffects": "Ibimenyetso",
+    "patients": "Abarwayi",
+    "adverseReactions": "Ingaruka mbi z'imiti",
     "more": "Ibindi"
   },
   "home": {
