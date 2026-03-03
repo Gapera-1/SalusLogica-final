@@ -3,6 +3,7 @@ import {
   Search, Filter, Users, UserCheck, UserX, Eye, Pill,
   ArrowLeft, ChevronDown, Mail, Calendar, CircleDot,
   X, AlertTriangle, Clock, FileText, Shield,
+  Stethoscope, Hash, Activity,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import BaseLayout from "../components/BaseLayout";
@@ -364,8 +365,8 @@ const PharmacyAdminPatients = ({ setIsAuthenticated }) => {
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className={`absolute inset-0 ${c.overlayBg} pa-fade-overlay`} onClick={() => setDetailModal(null)} />
           <div className={`relative w-full max-w-md ${c.modalBg} shadow-2xl pa-slide-in overflow-y-auto`}>
-            {/* header */}
-            <div className="sticky top-0 z-10 bg-gradient-to-r from-teal-600 to-emerald-500 p-5">
+            {/* header with avatar */}
+            <div className="sticky top-0 z-10 bg-gradient-to-r from-teal-600 to-emerald-500 p-5 pb-14">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Eye size={20} />
@@ -383,73 +384,84 @@ const PharmacyAdminPatients = ({ setIsAuthenticated }) => {
                 <div className="w-10 h-10 border-4 border-transparent border-t-teal-500 rounded-full animate-spin" />
               </div>
             ) : (
-              <div className="p-5 space-y-5">
-                {/* avatar + name */}
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500
-                                  flex items-center justify-center text-white text-xl font-bold">
-                    {detailModal.username?.charAt(0)?.toUpperCase() || "?"}
+              <div className="px-5 pb-5 -mt-10 space-y-4">
+                {/* Profile card */}
+                <div className={`rounded-2xl p-5 ${c.surfaceBg} border ${c.surfaceBorder} shadow-lg`}>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500
+                                    flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                      {detailModal.username?.charAt(0)?.toUpperCase() || "?"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`text-lg font-bold ${c.textH} truncate`}>{detailModal.username}</h3>
+                      <p className={`text-sm ${c.textP} truncate`}>
+                        {[detailModal.first_name, detailModal.last_name].filter(Boolean).join(" ") || "—"}
+                      </p>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold mt-1.5
+                                       ${detailModal.is_active ? c.badge.active : c.badge.inactive}`}>
+                        {detailModal.is_active
+                          ? <><UserCheck size={11} /> {t("pharmacyAdminPatients.active")}</>
+                          : <><UserX size={11} /> {t("pharmacyAdminPatients.inactive")}</>}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className={`text-lg font-bold ${c.textH}`}>{detailModal.username}</h3>
-                    <p className={`text-sm ${c.textP}`}>
-                      {[detailModal.first_name, detailModal.last_name].filter(Boolean).join(" ") || "—"}
+                </div>
+
+                {/* Info grid */}
+                <div className={`rounded-2xl p-4 ${c.infoBg} border ${c.surfaceBorder} space-y-3`}>
+                  {[
+                    { icon: Mail, label: t("pharmacyAdminPatients.email"), value: detailModal.email || "—", color: "text-blue-500" },
+                    { icon: Calendar, label: t("pharmacyAdminPatients.joinedDate"),
+                      value: detailModal.date_joined ? new Date(detailModal.date_joined).toLocaleDateString() : "—", color: "text-indigo-500" },
+                    { icon: Clock, label: t("pharmacyAdminPatients.assignedDate") || "Assigned Date",
+                      value: detailModal.assigned_date ? new Date(detailModal.assigned_date).toLocaleDateString() : "—", color: "text-purple-500" },
+                    { icon: Shield, label: t("pharmacyAdminPatients.consent") || "Consent",
+                      value: detailModal.consent_given ? "Yes" : "No", color: "text-teal-500" },
+                    // eslint-disable-next-line no-unused-vars
+                  ].map(({ icon: IC, label, value, color }, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg ${isDark ? "bg-gray-700/60" : "bg-white"} flex items-center justify-center shrink-0`}>
+                        <IC size={15} className={color} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-xs font-semibold uppercase tracking-wider ${c.textMuted}`}>{label}</p>
+                        <p className={`text-sm font-medium ${c.textH} truncate`}>{value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Side effects summary cards */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`rounded-2xl p-4 text-center ${c.surfaceBg} border ${c.surfaceBorder} shadow-sm`}>
+                    <div className={`w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center
+                                    ${isDark ? "bg-amber-900/30" : "bg-amber-50"}`}>
+                      <AlertTriangle size={20} className="text-amber-500" />
+                    </div>
+                    <p className={`text-2xl font-bold ${c.textH}`}>{detailModal.side_effects_count ?? "—"}</p>
+                    <p className={`text-xs ${c.textMuted} mt-0.5`}>
+                      {t("pharmacyAdminPatients.totalSideEffects") || "Total Side Effects"}
+                    </p>
+                  </div>
+                  <div className={`rounded-2xl p-4 text-center ${c.surfaceBg} border ${c.surfaceBorder} shadow-sm`}>
+                    <div className={`w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center
+                                    ${isDark ? "bg-red-900/30" : "bg-red-50"}`}>
+                      <FileText size={20} className="text-red-500" />
+                    </div>
+                    <p className={`text-2xl font-bold ${c.textH}`}>{detailModal.unresolved_side_effects ?? "—"}</p>
+                    <p className={`text-xs ${c.textMuted} mt-0.5`}>
+                      {t("pharmacyAdminPatients.unresolvedEffects") || "Unresolved"}
                     </p>
                   </div>
                 </div>
 
-                {/* info rows */}
-                {[
-                  { icon: Mail, label: t("pharmacyAdminPatients.email"), value: detailModal.email || "—" },
-                  { icon: Calendar, label: t("pharmacyAdminPatients.joinedDate"),
-                    value: detailModal.date_joined ? new Date(detailModal.date_joined).toLocaleDateString() : "—" },
-                  { icon: Clock, label: t("pharmacyAdminPatients.assignedDate") || "Assigned Date",
-                    value: detailModal.assigned_date ? new Date(detailModal.assigned_date).toLocaleDateString() : "—" },
-                  { icon: Shield, label: t("pharmacyAdminPatients.consent") || "Consent",
-                    value: detailModal.consent_given ? "Yes" : "No" },
-                // eslint-disable-next-line no-unused-vars
-                ].map(({ icon: Icon, label, value }, i) => (
-                  <div key={i} className={`flex items-center gap-3 p-3.5 rounded-xl ${c.infoBg}`}>
-                    <Icon size={16} className="text-teal-500 shrink-0" />
-                    <div className="min-w-0">
-                      <p className={`text-xs font-semibold uppercase tracking-wider ${c.textMuted}`}>{label}</p>
-                      <p className={`text-sm font-medium ${c.textH} truncate`}>{value}</p>
-                    </div>
-                  </div>
-                ))}
-
-                {/* status */}
-                <div className={`flex items-center gap-3 p-3.5 rounded-xl ${c.infoBg}`}>
-                  {detailModal.is_active ? <UserCheck size={16} className="text-emerald-500" /> : <UserX size={16} className="text-red-500" />}
-                  <div>
-                    <p className={`text-xs font-semibold uppercase tracking-wider ${c.textMuted}`}>{t("pharmacyAdminPatients.status")}</p>
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold mt-0.5
-                                     ${detailModal.is_active ? c.badge.active : c.badge.inactive}`}>
-                      {detailModal.is_active ? t("pharmacyAdminPatients.active") : t("pharmacyAdminPatients.inactive")}
-                    </span>
-                  </div>
-                </div>
-
-                {/* side effects summary */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className={`p-4 rounded-xl text-center ${c.infoBg}`}>
-                    <AlertTriangle size={18} className="mx-auto mb-1 text-amber-500" />
-                    <p className={`text-xl font-bold ${c.textH}`}>{detailModal.side_effects_count ?? "—"}</p>
-                    <p className={`text-xs ${c.textMuted}`}>{t("pharmacyAdminPatients.totalSideEffects") || "Total Side Effects"}</p>
-                  </div>
-                  <div className={`p-4 rounded-xl text-center ${c.infoBg}`}>
-                    <FileText size={18} className="mx-auto mb-1 text-red-500" />
-                    <p className={`text-xl font-bold ${c.textH}`}>{detailModal.unresolved_side_effects ?? "—"}</p>
-                    <p className={`text-xs ${c.textMuted}`}>{t("pharmacyAdminPatients.unresolvedEffects") || "Unresolved"}</p>
-                  </div>
-                </div>
-
-                {/* view medicines CTA */}
+                {/* View medicines CTA */}
                 <button
                   onClick={() => { setDetailModal(null); handleViewMedicines(detailModal); }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl
-                             bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium
-                             hover:from-emerald-600 hover:to-teal-600 transition-all shadow-sm"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl
+                             bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold
+                             hover:from-emerald-600 hover:to-teal-600 transition-all shadow-md
+                             hover:shadow-lg active:scale-[0.98]"
                 >
                   <Pill size={16} />
                   {t("pharmacyAdminPatients.viewMedicines") || "View Medicines"}
@@ -466,7 +478,7 @@ const PharmacyAdminPatients = ({ setIsAuthenticated }) => {
           <div className={`absolute inset-0 ${c.overlayBg} pa-fade-overlay`} onClick={() => setMedicinesModal(null)} />
           <div className={`relative w-full max-w-lg ${c.modalBg} shadow-2xl pa-slide-in overflow-y-auto`}>
             {/* header */}
-            <div className="sticky top-0 z-10 bg-gradient-to-r from-emerald-600 to-green-500 p-5">
+            <div className="sticky top-0 z-10 bg-gradient-to-r from-emerald-600 to-green-500 p-5 pb-14">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -487,90 +499,107 @@ const PharmacyAdminPatients = ({ setIsAuthenticated }) => {
                 <div className="w-10 h-10 border-4 border-transparent border-t-emerald-500 rounded-full animate-spin" />
               </div>
             ) : medicinesModal.error ? (
-              <div className="p-5">
-                <div className={`rounded-xl border ${c.errorBorder} ${c.errorBg} p-4 flex items-center gap-3`}>
+              <div className="px-5 pb-5 -mt-10">
+                <div className={`rounded-2xl border ${c.errorBorder} ${c.errorBg} p-4 flex items-center gap-3 shadow-lg`}>
                   <CircleDot className="text-red-500 shrink-0" size={18} />
                   <p className={`${c.errorText} text-sm`}>{medicinesModal.error}</p>
                 </div>
               </div>
             ) : medicinesModal.medicines.length === 0 ? (
-              <div className="p-8 text-center">
-                <Pill size={40} className={`mx-auto mb-3 ${c.textMuted}`} />
-                <h3 className={`text-lg font-semibold ${c.textH} mb-1`}>
-                  {t("pharmacyAdminPatients.noMedicines") || "No Medicines"}
-                </h3>
-                <p className={`text-sm ${c.textP}`}>
-                  {t("pharmacyAdminPatients.noMedicinesDesc") || "This patient has no medicines recorded."}
-                </p>
+              <div className="px-5 pb-5 -mt-10">
+                <div className={`rounded-2xl ${c.surfaceBg} border ${c.surfaceBorder} p-8 text-center shadow-lg`}>
+                  <div className={`w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center
+                                  ${isDark ? "bg-gray-700/60" : "bg-emerald-50"}`}>
+                    <Pill size={32} className={`${isDark ? "text-gray-500" : "text-emerald-300"}`} />
+                  </div>
+                  <h3 className={`text-lg font-semibold ${c.textH} mb-1`}>
+                    {t("pharmacyAdminPatients.noMedicines") || "No Medicines"}
+                  </h3>
+                  <p className={`text-sm ${c.textP}`}>
+                    {t("pharmacyAdminPatients.noMedicinesDesc") || "This patient has no medicines recorded."}
+                  </p>
+                </div>
               </div>
             ) : (
-              <div className="p-5 space-y-3">
+              <div className="px-5 pb-5 -mt-10 space-y-3">
+                {/* Count badge */}
+                <div className={`rounded-2xl ${c.surfaceBg} border ${c.surfaceBorder} shadow-lg px-4 py-3
+                                flex items-center justify-between`}>
+                  <span className={`text-sm font-medium ${c.textH}`}>
+                    {t("pharmacyAdminPatients.totalMedicines") || "Total Medicines"}
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white">
+                    {medicinesModal.medicines.length}
+                  </span>
+                </div>
+
                 {medicinesModal.medicines.map((med, i) => (
                   <div key={med.id || i}
-                    className={`rounded-xl border ${c.surfaceBorder} p-4 ${c.infoBg}`}>
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0
-                                        ${med.is_active
-                                          ? "bg-emerald-500/20 text-emerald-500"
-                                          : (isDark ? "bg-gray-700 text-gray-400" : "bg-gray-200 text-gray-400")}`}>
-                          <Pill size={16} />
+                    className={`rounded-2xl border ${c.surfaceBorder} overflow-hidden ${c.surfaceBg} shadow-sm
+                                hover:shadow-md transition-shadow`}>
+                    {/* color strip */}
+                    <div className={`h-1 ${med.is_active
+                      ? "bg-gradient-to-r from-emerald-500 to-green-400"
+                      : (isDark ? "bg-gray-600" : "bg-gray-300")}`} />
+
+                    <div className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm
+                                          ${med.is_active
+                                            ? "bg-gradient-to-br from-emerald-500 to-green-400 text-white"
+                                            : (isDark ? "bg-gray-700 text-gray-400" : "bg-gray-200 text-gray-400")}`}>
+                            <Pill size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className={`text-sm font-bold ${c.textH} truncate`}>{med.name}</h4>
+                            {med.scientific_name && (
+                              <p className={`text-xs ${c.textMuted} italic truncate`}>{med.scientific_name}</p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <h4 className={`text-sm font-semibold ${c.textH}`}>{med.name}</h4>
-                          {med.scientific_name && (
-                            <p className={`text-xs ${c.textMuted} italic`}>{med.scientific_name}</p>
-                          )}
-                        </div>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold
-                                       ${med.is_active ? c.badge.active : c.badge.inactive}`}>
-                        {med.is_active ? t("pharmacyAdminPatients.active") : t("pharmacyAdminPatients.inactive")}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <span className={`${c.textMuted} font-semibold uppercase`}>
-                          {t("pharmacyAdminPatients.dosage") || "Dosage"}
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0
+                                         ${med.is_active ? c.badge.active : c.badge.inactive}`}>
+                          {med.is_active ? t("pharmacyAdminPatients.active") : t("pharmacyAdminPatients.inactive")}
                         </span>
-                        <p className={`${c.textH} font-medium`}>{med.dosage}</p>
                       </div>
-                      <div>
-                        <span className={`${c.textMuted} font-semibold uppercase`}>
-                          {t("pharmacyAdminPatients.frequency") || "Frequency"}
-                        </span>
-                        <p className={`${c.textH} font-medium`}>{med.frequency}</p>
+
+                      {/* Info grid inside card */}
+                      <div className={`rounded-xl p-3 ${c.infoBg} space-y-2.5`}>
+                        {[
+                          { icon: Activity, label: t("pharmacyAdminPatients.dosage") || "Dosage", value: med.dosage, color: "text-blue-500" },
+                          { icon: Hash, label: t("pharmacyAdminPatients.frequency") || "Frequency", value: med.frequency, color: "text-indigo-500" },
+                          { icon: Calendar, label: t("pharmacyAdminPatients.startDate") || "Start Date",
+                            value: med.start_date ? new Date(med.start_date).toLocaleDateString() : "—", color: "text-emerald-500" },
+                          { icon: Clock, label: t("pharmacyAdminPatients.endDate") || "End Date",
+                            value: med.end_date ? new Date(med.end_date).toLocaleDateString() : "—", color: "text-amber-500" },
+                          ...(med.prescribing_doctor ? [{
+                            icon: Stethoscope, label: t("pharmacyAdminPatients.doctor") || "Doctor",
+                            value: med.prescribing_doctor, color: "text-purple-500", full: true
+                          }] : []),
+                        // eslint-disable-next-line no-unused-vars
+                        ].map(({ icon: IC, label, value, color, full }, j) => (
+                          <div key={j} className={`flex items-center gap-2.5 ${full ? "" : ""}`}>
+                            <div className={`w-7 h-7 rounded-lg ${isDark ? "bg-gray-700/60" : "bg-white"}
+                                            flex items-center justify-center shrink-0`}>
+                              <IC size={13} className={color} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-[10px] font-semibold uppercase tracking-wider ${c.textMuted}`}>{label}</p>
+                              <p className={`text-xs font-medium ${c.textH} truncate`}>{value || "—"}</p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div>
-                        <span className={`${c.textMuted} font-semibold uppercase`}>
-                          {t("pharmacyAdminPatients.startDate") || "Start"}
-                        </span>
-                        <p className={`${c.textH} font-medium`}>
-                          {med.start_date ? new Date(med.start_date).toLocaleDateString() : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <span className={`${c.textMuted} font-semibold uppercase`}>
-                          {t("pharmacyAdminPatients.endDate") || "End"}
-                        </span>
-                        <p className={`${c.textH} font-medium`}>
-                          {med.end_date ? new Date(med.end_date).toLocaleDateString() : "—"}
-                        </p>
-                      </div>
-                      {med.prescribing_doctor && (
-                        <div className="col-span-2">
-                          <span className={`${c.textMuted} font-semibold uppercase`}>
-                            {t("pharmacyAdminPatients.doctor") || "Doctor"}
-                          </span>
-                          <p className={`${c.textH} font-medium`}>{med.prescribing_doctor}</p>
-                        </div>
-                      )}
+
+                      {/* Instructions callout */}
                       {med.instructions && (
-                        <div className="col-span-2">
-                          <span className={`${c.textMuted} font-semibold uppercase`}>
+                        <div className={`mt-3 rounded-xl p-3 border-l-4 border-emerald-500
+                                        ${isDark ? "bg-emerald-900/15" : "bg-emerald-50/80"}`}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider ${c.textMuted} mb-1`}>
                             {t("pharmacyAdminPatients.instructions") || "Instructions"}
-                          </span>
-                          <p className={`${c.textP} leading-relaxed`}>{med.instructions}</p>
+                          </p>
+                          <p className={`text-xs ${c.textP} leading-relaxed`}>{med.instructions}</p>
                         </div>
                       )}
                     </div>

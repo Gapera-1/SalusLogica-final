@@ -141,6 +141,7 @@ class AdverseReactionSerializer(serializers.ModelSerializer):
     """Serializer for adverse reactions with full drug information from Rwanda FDA registry"""
     
     patient_username = serializers.CharField(source='patient.username', read_only=True)
+    patient_name = serializers.SerializerMethodField()
     pharmacy_name = serializers.CharField(
         source='pharmacy_admin.facility_name', 
         read_only=True, 
@@ -151,7 +152,8 @@ class AdverseReactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdverseReaction
         fields = [
-            'id', 'patient', 'patient_username', 'pharmacy_admin', 'pharmacy_name',
+            'id', 'patient', 'patient_username', 'patient_name',
+            'pharmacy_admin', 'pharmacy_name',
             'reaction_type', 'severity', 'medication_name', 'medication_dosage',
             'medication_batch', 'symptoms', 'onset_time', 'duration',
             'treatment_given', 'outcome', 'reported_date', 'reported_by',
@@ -159,6 +161,11 @@ class AdverseReactionSerializer(serializers.ModelSerializer):
             'is_resolved', 'resolved_date', 'drug_info'
         ]
         read_only_fields = ['reported_date']
+    
+    def get_patient_name(self, obj):
+        """Get the patient's full name or username as fallback"""
+        full = f"{obj.patient.first_name} {obj.patient.last_name}".strip()
+        return full if full else obj.patient.username
     
     def get_drug_info(self, obj):
         """
