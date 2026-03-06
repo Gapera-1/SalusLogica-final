@@ -15,6 +15,7 @@ import {
 import { Card, Button, TextInput, Snackbar, Chip, Divider } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
@@ -139,6 +140,7 @@ export default function AddMedicineScreen({ route }) {
   const { t } = useLanguage();
   const { colors, isDark } = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { medicine } = route?.params || {};
 
   const isEditMode = !!medicine;
@@ -442,7 +444,7 @@ export default function AddMedicineScreen({ route }) {
         showsVerticalScrollIndicator={false}
       >
         {/* ─── Page Header ─────────────────────────────────────────── */}
-        <View style={[styles.pageHeader, { backgroundColor: colors.primary }]}>
+        <View style={[styles.pageHeader, { backgroundColor: colors.primary, paddingTop: insets.top + 12 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
           </TouchableOpacity>
@@ -1102,7 +1104,6 @@ const styles = StyleSheet.create({
 
   // ── Page Header ────────────────────────────────────────────────────
   pageHeader: {
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingBottom: 28,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,

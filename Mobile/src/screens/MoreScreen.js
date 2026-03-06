@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from '
 import { Card } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
@@ -11,6 +12,7 @@ const MoreScreen = () => {
   const { t } = useLanguage();
   const { colors } = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const menuItems = [
     {
@@ -103,7 +105,7 @@ const MoreScreen = () => {
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Hero Header */}
-      <View style={[styles.heroHeader, { backgroundColor: colors.primary }]}>
+      <View style={[styles.heroHeader, { backgroundColor: colors.primary, paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={styles.heroTitle}>
             {t('more.title') || 'More'}
@@ -162,7 +164,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 56 : 20,
     paddingBottom: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,

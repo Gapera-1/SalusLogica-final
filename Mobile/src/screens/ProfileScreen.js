@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Platform, Clipboard, KeyboardAvoidingView } from 'react-native';
 import { Card, Button, TextInput, Avatar, Switch } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
-import { userAPI, authAPI } from '../services/api';
+import { userAPI, authAPI, pharmacyAdminAPI } from '../services/api';
 import { getErrorMessage, logError } from '../utils/errorHandler';
 
 const ProfileScreen = () => {
@@ -16,6 +17,7 @@ const ProfileScreen = () => {
   const { isDark, toggleTheme, colors } = useTheme();
   const { user, signOut, updateProfile: updateAuthProfile } = useAuth();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [formData, setFormData] = useState({
     username: '',
     ageCategory: 'adult',
@@ -35,6 +37,10 @@ const ProfileScreen = () => {
   const [deletePassword, setDeletePassword] = useState('');
   const [showDeleteSection, setShowDeleteSection] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [pharmacyProfile, setPharmacyProfile] = useState(null);
+  const [copiedId, setCopiedId] = useState(false);
+
+  const isPharmacyAdmin = user?.user_type === 'pharmacy_admin';
 
   // Load profile data from API or AuthContext on mount
   useEffect(() => {
@@ -64,9 +70,18 @@ const ProfileScreen = () => {
           setAvatarUri(profile.avatar || profile.avatar_url);
         }
       }
+
+      // Load pharmacy admin profile if applicable
+      if (isPharmacyAdmin) {
+        try {
+          const paProfile = await pharmacyAdminAPI.getProfile();
+          if (paProfile) setPharmacyProfile(paProfile);
+        } catch (paErr) {
+          logError('ProfileScreen.loadPharmacyProfile', paErr);
+        }
+      }
     } catch (error) {
       logError('ProfileScreen.loadProfile', error);
-      // Fall back to AuthContext user data
       if (user) {
         setFormData(prev => ({
           ...prev,
@@ -282,10 +297,14 @@ const ProfileScreen = () => {
   };
 
   return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Hero Header */}
-      <View style={[styles.heroHeader, { backgroundColor: colors.primary }]}>
-        <TouchableOpacity onPress={handleSelectAvatar} activeOpacity={0.7} style={styles.avatarWrap}>
+      <View style={[styles.heroHeader, { backgroundColor: colors.primary, paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity onPress={handleSelectAvatar} activeOpacity={0.7} style={styles.avatarWrap} accessibilityLabel="Change profile photo" accessibilityRole="button">
           {avatarUri ? (
             <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
           ) : (
@@ -316,6 +335,197 @@ const ProfileScreen = () => {
       </View>
 
       <View style={styles.content}>
+
+        {/* Pharmacy Admin Facility Info */}
+        {isPharmacyAdmin && pharmacyProfile && (
+          <>
+            {/* Pharmacy ID Card */}
+            <Card style={[styles.card, { backgroundColor: colors.surface, marginBottom: 14 }]}>
+              <View style={styles.cardContent}>
+                <View style={styles.sectionHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="key" size={20} color={colors.primary} />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      {t('pharmacyProfile.pharmacyId') || 'Pharmacy ID'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={[paStyles.idRow, { backgroundColor: isDark ? '#064e3b' : '#ecfdf5', borderColor: colors.border }]}>
+                  <Text style={[paStyles.idValue, { color: colors.text }]}>
+                    {pharmacyProfile.pharmacy_id || '—'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Clipboard.setString(pharmacyProfile.pharmacy_id || '');
+                      setCopiedId(true);
+                      setTimeout(() => setCopiedId(false), 2000);
+                    }}
+                    style={[paStyles.copyBtn, { backgroundColor: colors.primary }]}
+                  >
+                    <Ionicons name={copiedId ? 'checkmark' : 'copy'} size={16} color="#fff" />
+                    <Text style={paStyles.copyText}>{copiedId ? 'Copied!' : 'Copy'}</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={[paStyles.idHint, { color: colors.textMuted }]}>
+                  {t('pharmacyProfile.idHint') || 'Share this ID with patients so they can link to your pharmacy'}
+                </Text>
+              </View>
+            </Card>
+
+            {/* Facility Information */}
+            <Card style={[styles.card, { backgroundColor: colors.surface, marginBottom: 14 }]}>
+              <View style={styles.cardContent}>
+                <View style={styles.sectionHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="business" size={20} color={colors.primary} />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      {t('pharmacyProfile.facilityInfo') || 'Facility Information'}
+                    </Text>
+                  </View>
+                </View>
+
+                {[
+                  { icon: 'storefront', label: t('pharmacyProfile.facilityName') || 'Facility Name', value: pharmacyProfile.facility_name },
+                  { icon: 'medical', label: t('pharmacyProfile.facilityType') || 'Facility Type', value: pharmacyProfile.facility_type ? pharmacyProfile.facility_type.charAt(0).toUpperCase() + pharmacyProfile.facility_type.slice(1) : '—' },
+                  { icon: 'call', label: t('pharmacyProfile.phone') || 'Phone', value: pharmacyProfile.phone_number },
+                  { icon: 'mail', label: t('pharmacyProfile.email') || 'Email', value: pharmacyProfile.email },
+                  { icon: 'location', label: t('pharmacyProfile.address') || 'Address', value: pharmacyProfile.address },
+                ].map((item, i) => (
+                  <View key={i} style={[paStyles.infoRow, { borderColor: colors.border }]}>
+                    <View style={[paStyles.infoIcon, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
+                      <Ionicons name={item.icon} size={16} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[paStyles.infoLabel, { color: colors.textMuted }]}>{item.label}</Text>
+                      <Text style={[paStyles.infoValue, { color: colors.text }]}>{item.value || '—'}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </Card>
+
+            {/* Location */}
+            <Card style={[styles.card, { backgroundColor: colors.surface, marginBottom: 14 }]}>
+              <View style={styles.cardContent}>
+                <View style={styles.sectionHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="globe" size={20} color={colors.primary} />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      {t('pharmacyProfile.location') || 'Location'}
+                    </Text>
+                  </View>
+                </View>
+
+                {[
+                  { icon: 'flag', label: t('pharmacyProfile.country') || 'Country', value: pharmacyProfile.country },
+                  { icon: 'map', label: t('pharmacyProfile.province') || 'Province', value: pharmacyProfile.province },
+                  { icon: 'navigate', label: t('pharmacyProfile.district') || 'District', value: pharmacyProfile.district },
+                ].map((item, i) => (
+                  <View key={i} style={[paStyles.infoRow, { borderColor: colors.border }]}>
+                    <View style={[paStyles.infoIcon, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
+                      <Ionicons name={item.icon} size={16} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[paStyles.infoLabel, { color: colors.textMuted }]}>{item.label}</Text>
+                      <Text style={[paStyles.infoValue, { color: colors.text }]}>{item.value || '—'}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </Card>
+
+            {/* License Information */}
+            <Card style={[styles.card, { backgroundColor: colors.surface, marginBottom: 14 }]}>
+              <View style={styles.cardContent}>
+                <View style={styles.sectionHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      {t('pharmacyProfile.licenseInfo') || 'License Information'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={[paStyles.infoRow, { borderColor: colors.border }]}>
+                  <View style={[paStyles.infoIcon, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
+                    <Ionicons name="document-text" size={16} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[paStyles.infoLabel, { color: colors.textMuted }]}>
+                      {t('pharmacyProfile.licenseNumber') || 'License Number'}
+                    </Text>
+                    <Text style={[paStyles.infoValue, { color: colors.text }]}>
+                      {pharmacyProfile.license_number || '—'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={[paStyles.infoRow, { borderColor: colors.border }]}>
+                  <View style={[paStyles.infoIcon, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
+                    <Ionicons name="calendar" size={16} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[paStyles.infoLabel, { color: colors.textMuted }]}>
+                      {t('pharmacyProfile.licenseExpiry') || 'License Expiry'}
+                    </Text>
+                    <Text style={[paStyles.infoValue, { color: pharmacyProfile.license_expiry && new Date(pharmacyProfile.license_expiry) < new Date() ? '#ef4444' : colors.text }]}>
+                      {pharmacyProfile.license_expiry ? new Date(pharmacyProfile.license_expiry).toLocaleDateString() : '—'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Verification Status */}
+                <View style={[paStyles.statusRow, { backgroundColor: pharmacyProfile.is_verified ? (isDark ? '#064e3b' : '#ecfdf5') : (isDark ? '#451a03' : '#fffbeb') }]}>
+                  <Ionicons
+                    name={pharmacyProfile.is_verified ? 'checkmark-circle' : 'time'}
+                    size={18}
+                    color={pharmacyProfile.is_verified ? '#10b981' : '#f59e0b'}
+                  />
+                  <Text style={[paStyles.statusText, { color: pharmacyProfile.is_verified ? '#10b981' : '#f59e0b' }]}>
+                    {pharmacyProfile.is_verified
+                      ? (t('pharmacyProfile.verified') || 'Verified')
+                      : (t('pharmacyProfile.pendingVerification') || 'Pending Verification')}
+                  </Text>
+                </View>
+              </View>
+            </Card>
+
+            {/* Stats */}
+            <Card style={[styles.card, { backgroundColor: colors.surface, marginBottom: 14 }]}>
+              <View style={styles.cardContent}>
+                <View style={styles.sectionHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="stats-chart" size={20} color={colors.primary} />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      {t('pharmacyProfile.stats') || 'Statistics'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={paStyles.statsGrid}>
+                  <View style={[paStyles.statCard, { backgroundColor: isDark ? '#1e3a5f' : '#eff6ff' }]}>
+                    <Ionicons name="people" size={22} color="#3b82f6" />
+                    <Text style={[paStyles.statValue, { color: colors.text }]}>
+                      {pharmacyProfile.patient_count ?? pharmacyProfile.total_patients ?? 0}
+                    </Text>
+                    <Text style={[paStyles.statLabel, { color: colors.textMuted }]}>
+                      {t('pharmacyProfile.totalPatients') || 'Total Patients'}
+                    </Text>
+                  </View>
+                  <View style={[paStyles.statCard, { backgroundColor: isDark ? '#064e3b' : '#ecfdf5' }]}>
+                    <Ionicons name="heart" size={22} color="#10b981" />
+                    <Text style={[paStyles.statValue, { color: colors.text }]}>
+                      {pharmacyProfile.active_patient_count ?? pharmacyProfile.active_patients ?? 0}
+                    </Text>
+                    <Text style={[paStyles.statLabel, { color: colors.textMuted }]}>
+                      {t('pharmacyProfile.activePatients') || 'Active Patients'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </Card>
+          </>
+        )}
 
         {/* Profile Form */}
         <View style={styles.sections}>
@@ -599,6 +809,7 @@ const ProfileScreen = () => {
         </View>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -611,7 +822,6 @@ const styles = StyleSheet.create({
   },
   heroHeader: {
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 60 : 28,
     paddingBottom: 24,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
@@ -779,6 +989,99 @@ const styles = StyleSheet.create({
   deleteButton: {
     flex: 1,
     borderRadius: 10,
+  },
+});
+
+const paStyles = StyleSheet.create({
+  idRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 8,
+  },
+  idValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  copyText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  idHint: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  infoIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    marginTop: 8,
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    textAlign: 'center',
   },
 });
 

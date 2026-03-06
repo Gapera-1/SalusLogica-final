@@ -10,7 +10,10 @@ import {
   Platform,
   ActivityIndicator,
   Keyboard,
+  Animated,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -19,12 +22,44 @@ import { chatbotAPI } from '../services/api';
 const ChatBotScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const flatListRef = useRef(null);
+
+  // Animated typing dots
+  const dot1Anim = useRef(new Animated.Value(0.3)).current;
+  const dot2Anim = useRef(new Animated.Value(0.3)).current;
+  const dot3Anim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    if (!loading) return;
+    const animateDot = (dot, delay) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dot, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+        ])
+      );
+    const a1 = animateDot(dot1Anim, 0);
+    const a2 = animateDot(dot2Anim, 150);
+    const a3 = animateDot(dot3Anim, 300);
+    a1.start();
+    a2.start();
+    a3.start();
+    return () => { a1.stop(); a2.stop(); a3.stop(); };
+  }, [loading]);
+
+  const quickSuggestions = [
+    t('chatbot.suggestion1') || '💊 Drug interactions',
+    t('chatbot.suggestion2') || '⏰ Medication schedule',
+    t('chatbot.suggestion3') || '🩺 Side effects',
+    t('chatbot.suggestion4') || '📋 Health tips',
+  ];
 
   // Load chat history on mount
   useEffect(() => {
@@ -76,23 +111,46 @@ const ChatBotScreen = ({ navigation }) => {
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || loading) return;
+    sendMessageWithText(text);
+  };
 
+  const startNewChat = () => {
+    setMessages([
+      {
+        id: 'welcome_new',
+        role: 'assistant',
+        content:
+          t('chatbot.welcome') ||
+          "Hello! 👋 I'm SalusLogica AI, your health assistant. How can I help you today?",
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+    setSessionId(null);
+  };
+
+  const sendSuggestion = (text) => {
+    setInput(text);
+    setTimeout(() => {
+      setInput(text);
+      sendMessageWithText(text);
+    }, 50);
+  };
+
+  const sendMessageWithText = async (text) => {
+    if (!text.trim() || loading) return;
     Keyboard.dismiss();
-
     const userMsg = {
       id: Date.now().toString(),
       role: 'user',
-      content: text,
+      content: text.trim(),
       timestamp: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setLoading(true);
-
     try {
-      const data = await chatbotAPI.sendMessage(text, sessionId);
+      const data = await chatbotAPI.sendMessage(text.trim(), sessionId);
       if (data.session_id) setSessionId(data.session_id);
-
       setMessages((prev) => [
         ...prev,
         {
@@ -118,20 +176,6 @@ const ChatBotScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const startNewChat = () => {
-    setMessages([
-      {
-        id: 'welcome_new',
-        role: 'assistant',
-        content:
-          t('chatbot.welcome') ||
-          "Hello! 👋 I'm SalusLogica AI, your health assistant. How can I help you today?",
-        timestamp: new Date().toISOString(),
-      },
-    ]);
-    setSessionId(null);
   };
 
   const formatTime = (timestamp) => {
@@ -243,8 +287,9 @@ const ChatBotScreen = ({ navigation }) => {
   if (initialLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle="light-content" />
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: insets.top + 8 }]}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.headerBtn}
@@ -268,17 +313,23 @@ const ChatBotScreen = ({ navigation }) => {
     );
   }
 
+  const isWelcomeOnly = messages.length === 1 && (messages[0].id === 'welcome' || messages[0].id === 'welcome_new');
+
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
+      <StatusBar barStyle="light-content" />
+
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.headerBtn}
+          accessibilityLabel={t('common.back') || 'Go back'}
+          accessibilityRole="button"
         >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
@@ -297,7 +348,12 @@ const ChatBotScreen = ({ navigation }) => {
             </View>
           </View>
         </View>
-        <TouchableOpacity onPress={startNewChat} style={styles.headerBtn}>
+        <TouchableOpacity
+          onPress={startNewChat}
+          style={styles.headerBtn}
+          accessibilityLabel={t('chatbot.newChat') || 'Start new chat'}
+          accessibilityRole="button"
+        >
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -310,9 +366,6 @@ const ChatBotScreen = ({ navigation }) => {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messagesList}
         showsVerticalScrollIndicator={false}
-        onContentSizeChange={() =>
-          flatListRef.current?.scrollToEnd({ animated: true })
-        }
         ListFooterComponent={
           loading ? (
             <View style={[styles.messageBubbleRow, styles.assistantRow]}>
@@ -327,27 +380,31 @@ const ChatBotScreen = ({ navigation }) => {
                 ]}
               >
                 <View style={styles.typingIndicator}>
-                  <View style={[styles.typingDot, { backgroundColor: colors.primary }]} />
-                  <View
-                    style={[
-                      styles.typingDot,
-                      styles.typingDot2,
-                      { backgroundColor: colors.primary },
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.typingDot,
-                      styles.typingDot3,
-                      { backgroundColor: colors.primary },
-                    ]}
-                  />
+                  <Animated.View style={[styles.typingDot, { backgroundColor: colors.primary, opacity: dot1Anim }]} />
+                  <Animated.View style={[styles.typingDot, { backgroundColor: colors.primary, opacity: dot2Anim }]} />
+                  <Animated.View style={[styles.typingDot, { backgroundColor: colors.primary, opacity: dot3Anim }]} />
                 </View>
               </View>
             </View>
           ) : null
         }
       />
+
+      {/* Quick Suggestions */}
+      {isWelcomeOnly && !loading && (
+        <View style={styles.suggestionsContainer}>
+          {quickSuggestions.map((suggestion, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={[styles.suggestionChip, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}
+              onPress={() => sendSuggestion(suggestion)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.suggestionText, { color: colors.primary }]}>{suggestion}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Disclaimer */}
       <Text style={[styles.disclaimer, { color: colors.textMuted }]}>
@@ -356,7 +413,7 @@ const ChatBotScreen = ({ navigation }) => {
       </Text>
 
       {/* Input area */}
-      <View style={[styles.inputRow, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+      <View style={[styles.inputRow, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 10) }]}>
         <TextInput
           style={[
             styles.textInput,
@@ -373,9 +430,7 @@ const ChatBotScreen = ({ navigation }) => {
           editable={!loading}
           maxLength={2000}
           multiline
-          returnKeyType="send"
-          onSubmitEditing={sendMessage}
-          blurOnSubmit
+          textAlignVertical="center"
         />
         <TouchableOpacity
           onPress={sendMessage}
@@ -386,6 +441,8 @@ const ChatBotScreen = ({ navigation }) => {
               backgroundColor: input.trim() && !loading ? colors.primary : colors.border,
             },
           ]}
+          accessibilityLabel={t('chatbot.send') || 'Send message'}
+          accessibilityRole="button"
         >
           <Ionicons
             name="send"
@@ -406,7 +463,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingTop: Platform.OS === 'ios' ? 50 : 12,
     paddingBottom: 12,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
@@ -517,13 +573,24 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    opacity: 0.6,
   },
-  typingDot2: {
-    opacity: 0.4,
+  suggestionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    gap: 8,
   },
-  typingDot3: {
-    opacity: 0.2,
+  suggestionChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  suggestionText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   disclaimer: {
     fontSize: 10,

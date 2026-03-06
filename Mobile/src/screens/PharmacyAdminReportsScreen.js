@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -26,6 +27,7 @@ export default function PharmacyAdminReportsScreen() {
   const { t } = useLanguage();
   const { colors, isDark } = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,7 @@ export default function PharmacyAdminReportsScreen() {
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
       {/* Hero */}
-      <View style={s.heroHeader}>
+      <View style={[s.heroHeader, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
@@ -579,7 +581,7 @@ const s = StyleSheet.create({
 
   heroHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 56 : 16,
+    paddingHorizontal: 16,
     paddingBottom: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
     backgroundColor: '#0d9488',
   },

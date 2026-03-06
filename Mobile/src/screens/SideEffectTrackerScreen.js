@@ -8,9 +8,12 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Card, Button, TextInput, Snackbar } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
@@ -38,6 +41,7 @@ const SideEffectTrackerScreen = () => {
   const { t } = useLanguage();
   const { colors, isDark } = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [sideEffects, setSideEffects] = useState([]);
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -147,14 +151,14 @@ const SideEffectTrackerScreen = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         style={styles.scrollView}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
         data={sideEffects}
         keyExtractor={(item) => String(item.id)}
         ListHeaderComponent={
           <>
             {/* Header */}
             <View style={styles.header}>
-              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
                 <Text style={[styles.backText, { color: colors.primary }]}>← {t('common.cancel')}</Text>
               </TouchableOpacity>
               <Text style={[styles.title, { color: colors.text }]}>{t('sideEffects.title')}</Text>
@@ -210,7 +214,7 @@ const SideEffectTrackerScreen = () => {
           const severity = getSeverityStyle(item.severity);
           const isExpanded = expandedId === item.id;
           return (
-            <TouchableOpacity onPress={() => setExpandedId(isExpanded ? null : item.id)}>
+            <TouchableOpacity onPress={() => setExpandedId(isExpanded ? null : item.id)} accessibilityLabel="Toggle details" accessibilityRole="button">
               <Card style={[styles.itemCard, { borderLeftColor: severity.textColor, backgroundColor: colors.surface }]}>
                 <View style={styles.itemContent}>
                   <View style={styles.itemHeader}>
@@ -274,11 +278,15 @@ const SideEffectTrackerScreen = () => {
 
       {/* New Side Effect Form Modal */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet">
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
         <ScrollView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>{t('sideEffects.reportNew')}</Text>
-              <TouchableOpacity onPress={() => setShowForm(false)}>
+              <TouchableOpacity onPress={() => setShowForm(false)} accessibilityLabel="Close form" accessibilityRole="button">
                 <Text style={[styles.closeText, { color: colors.textSecondary }]}>✕</Text>
               </TouchableOpacity>
             </View>
@@ -426,6 +434,7 @@ const SideEffectTrackerScreen = () => {
             </View>
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Snackbar
@@ -455,7 +464,7 @@ const styles = StyleSheet.create({
   filterLabel: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
   filterChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20,
     backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb',
   },
   chipActive: { backgroundColor: '#0d9488', borderColor: '#0d9488' },
@@ -472,7 +481,7 @@ const styles = StyleSheet.create({
   itemDate: { fontSize: 12, color: '#9ca3af' },
   itemSymptoms: { fontSize: 14, color: '#374151', lineHeight: 20, marginBottom: 4 },
   itemMedicine: { fontSize: 13, color: '#6b7280', marginTop: 4 },
-  expandedContent: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#e5e7eb' },
+  expandedContent: { marginTop: 12, paddingTop: 12, borderTopWidth: 1 },
   detailText: { fontSize: 13, color: '#6b7280', marginBottom: 6 },
   resolveButton: { marginTop: 8, borderColor: '#0d9488' },
   resolvedBadge: { marginTop: 8, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#dcfce7' },
@@ -486,7 +495,7 @@ const styles = StyleSheet.create({
   reactionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   reactionChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12,
     backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb',
   },
   reactionChipActive: { backgroundColor: '#f0fdfa', borderColor: '#0d9488' },

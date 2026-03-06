@@ -10,6 +10,7 @@ import {
   Share,
 } from 'react-native';
 import { Card, Button, ActivityIndicator } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +21,7 @@ const ExportReportsScreen = () => {
   const { t } = useLanguage();
   const { colors, isDark } = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [generating, setGenerating] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState(30);
 
@@ -105,7 +107,7 @@ const ExportReportsScreen = () => {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: insets.top + 16 }]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>

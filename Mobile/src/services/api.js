@@ -707,6 +707,24 @@ export const pharmacyAdminAPI = {
       body: JSON.stringify(data),
     });
   },
+
+  // Get pharmacy admin profile
+  getProfile: async () => {
+    return await apiCall('/pharmacy-admin/profile/');
+  },
+
+  // Update pharmacy admin profile
+  updateProfile: async (data) => {
+    return await apiCall('/pharmacy-admin/profile/', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Drug lookup
+  drugLookup: async (query) => {
+    return await apiCall(`/pharmacy-admin/drug-lookup/?q=${encodeURIComponent(query)}`);
+  },
 };
 
 // ============ EXPORT REPORTS API ============

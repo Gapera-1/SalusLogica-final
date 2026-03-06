@@ -13,6 +13,7 @@ import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { AlarmProvider } from './src/contexts/AlarmContext';
 import { DataSyncProvider } from './src/contexts/DataSyncContext';
 import AlarmModal from './src/components/AlarmModal';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import ChatBotFAB from './src/components/ChatBotFAB';
 
 // Import screens
@@ -393,6 +394,7 @@ function ThemedApp() {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <SafeAreaProvider>
       <ThemeProvider>
         <LanguageProvider>
@@ -400,5 +402,6 @@ export default function App() {
         </LanguageProvider>
       </ThemeProvider>
     </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

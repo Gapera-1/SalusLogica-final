@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -22,6 +23,7 @@ export default function PharmacyAdminAdverseReactionsScreen() {
   const { t } = useLanguage();
   const { colors, isDark } = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const [reactions, setReactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -115,7 +117,7 @@ export default function PharmacyAdminAdverseReactionsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Hero Header */}
-      <View style={[styles.heroHeader]}>
+      <View style={[styles.heroHeader, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
@@ -459,6 +461,47 @@ export default function PharmacyAdminAdverseReactionsScreen() {
                   </Card>
                 )}
 
+                {/* Medication Batch */}
+                {detailData.medication_batch && (
+                  <Card style={[styles.detailSection, { backgroundColor: isDark ? '#1e293b' : '#f8fafc' }]}>
+                    <View style={styles.detailSectionHeader}>
+                      <Ionicons name="barcode" size={16} color="#8b5cf6" />
+                      <Text style={[styles.detailSectionHeaderText, { color: colors.textMuted }]}>
+                        {t('pharmacyAdminAdverseReactions.batchInfo') || 'Medication Batch'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.detailSymptomsText, { color: colors.text }]}>
+                      {detailData.medication_batch}
+                    </Text>
+                  </Card>
+                )}
+
+                {/* Drug Registry Info */}
+                {detailData.drug_info && detailData.drug_info.is_registered_in_rwanda && (
+                  <Card style={[styles.drugRegistryCard, { backgroundColor: isDark ? '#1e293b' : '#f0fdf4', borderColor: isDark ? '#064e3b' : '#bbf7d0' }]}>
+                    <View style={styles.detailSectionHeader}>
+                      <MaterialCommunityIcons name="certificate" size={16} color="#16a34a" />
+                      <Text style={[styles.detailSectionHeaderText, { color: '#16a34a' }]}>
+                        {t('pharmacyAdminAdverseReactions.rwandaFDA') || 'Rwanda FDA Registry'}
+                      </Text>
+                    </View>
+
+                    {[
+                      { label: t('pharmacyAdminAdverseReactions.brandName') || 'Brand Name', value: detailData.drug_info.brand_name },
+                      { label: t('pharmacyAdminAdverseReactions.genericName') || 'Generic Name', value: detailData.drug_info.generic_name },
+                      { label: t('pharmacyAdminAdverseReactions.strength') || 'Strength', value: detailData.drug_info.strength },
+                      { label: t('pharmacyAdminAdverseReactions.form') || 'Form', value: detailData.drug_info.form },
+                      { label: t('pharmacyAdminAdverseReactions.manufacturer') || 'Manufacturer', value: detailData.drug_info.manufacturer },
+                      { label: t('pharmacyAdminAdverseReactions.regNumber') || 'Registration No.', value: detailData.drug_info.registration_number },
+                    ].filter(item => item.value).map((item, i) => (
+                      <View key={i} style={styles.drugInfoRow}>
+                        <Text style={[styles.drugInfoLabel, { color: colors.textMuted }]}>{item.label}</Text>
+                        <Text style={[styles.drugInfoValue, { color: colors.text }]}>{item.value}</Text>
+                      </View>
+                    ))}
+                  </Card>
+                )}
+
                 {/* Follow-up */}
                 {detailData.requires_follow_up && (
                   <Card style={[styles.followUpCard, { borderColor: '#f59e0b', backgroundColor: isDark ? '#451a0320' : '#fffbeb' }]}>
@@ -528,7 +571,7 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, fontSize: 14 },
   heroHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 56 : 16,
+    paddingHorizontal: 16,
     paddingBottom: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
     backgroundColor: '#e11d48',
   },
@@ -627,4 +670,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#0d9488',
   },
   resolveCtaText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  // Drug Registry
+  drugRegistryCard: {
+    borderRadius: 16, padding: 14, marginBottom: 12,
+    borderWidth: 1,
+  },
+  drugInfoRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(0,0,0,0.06)',
+  },
+  drugInfoLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', flex: 1 },
+  drugInfoValue: { fontSize: 13, fontWeight: '600', flex: 1.5, textAlign: 'right' },
 });

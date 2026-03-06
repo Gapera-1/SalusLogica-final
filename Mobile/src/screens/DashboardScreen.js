@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Card, Button, Avatar, Snackbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SkeletonDashboard } from '../components/SkeletonLoaders';
 import SyncStatusBar, { OfflineBanner } from '../components/SyncStatusBar';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -27,6 +28,7 @@ export default function DashboardScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { 
     medicines: syncedMedicines, 
     syncAll, 
@@ -228,7 +230,7 @@ export default function DashboardScreen() {
       <OfflineBanner />
 
       {/* Header */}
-      <View style={[styles.heroHeader, { backgroundColor: colors.primary }]}>
+      <View style={[styles.heroHeader, { backgroundColor: colors.primary, paddingTop: insets.top + 12 }]}>
         <View style={styles.heroLeft}>
           <Text style={styles.heroGreeting}>
             {t('dashboard.welcomeBack').replace('%(patient)s', user?.first_name || user?.username || 'User')}
@@ -414,7 +416,6 @@ const styles = StyleSheet.create({
   },
   heroHeader: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 56 : 20,
     paddingBottom: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',

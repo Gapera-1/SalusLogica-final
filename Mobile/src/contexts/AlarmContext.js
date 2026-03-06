@@ -669,7 +669,7 @@ export const AlarmProvider = ({ children }) => {
    * Start polling for alarms
    */
   const startPolling = useCallback(() => {
-    if (isPolling) return;
+    if (pollingIntervalRef.current) return;
 
     setIsPolling(true);
     console.log('Starting alarm polling (every 30 seconds)');
@@ -681,7 +681,7 @@ export const AlarmProvider = ({ children }) => {
     pollingIntervalRef.current = setInterval(() => {
       checkAlarms();
     }, 30000);
-  }, [isPolling, checkAlarms]);
+  }, [checkAlarms]);
 
   /**
    * Stop polling for alarms

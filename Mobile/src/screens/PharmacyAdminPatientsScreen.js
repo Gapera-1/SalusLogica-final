@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -16,6 +17,7 @@ export default function PharmacyAdminPatientsScreen() {
   const { t } = useLanguage();
   const { colors, isDark } = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +29,9 @@ export default function PharmacyAdminPatientsScreen() {
   // Modals
   const [detailModal, setDetailModal] = useState(null);
   const [medicinesModal, setMedicinesModal] = useState(null);
+  const [linkModal, setLinkModal] = useState(false);
+  const [linkData, setLinkData] = useState({ patient_email: '', notes: '' });
+  const [linkLoading, setLinkLoading] = useState(false);
 
   const loadPatients = async (isRefresh = false) => {
     try {
@@ -78,6 +83,39 @@ export default function PharmacyAdminPatientsScreen() {
     }
   };
 
+  // Link patient to pharmacy
+  const handleLinkPatient = async () => {
+    if (!linkData.patient_email.trim()) {
+      Alert.alert(
+        t('common.error') || 'Error',
+        t('pharmacyAdminPatients.emailRequired') || 'Patient email is required'
+      );
+      return;
+    }
+    setLinkLoading(true);
+    try {
+      await pharmacyAdminAPI.linkPatient({
+        patient_email: linkData.patient_email.trim(),
+        notes: linkData.notes.trim(),
+      });
+      Alert.alert(
+        t('common.success') || 'Success',
+        t('pharmacyAdminPatients.linkSuccess') || 'Patient linked successfully'
+      );
+      setLinkModal(false);
+      setLinkData({ patient_email: '', notes: '' });
+      loadPatients();
+    } catch (err) {
+      logError('PharmacyAdminPatients.linkPatient', err);
+      Alert.alert(
+        t('common.error') || 'Error',
+        err.message || t('pharmacyAdminPatients.linkFailed') || 'Failed to link patient'
+      );
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
   const getInitials = (p) => {
     const f = (p.first_name || p.username || '?')[0]?.toUpperCase() || '?';
     const l = (p.last_name || '')[0]?.toUpperCase() || '';
@@ -105,7 +143,7 @@ export default function PharmacyAdminPatientsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Hero Header */}
-      <View style={[styles.heroHeader, { backgroundColor: '#3b82f6' }]}>
+      <View style={[styles.heroHeader, { backgroundColor: '#3b82f6', paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
@@ -115,7 +153,12 @@ export default function PharmacyAdminPatientsScreen() {
             {t('pharmacyAdminPatients.subtitle') || 'Manage patients linked to your pharmacy'}
           </Text>
         </View>
-        <Ionicons name="people" size={32} color="rgba(255,255,255,0.6)" />
+        <TouchableOpacity
+          onPress={() => setLinkModal(true)}
+          style={styles.linkPatientBtn}
+        >
+          <Ionicons name="person-add" size={18} color="#3b82f6" />
+        </TouchableOpacity>
       </View>
 
       {/* Search + Filters */}
@@ -274,8 +317,12 @@ export default function PharmacyAdminPatientsScreen() {
                 {[
                   { icon: 'person', label: t('pharmacyAdminPatients.username') || 'Username', value: detailModal.username },
                   { icon: 'mail', label: t('pharmacyAdminPatients.email') || 'Email', value: detailModal.email },
-                  { icon: 'calendar', label: t('pharmacyAdminPatients.joinedDate') || 'Joined', value: detailModal.date_joined ? new Date(detailModal.date_joined).toLocaleDateString() : detailModal.linked_date ? new Date(detailModal.linked_date).toLocaleDateString() : '—' },
+                  { icon: 'calendar', label: t('pharmacyAdminPatients.assignedDate') || 'Assigned Date', value: detailModal.assigned_date ? new Date(detailModal.assigned_date).toLocaleDateString() : detailModal.linked_date ? new Date(detailModal.linked_date).toLocaleDateString() : '—' },
+                  { icon: 'calendar', label: t('pharmacyAdminPatients.joinedDate') || 'Joined', value: detailModal.date_joined ? new Date(detailModal.date_joined).toLocaleDateString() : '—' },
                   { icon: 'medkit', label: t('pharmacyAdminPatients.medicines') || 'Medicines', value: detailModal.medicine_count ?? detailModal.medicines_count ?? '—' },
+                  { icon: 'warning', label: t('pharmacyAdminPatients.sideEffects') || 'Side Effects', value: detailModal.side_effects_count ?? detailModal.adverse_reactions_count ?? '—' },
+                  { icon: 'alert-circle', label: t('pharmacyAdminPatients.unresolvedEffects') || 'Unresolved', value: detailModal.unresolved_side_effects ?? '—' },
+                  { icon: 'checkmark-circle', label: t('pharmacyAdminPatients.consent') || 'Consent', value: detailModal.consent_given ? (t('common.yes') || 'Yes') : (detailModal.consent_given === false ? (t('common.no') || 'No') : '—') },
                 ].map((row, i) => (
                   <View key={i} style={[styles.infoRow, { borderColor: colors.border }]}>
                     <View style={[styles.infoIconBg, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
@@ -370,6 +417,71 @@ export default function PharmacyAdminPatientsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Link Patient Modal */}
+      <Modal visible={linkModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <View style={[styles.modalHeader, { backgroundColor: '#10b981' }]}>
+              <Text style={styles.modalHeaderTitle}>
+                {t('pharmacyAdminPatients.linkPatient') || 'Link Patient'}
+              </Text>
+              <TouchableOpacity onPress={() => { setLinkModal(false); setLinkData({ patient_email: '', notes: '' }); }} style={styles.modalClose}>
+                <Ionicons name="close" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={[styles.linkDescription, { color: colors.textSecondary }]}>
+                {t('pharmacyAdminPatients.linkDescription') || 'Enter the patient\'s email address to link them to your pharmacy.'}
+              </Text>
+
+              <View style={[styles.linkInputContainer, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9', borderColor: colors.border }]}>
+                <Ionicons name="mail" size={18} color={colors.textMuted} />
+                <TextInput
+                  style={[styles.linkInput, { color: colors.text }]}
+                  placeholder={t('pharmacyAdminPatients.patientEmail') || 'Patient email address'}
+                  placeholderTextColor={colors.textMuted}
+                  value={linkData.patient_email}
+                  onChangeText={(text) => setLinkData(prev => ({ ...prev, patient_email: text }))}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={[styles.linkInputContainer, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9', borderColor: colors.border, minHeight: 80, alignItems: 'flex-start', paddingTop: 12 }]}>
+                <Ionicons name="document-text" size={18} color={colors.textMuted} style={{ marginTop: 2 }} />
+                <TextInput
+                  style={[styles.linkInput, { color: colors.text }]}
+                  placeholder={t('pharmacyAdminPatients.linkNotes') || 'Notes (optional)'}
+                  placeholderTextColor={colors.textMuted}
+                  value={linkData.notes}
+                  onChangeText={(text) => setLinkData(prev => ({ ...prev, notes: text }))}
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.linkSubmitBtn, { opacity: linkLoading ? 0.6 : 1 }]}
+                onPress={handleLinkPatient}
+                disabled={linkLoading}
+              >
+                {linkLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="person-add" size={18} color="#fff" />
+                )}
+                <Text style={styles.linkSubmitText}>
+                  {linkLoading
+                    ? (t('common.loading') || 'Linking...')
+                    : (t('pharmacyAdminPatients.linkPatient') || 'Link Patient')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -380,7 +492,7 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, fontSize: 14 },
   heroHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 56 : 16,
+    paddingHorizontal: 16,
     paddingBottom: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
   },
   backBtn: { padding: 6, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)' },
@@ -458,4 +570,22 @@ const styles = StyleSheet.create({
   medDosage: { fontSize: 12, marginBottom: 4 },
   medStatusBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
   medStatusText: { fontSize: 10, fontWeight: '700' },
+
+  // Link Patient
+  linkPatientBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
+  },
+  linkDescription: { fontSize: 13, lineHeight: 20, marginBottom: 16 },
+  linkInputContainer: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10,
+    marginBottom: 12,
+  },
+  linkInput: { flex: 1, fontSize: 14 },
+  linkSubmitBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#10b981', paddingVertical: 14, borderRadius: 14, marginTop: 8,
+  },
+  linkSubmitText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Card, Button, Avatar, Searchbar, Snackbar, IconButton, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SkeletonMedicineList } from '../components/SkeletonLoaders';
 import SyncStatusBar, { OfflineBanner } from '../components/SyncStatusBar';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -30,6 +31,7 @@ export default function MedicinesScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { 
     medicines: syncedMedicines, 
     syncMedicines, 
@@ -340,10 +342,10 @@ export default function MedicinesScreen() {
                   ) : null}
                 </View>
                 <View style={styles.actionRow}>
-                  <TouchableOpacity onPress={() => handleEditMedicine(medicine)} style={[styles.iconBtn, { backgroundColor: colors.primaryLight + '15' }]}>
+                  <TouchableOpacity onPress={() => handleEditMedicine(medicine)} style={[styles.iconBtn, { backgroundColor: colors.primaryLight + '15' }]} accessibilityLabel="Edit medicine" accessibilityRole="button">
                     <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.primary} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDeleteMedicine(medicine)} style={[styles.iconBtn, { backgroundColor: colors.error + '12' }]}>
+                  <TouchableOpacity onPress={() => handleDeleteMedicine(medicine)} style={[styles.iconBtn, { backgroundColor: colors.error + '12' }]} accessibilityLabel="Delete medicine" accessibilityRole="button">
                     <MaterialCommunityIcons name="delete-outline" size={18} color={colors.error} />
                   </TouchableOpacity>
                 </View>
@@ -361,7 +363,7 @@ export default function MedicinesScreen() {
       <OfflineBanner />
 
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={styles.title}>{t('medicines.title')}</Text>
           <Text style={styles.subtitle}>{t('medicines.subtitle')}</Text>
@@ -492,7 +494,6 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 56 : 20,
     paddingBottom: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -645,9 +646,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   iconBtn: {
-    borderRadius: 20,
-    width: 36,
-    height: 36,
+    borderRadius: 22,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
   },

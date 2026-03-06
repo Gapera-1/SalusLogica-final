@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
@@ -40,7 +41,7 @@ const DonutRing = ({ data, colors: themeColors, centerValue, centerLabel }) => {
           <View key={i} style={donutStyles.legendRow}>
             <View style={[donutStyles.legendDot, { backgroundColor: d.color }]} />
             <Text style={[donutStyles.legendLabel, { color: themeColors.text }]} numberOfLines={1}>{d.label}</Text>
-            <View style={donutStyles.legendBarTrack}>
+            <View style={[donutStyles.legendBarTrack, { backgroundColor: themeColors.border || '#e5e7eb' }]}>
               <View style={[donutStyles.legendBarFill, { width: `${(d.value / total) * 100}%`, backgroundColor: d.color }]} />
             </View>
             <Text style={[donutStyles.legendPct, { color: themeColors.textSecondary }]}>
@@ -137,6 +138,7 @@ const AnalyticsDashboard = () => {
   const { t } = useLanguage();
   const { colors, isDark } = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [medicines, setMedicines] = useState([]);
@@ -249,13 +251,23 @@ const AnalyticsDashboard = () => {
     );
   }
 
+  if (medicines.length === 0) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <MaterialCommunityIcons name="pill-off" size={48} color={colors.textSecondary} style={{ marginBottom: 12 }} />
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: 4 }}>{t('analytics.noData') || 'No Data Yet'}</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }}>{t('analytics.addMedicines') || 'Add medicines to see your analytics and adherence stats.'}</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
     >
       {/* Hero Header */}
-      <View style={[styles.heroHeader, { backgroundColor: colors.primary }]}>
+      <View style={[styles.heroHeader, { backgroundColor: colors.primary, paddingTop: insets.top + 12 }]}>
         <View style={{ flex: 1 }}>
           <Text style={styles.heroTitle}>{t('analytics.title')}</Text>
           <Text style={styles.heroSubtitle}>{t('analytics.subtitle') || 'Real-time medication insights'}</Text>
@@ -441,7 +453,7 @@ const AnalyticsDashboard = () => {
                     </View>
                     {med.stock_count != null && (
                       <View style={styles.stockRow}>
-                        <View style={styles.stockBarTrack}>
+                        <View style={[styles.stockBarTrack, { backgroundColor: colors.border || '#e5e7eb' }]}>
                           <View style={[styles.stockBarFill, {
                             width: `${Math.min(100, ((med.stock_count || 0) / 100) * 100)}%`,
                             backgroundColor: (med.stock_count || 0) < 10 ? '#ef4444' : (med.stock_count || 0) < 30 ? '#f59e0b' : '#10b981',
@@ -479,7 +491,7 @@ const styles = StyleSheet.create({
 
   heroHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 56 : 20, paddingBottom: 24,
+    paddingHorizontal: 20, paddingBottom: 24,
     borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
   },
   heroTitle: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 2 },

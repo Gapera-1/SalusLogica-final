@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,6 +18,7 @@ export default function PharmacyAdminDashboardScreen() {
   const { colors, isDark } = useTheme();
   const { user } = useAuth();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -107,7 +109,7 @@ export default function PharmacyAdminDashboardScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
     >
       {/* Hero Header */}
-      <View style={[styles.heroHeader, { backgroundColor: colors.primary }]}>
+      <View style={[styles.heroHeader, { backgroundColor: colors.primary, paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={styles.heroTitle}>
             {t('pharmacyAdminDashboard.welcome') || 'Welcome,'}{' '}
@@ -200,7 +202,7 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, fontSize: 14 },
   heroHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 56 : 20,
+    paddingHorizontal: 20,
     paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
   },
   heroTitle: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 4 },
